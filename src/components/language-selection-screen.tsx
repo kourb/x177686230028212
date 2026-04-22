@@ -465,7 +465,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 }
 
 // Render post-auth home screen from Figma node 2009:7697.
-function HomeScreen () {
+function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
 	const { t } = useI18n()
 	const displayName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
 
@@ -491,8 +491,86 @@ function HomeScreen () {
 				<button className="home-tab" type="button">
 					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
 				</button>
-				<button className="home-tab" type="button">
+				<button className="home-tab" onClick={onOpenProfile} type="button">
 					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
+				</button>
+			</nav>
+		</section>
+	)
+}
+
+// Render profile/settings screen from Figma node 562:10062.
+function ProfileScreen ({ onOpenHome }: { onOpenHome: () => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Profile and settings" className="profile-screen">
+			<div className="profile-scroll">
+				<header className="profile-header">
+					<h1>{t('profileTitle')}</h1>
+					<p>{t('profileSubtitle')}</p>
+				</header>
+
+				<section className="profile-section" aria-label={t('profileSectionMain')}>
+					<h2>{t('profileSectionMain')}</h2>
+					<div className="profile-list">
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Profile data" className="profile-row-icon" height={24} src="/assets/icon-settings-profile.svg" unoptimized width={24} />
+								<b>{t('profileItemProfileData')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Passports" className="profile-row-icon" height={24} src="/assets/icon-settings-passport.svg" unoptimized width={24} />
+								<b>{t('profileItemPassports')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Payments" className="profile-row-icon" height={24} src="/assets/icon-settings-payments.svg" unoptimized width={24} />
+								<b>{t('profileItemPayments')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+					</div>
+				</section>
+
+				<section className="profile-section" aria-label={t('profileSectionExtra')}>
+					<h2>{t('profileSectionExtra')}</h2>
+					<div className="profile-list">
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Notifications" className="profile-row-icon" height={24} src="/assets/icon-settings-notifications.svg" unoptimized width={24} />
+								<b>{t('profileItemNotifications')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Support" className="profile-row-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
+								<b>{t('profileItemHelp')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+					</div>
+				</section>
+			</div>
+
+			<nav aria-label="Bottom navigation" className="home-tabbar">
+				<button className="home-tab" onClick={onOpenHome} type="button">
+					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+				</button>
+				<button className="home-tab" type="button">
+					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
+				</button>
+				<button className="home-tab is-active" type="button">
+					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile-active.svg" unoptimized width={24} />
 				</button>
 			</nav>
 		</section>
@@ -508,10 +586,12 @@ function resolveInitialEntryStep () {
 // Render onboarding-to-auth-to-home flow after splash.
 function EntryFlow () {
 	const [step, setStep] = useState<'onboarding' | 'auth' | 'home'>(resolveInitialEntryStep)
+	const [activeTab, setActiveTab] = useState<'home' | 'profile'>('home')
 
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
 		setStep('home')
+		setActiveTab('home')
 	}
 
 	return (
@@ -521,7 +601,9 @@ function EntryFlow () {
 				? <OnboardingScreen onContinue={() => setStep('auth')} />
 				: step === 'auth'
 					? <AuthScreen onAuthenticated={onAuthenticated} />
-					: <HomeScreen />}
+					: activeTab === 'home'
+						? <HomeScreen onOpenProfile={() => setActiveTab('profile')} />
+						: <ProfileScreen onOpenHome={() => setActiveTab('home')} />}
 		</>
 	)
 }
