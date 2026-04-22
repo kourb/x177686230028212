@@ -6,6 +6,60 @@ import { SUPPORTED_LOCALES } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
 const HERO_IMAGE = '/assets/hero-travel.svg'
+const AUTH_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
+const DEVICE_ID_STORAGE_KEY = 'visa-assistent-device-id'
+const AUTH_STORAGE_KEY = 'visa-assistent-auth'
+
+type ApiResponse<T> = {
+	data: T | null
+	error: {
+		message?: string
+	} | null
+}
+
+type AuthTokenResponse = {
+	accessToken: string
+	refreshToken: string
+	accessTokenExpiresAt: number | string
+	refreshTokenExpiresAt: number | string
+	isNewUser: boolean
+}
+
+// Resolve stable device metadata required by auth endpoints.
+function resolveDeviceInfo () {
+	const stored = window.localStorage.getItem(DEVICE_ID_STORAGE_KEY)
+	if(stored) {
+		return {
+			deviceId: stored,
+			deviceName: 'Visa Assistent Web',
+		}
+	}
+
+	const created = crypto.randomUUID()
+	window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, created)
+	return {
+		deviceId: created,
+		deviceName: 'Visa Assistent Web',
+	}
+}
+
+// Send POST request to app auth API and unwrap data payload.
+async function authPost (path: '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp', payload: Record<string, unknown>) {
+	const response = await fetch(`${AUTH_API_BASE}${path}`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify(payload),
+	})
+	const body = await response.json() as ApiResponse<AuthTokenResponse>
+
+	if(!response.ok || !body.data && path === '/v1/app/auth/email/verify-otp') {
+		throw new Error(body.error?.message ?? 'Authorization request failed')
+	}
+
+	return body.data
+}
 
 // Resolve splash lifecycle based on document and script readiness.
 function useSplashReady () {
@@ -121,6 +175,62 @@ function OnboardingScreen ({ onContinue }: { onContinue: () => void }) {
 function AuthScreen () {
 	const { t } = useI18n()
 	const [email, setEmail] = useState('')
+	const [code, setCode] = useState('')
+	const [step, setStep] = useState<'email' | 'otp' | 'done'>('email')
+	const [isBusy, setIsBusy] = useState(false)
+	const [errorText, setErrorText] = useState('')
+	const [infoText, setInfoText] = useState('')
+
+	const isCodeValid = code.trim().length >= 4
+	const canContinue = step === 'email' ? isEmailValid(email) && !isBusy : isCodeValid && !isBusy
+
+	// Request OTP code for email login and registration flow.
+	const requestOtp = async () => {
+		setIsBusy(true)
+		setErrorText('')
+
+		try {
+			await authPost('/v1/app/auth/email/send-otp', { email: email.trim() })
+			setStep('otp')
+			setInfoText(t('authCodeSent'))
+		} catch (error) {
+			setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
+		} finally {
+			setIsBusy(false)
+		}
+	}
+
+	// Verify OTP and persist issued token pair in local storage.
+	const verifyOtp = async () => {
+		setIsBusy(true)
+		setErrorText('')
+
+		try {
+			const tokenPair = await authPost('/v1/app/auth/email/verify-otp', {
+				email: email.trim(),
+				code: code.trim(),
+				device: resolveDeviceInfo(),
+			})
+
+			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
+			setStep('done')
+			setInfoText(t('authDone'))
+		} catch (error) {
+			setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
+		} finally {
+			setIsBusy(false)
+		}
+	}
+
+	// Dispatch primary action for current auth step.
+	const onContinue = () => {
+		if(step === 'email') {
+			requestOtp()
+			return
+		}
+
+		if(step === 'otp') verifyOtp()
+	}
  
 	return (
 		<section aria-label="Auth" className="auth-screen">
@@ -131,10 +241,24 @@ function AuthScreen () {
 
 			<div className="auth-form">
 				<label htmlFor="email">{t('emailLabel')}</label>
-				<input id="email" onChange={(event) => setEmail(event.target.value)} placeholder={t('emailPlaceholder')} type="email" value={email} />
+				<input disabled={step !== 'email'} id="email" onChange={(event) => setEmail(event.target.value)} placeholder={t('emailPlaceholder')} type="email" value={email} />
+
+				{step === 'otp' ? (
+					<>
+						<label htmlFor="otp">{t('authCodeLabel')}</label>
+						<input id="otp" inputMode="numeric" onChange={(event) => setCode(event.target.value)} placeholder={t('authCodePlaceholder')} type="text" value={code} />
+					</>
+				) : null}
+
+				{infoText ? <p className="auth-note">{infoText}</p> : null}
+				{errorText ? <p className="auth-note is-error">{errorText}</p> : null}
+
+				{step === 'otp' ? (
+					<button className="auth-link" onClick={requestOtp} type="button">{t('authResendCode')}</button>
+				) : null}
 			</div>
 
-			<button className="auth-continue" disabled={!isEmailValid(email)} type="button">{t('authContinue')}</button>
+			<button className="auth-continue" disabled={!canContinue || step === 'done'} onClick={onContinue} type="button">{step === 'email' ? t('authSendCode') : step === 'otp' ? t('authVerifyCode') : t('authDone')}</button>
 
 			<div className="auth-divider">
 				<span />
