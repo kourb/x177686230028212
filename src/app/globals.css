@@ -52,21 +52,33 @@ body {
 
 .locale-trigger {
 	all: unset;
-	height: 24px;
+	height: 26px;
 	width: auto;
 	max-width: 112px;
-	padding: 0 8px;
+	padding: 0 18px 0 8px;
 	border-radius: 6px;
 	background: #fff;
 	border: 1px solid rgb(0 29 71 / 0.1);
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) 8px;
-	column-gap: 6px;
+	position: relative;
+	display: inline-flex;
 	align-items: center;
 	cursor: pointer;
 }
 
+.locale-trigger::after {
+	content: '';
+	position: absolute;
+	right: 7px;
+	top: 50%;
+	width: 6px;
+	height: 6px;
+	border-right: 1.5px solid var(--ink-soft);
+	border-bottom: 1.5px solid var(--ink-soft);
+	transform: translateY(-65%) rotate(45deg);
+}
+
 .locale-trigger span {
+	display: block;
 	font-size: 10px;
 	line-height: 1;
 	font-style: normal;
@@ -75,14 +87,6 @@ body {
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-}
-
-.locale-trigger em {
-	font-size: 10px;
-	line-height: 1;
-	font-style: normal;
-	font-weight: 600;
-	color: var(--ink-soft);
 }
 
 .locale-menu {

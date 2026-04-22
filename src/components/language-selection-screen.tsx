@@ -70,7 +70,6 @@ function LocaleSwitcher () {
 		<div className="locale-switcher" ref={rootRef}>
 			<button className="locale-trigger" onClick={() => setIsOpen(!isOpen)} type="button">
 				<span>{selected.nativeName}</span>
-				<em>{isOpen ? '▴' : '▾'}</em>
 			</button>
 
 			{isOpen ? (
