@@ -11,8 +11,24 @@ const AUTH_STORAGE_KEY = 'visa-assistent-auth'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '383303576206-8svtv0iglo3sil07mlflaoulv67b9esr.apps.googleusercontent.com'
 
-type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp'
+type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' | '/v1/app/auth/google'
+
+type GoogleCredentialResponse = {
+	credential?: string
+}
+
+type GoogleWindow = Window & {
+	google?: {
+		accounts?: {
+			id?: {
+				initialize: (options: { client_id: string, callback: (response: GoogleCredentialResponse) => void, auto_select: boolean, cancel_on_tap_outside: boolean }) => void
+				prompt: (listener?: (notification: { isNotDisplayed: () => boolean, isSkippedMoment: () => boolean }) => void) => void
+			}
+		}
+	}
+}
 
 type ApiResponse<T> = {
 	data: T | null
@@ -28,6 +44,8 @@ type AuthTokenResponse = {
 	refreshTokenExpiresAt: number | string
 	isNewUser: boolean
 }
+
+let googleScriptPromise: Promise<void> | null = null
 
 // Resolve stable device metadata required by auth endpoints.
 function resolveDeviceInfo () {
@@ -54,6 +72,74 @@ function resolveAuthUrl (path: AuthPath) {
 	return `${AUTH_REMOTE_BASE_URL}${path}`
 }
 
+// Load Google Identity Services script once per app session.
+function loadGoogleScript () {
+	if(googleScriptPromise) return googleScriptPromise
+
+	googleScriptPromise = new Promise<void>((resolve, reject) => {
+		const found = document.querySelector('script[data-google-identity="1"]') as HTMLScriptElement | null
+		if(found) {
+			if((window as GoogleWindow).google?.accounts?.id) {
+				resolve()
+				return
+			}
+
+			found.addEventListener('load', () => resolve(), { once: true })
+			found.addEventListener('error', () => reject(new Error('Failed to load Google SDK')), { once: true })
+			return
+		}
+
+		const script = document.createElement('script')
+		script.src = 'https://accounts.google.com/gsi/client'
+		script.async = true
+		script.defer = true
+		script.dataset.googleIdentity = '1'
+		script.onload = () => resolve()
+		script.onerror = () => reject(new Error('Failed to load Google SDK'))
+		document.head.appendChild(script)
+	})
+
+	return googleScriptPromise
+}
+
+// Request Google ID token via Google Identity Services.
+function requestGoogleIdToken (clientId: string) {
+	return new Promise<string>((resolve, reject) => {
+		const google = (window as GoogleWindow).google?.accounts?.id
+		if(!google) {
+			reject(new Error('Google SDK is unavailable'))
+			return
+		}
+
+		let done = false
+		const finish = (callback: () => void) => {
+			if(done) return
+			done = true
+			callback()
+		}
+
+		google.initialize({
+			client_id: clientId,
+			auto_select: false,
+			cancel_on_tap_outside: true,
+			callback: (response) => {
+				if(response.credential) {
+					finish(() => resolve(response.credential as string))
+					return
+				}
+
+				finish(() => reject(new Error('Google did not return id token')))
+			},
+		})
+
+		google.prompt((notification) => {
+			if(notification.isNotDisplayed() || notification.isSkippedMoment()) {
+				finish(() => reject(new Error('Google sign-in prompt was skipped')))
+			}
+		})
+	})
+}
+
 // Send POST request to app auth API and unwrap data payload.
 async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
 	const response = await fetch(resolveAuthUrl(path), {
@@ -65,7 +151,7 @@ async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
 	})
 	const body = await response.json() as ApiResponse<T>
 
-	if(!response.ok || !body.data && path === '/v1/app/auth/email/verify-otp') {
+	if(!response.ok || !body.data && path !== '/v1/app/auth/email/send-otp') {
 		throw new Error(body.error?.message ?? 'Authorization request failed')
 	}
 
@@ -211,6 +297,34 @@ function AuthScreen () {
 		}
 	}
 
+	// Authenticate user via Google ID token and store token pair.
+	const loginWithGoogle = async () => {
+		if(!GOOGLE_CLIENT_ID) {
+			setErrorText(t('authGoogleMissingClientId'))
+			return
+		}
+
+		setIsBusy(true)
+		setErrorText('')
+
+		try {
+			await loadGoogleScript()
+			const idToken = await requestGoogleIdToken(GOOGLE_CLIENT_ID)
+			const tokenPair = await authPost<AuthTokenResponse>('/v1/app/auth/google', {
+				idToken,
+				device: resolveDeviceInfo(),
+			})
+
+			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
+			setStep('done')
+			setInfoText(t('authDone'))
+		} catch (error) {
+			setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
+		} finally {
+			setIsBusy(false)
+		}
+	}
+
 	// Verify OTP and persist issued token pair in local storage.
 	const verifyOtp = async () => {
 		setIsBusy(true)
@@ -278,7 +392,7 @@ function AuthScreen () {
 			</div>
 
 			<div className="auth-socials">
-				<button className="auth-social" type="button">
+				<button className="auth-social" disabled={isBusy || step === 'done'} onClick={loginWithGoogle} type="button">
 					<Image alt="Google" className="auth-icon-image" height={24} src="/assets/icon-google.svg" unoptimized width={24} />
 					{t('googleContinue')}
 				</button>

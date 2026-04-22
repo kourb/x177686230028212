@@ -400,6 +400,11 @@ body {
 	color: var(--ink);
 }
 
+.auth-social:disabled {
+	opacity: 0.56;
+	cursor: default;
+}
+
 .auth-icon-image {
 	width: 24px;
 	height: 24px;

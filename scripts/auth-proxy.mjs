@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 const UPSTREAM = process.env.AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const PORT = Number(process.env.AUTH_PROXY_PORT ?? 8787)
 const ALLOW_ORIGIN = process.env.AUTH_PROXY_ALLOW_ORIGIN ?? 'http://localhost:3000'
-const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp'])
+const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google'])
 
 // Apply CORS headers for local browser access.
 function setCors (response) {
@@ -24,7 +24,8 @@ function readBody (request) {
 
 // Proxy allowed auth request to upstream API.
 async function handleProxy (request, response) {
-	const path = new URL(request.url ?? '/', `http://${request.headers.host}`).pathname
+	const rawPath = new URL(request.url ?? '/', `http://${request.headers.host}`).pathname.replace(/\/+$/, '')
+	const path = rawPath.startsWith('/auth-proxy/') ? rawPath.slice('/auth-proxy'.length) : rawPath
 	if(!ROUTES.has(path)) {
 		setCors(response)
 		response.writeHead(404, { 'Content-Type': 'application/json' })
