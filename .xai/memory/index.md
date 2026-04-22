@@ -11,3 +11,4 @@
 - `web-app-no-phone-frame.md` — Build full web layouts; do not frame screens as phone previews/widgets
 - `next-static-build-for-xci.md` — Build pipeline exports static site to `build/` and `.xci` dist points to `build`
 - `no-auto-lint.md` — Do not run lint automatically; run checks only when user explicitly asks
+- `project-design-rules-added.md` — Added project-local design delivery rules under `.xai/rules/design-delivery.md` to enforce deterministic Figma-first implementation
