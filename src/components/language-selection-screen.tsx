@@ -170,7 +170,6 @@ function EntryFlow () {
 // Render localized splash and second screen transition.
 function AppEntryContent () {
 	const isReady = useSplashReady()
-	const { t } = useI18n()
 
 	return (
 		<main className="web-root">
@@ -182,7 +181,7 @@ function AppEntryContent () {
 				) : (
 					<div className="splash-canvas">
 						<Image alt="Travel illustration" className="splash-hero-image" height={394} priority src={HERO_IMAGE} unoptimized width={458} />
-						<div className="splash-loading">{t('loadingLabel')}</div>
+						<div className="splash-loading">Loading...</div>
 					</div>
 				)}
 			</section>

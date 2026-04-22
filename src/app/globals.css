@@ -414,9 +414,20 @@ body {
 		padding-top: 38px;
 	}
 
+	.onboarding-screen {
+		grid-template-rows: minmax(340px, 52dvh) auto 56px;
+		row-gap: 16px;
+		padding-bottom: 16px;
+	}
+
+	.onboarding-hero {
+		min-height: 0;
+	}
+
 	.splash-hero-image,
 	.onboarding-hero-image {
-		top: 32px;
+		top: auto;
+		bottom: 0;
 		left: 50%;
 		width: min(458px, calc(100% - 24px));
 		height: auto;
