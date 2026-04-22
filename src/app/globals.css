@@ -55,7 +55,7 @@ body {
 	height: 26px;
 	width: auto;
 	max-width: 112px;
-	padding: 0 18px 0 8px;
+	padding: 0 22px 0 8px;
 	border-radius: 6px;
 	background: #fff;
 	border: 1px solid rgb(0 29 71 / 0.1);
@@ -68,13 +68,13 @@ body {
 .locale-trigger::after {
 	content: '';
 	position: absolute;
-	right: 7px;
+	right: 8px;
 	top: 50%;
 	width: 6px;
 	height: 6px;
 	border-right: 1.5px solid var(--ink-soft);
 	border-bottom: 1.5px solid var(--ink-soft);
-	transform: translateY(-65%) rotate(45deg);
+	transform: translateY(-50%) rotate(45deg);
 }
 
 .locale-trigger span {
