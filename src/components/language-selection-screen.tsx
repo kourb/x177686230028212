@@ -83,7 +83,6 @@ function LocaleSwitcher () {
 									setIsOpen(false)
 								}} type="button">
 									<span>{item.nativeName}</span>
-									{item.code === locale ? <i>✓</i> : null}
 								</button>
 							</li>
 						)
@@ -171,9 +170,9 @@ function AppEntryContent () {
 
 	return (
 		<main className="web-root">
-			{isReady ? <LocaleSwitcher /> : null}
-
 			<section aria-label="App content" className="app-content">
+				{isReady ? <LocaleSwitcher /> : null}
+
 				{isReady ? (
 					<EntryFlow />
 				) : (

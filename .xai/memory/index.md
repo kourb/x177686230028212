@@ -10,3 +10,4 @@
 - `figma-new-entry-nodes-591-7457-562-8041.md` — Entry flow switched to new Figma nodes: onboarding first, welcome auth second, keep i18n switching
 - `web-app-no-phone-frame.md` — Build full web layouts; do not frame screens as phone previews/widgets
 - `next-static-build-for-xci.md` — Build pipeline exports static site to `build/` and `.xci` dist points to `build`
+- `no-auto-lint.md` — Do not run lint automatically; run checks only when user explicitly asks
