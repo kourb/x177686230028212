@@ -6,7 +6,7 @@ import { SUPPORTED_LOCALES } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
 const HERO_IMAGE = '/assets/hero-travel.svg'
-const AUTH_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
+const AUTH_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const DEVICE_ID_STORAGE_KEY = 'visa-assistent-device-id'
 const AUTH_STORAGE_KEY = 'visa-assistent-auth'
 
@@ -44,7 +44,7 @@ function resolveDeviceInfo () {
 }
 
 // Send POST request to app auth API and unwrap data payload.
-async function authPost (path: '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp', payload: Record<string, unknown>) {
+async function authPost<T> (path: '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp', payload: Record<string, unknown>) {
 	const response = await fetch(`${AUTH_API_BASE}${path}`, {
 		method: 'POST',
 		headers: {
@@ -52,7 +52,7 @@ async function authPost (path: '/v1/app/auth/email/send-otp' | '/v1/app/auth/ema
 		},
 		body: JSON.stringify(payload),
 	})
-	const body = await response.json() as ApiResponse<AuthTokenResponse>
+	const body = await response.json() as ApiResponse<T>
 
 	if(!response.ok || !body.data && path === '/v1/app/auth/email/verify-otp') {
 		throw new Error(body.error?.message ?? 'Authorization request failed')
@@ -190,7 +190,7 @@ function AuthScreen () {
 		setErrorText('')
 
 		try {
-			await authPost('/v1/app/auth/email/send-otp', { email: email.trim() })
+			await authPost<{ success: boolean }>('/v1/app/auth/email/send-otp', { email: email.trim() })
 			setStep('otp')
 			setInfoText(t('authCodeSent'))
 		} catch (error) {
@@ -206,7 +206,7 @@ function AuthScreen () {
 		setErrorText('')
 
 		try {
-			const tokenPair = await authPost('/v1/app/auth/email/verify-otp', {
+			const tokenPair = await authPost<AuthTokenResponse>('/v1/app/auth/email/verify-otp', {
 				email: email.trim(),
 				code: code.trim(),
 				device: resolveDeviceInfo(),
