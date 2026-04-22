@@ -8,6 +8,7 @@ import { I18nProvider, useI18n } from '@/i18n/provider'
 const HERO_IMAGE = '/assets/hero-travel.svg'
 const DEVICE_ID_STORAGE_KEY = 'visa-assistent-device-id'
 const AUTH_STORAGE_KEY = 'visa-assistent-auth'
+const USER_PROFILE_STORAGE_KEY = 'visa-assistent-user-profile'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
@@ -45,6 +46,10 @@ type AuthTokenResponse = {
 	isNewUser: boolean
 }
 
+type UserProfile = {
+	displayName: string
+}
+
 let googleScriptPromise: Promise<void> | null = null
 
 // Resolve stable device metadata required by auth endpoints.
@@ -78,6 +83,40 @@ function hasPersistedAuthSession () {
 		return Boolean(parsed.accessToken && parsed.refreshToken)
 	} catch {
 		return false
+	}
+}
+
+// Decode Google ID token payload and extract first name.
+function resolveGoogleDisplayName (idToken: string) {
+	const tokenParts = idToken.split('.')
+	if(tokenParts.length < 2) return null
+
+	try {
+		const payload = JSON.parse(atob(tokenParts[1].replace(/-/g, '+').replace(/_/g, '/'))) as { given_name?: string, name?: string }
+		if(payload.given_name && payload.given_name.trim()) return payload.given_name.trim()
+		if(payload.name && payload.name.trim()) return payload.name.trim().split(' ')[0]
+		return null
+	} catch {
+		return null
+	}
+}
+
+// Persist resolved user profile for post-auth screens.
+function setUserProfile (profile: UserProfile) {
+	window.localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(profile))
+}
+
+// Resolve persisted user profile from local storage.
+function resolveUserProfile () {
+	const raw = window.localStorage.getItem(USER_PROFILE_STORAGE_KEY)
+	if(!raw) return null
+
+	try {
+		const profile = JSON.parse(raw) as UserProfile | null
+		if(!profile?.displayName) return null
+		return profile
+	} catch {
+		return null
 	}
 }
 
@@ -326,12 +365,14 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 		try {
 			await loadGoogleScript()
 			const idToken = await requestGoogleIdToken(GOOGLE_CLIENT_ID)
+			const displayName = resolveGoogleDisplayName(idToken)
 			const tokenPair = await authPost<AuthTokenResponse>('/v1/app/auth/google', {
 				idToken,
 				device: resolveDeviceInfo(),
 			})
 
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
+			if(displayName) setUserProfile({ displayName })
 			setStep('done')
 			setInfoText(t('authDone'))
 			onAuthenticated()
@@ -426,6 +467,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 // Render post-auth home screen from Figma node 2009:7697.
 function HomeScreen () {
 	const { t } = useI18n()
+	const displayName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
 
 	return (
 		<section aria-label="Home" className="home-screen">
@@ -435,7 +477,7 @@ function HomeScreen () {
 				</div>
 
 				<div className="home-copy">
-					<h1>{t('homeTitle')}</h1>
+					<h1>{`${t('homeGreeting')} ${displayName}!\n${t('homeQuestion')}`}</h1>
 					<p>{t('homeSubtitle')}</p>
 				</div>
 
