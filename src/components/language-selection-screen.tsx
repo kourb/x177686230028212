@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SUPPORTED_LOCALES } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
@@ -49,13 +49,47 @@ function isEmailValid (email: string) {
 // Render locale switcher control outside mobile frame.
 function LocaleSwitcher () {
 	const { locale, setLocale } = useI18n()
+	const [isOpen, setIsOpen] = useState(false)
+	const rootRef = useRef<HTMLDivElement | null>(null)
+	const selected = SUPPORTED_LOCALES.find((item) => item.code === locale) ?? SUPPORTED_LOCALES[0]
+
+	useEffect(() => {
+		if(!isOpen) return
+
+		const onPointerDown = (event: PointerEvent) => {
+			if(!rootRef.current) return
+			if(rootRef.current.contains(event.target as Node)) return
+			setIsOpen(false)
+		}
+
+		document.addEventListener('pointerdown', onPointerDown)
+		return () => document.removeEventListener('pointerdown', onPointerDown)
+	}, [isOpen])
 
 	return (
-		<div className="locale-switcher">
-			<select onChange={(event) => setLocale(event.target.value as typeof locale)} value={locale}>
-				{SUPPORTED_LOCALES.map((item) => <option key={item.code} value={item.code}>{item.nativeName}</option>)}
-			</select>
-			<em>▾</em>
+		<div className="locale-switcher" ref={rootRef}>
+			<button className="locale-trigger" onClick={() => setIsOpen(!isOpen)} type="button">
+				<span>{selected.nativeName}</span>
+				<em>{isOpen ? '▴' : '▾'}</em>
+			</button>
+
+			{isOpen ? (
+				<ul className="locale-menu" role="listbox">
+					{SUPPORTED_LOCALES.map((item) => {
+						return (
+							<li key={item.code}>
+								<button className={item.code === locale ? 'locale-option is-active' : 'locale-option'} onClick={() => {
+									setLocale(item.code)
+									setIsOpen(false)
+								}} type="button">
+									<span>{item.nativeName}</span>
+									{item.code === locale ? <i>✓</i> : null}
+								</button>
+							</li>
+						)
+					})}
+				</ul>
+			) : null}
 		</div>
 	)
 }
