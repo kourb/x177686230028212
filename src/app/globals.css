@@ -35,7 +35,7 @@ body {
 
 .app-content {
 	position: relative;
-	width: min(402px, 100vw);
+	width: min(402px, 100%);
 	height: min(812px, 100dvh);
 	background: #fff;
 	overflow: hidden;
@@ -45,42 +45,33 @@ body {
 	position: absolute;
 	top: 8px;
 	right: 8px;
-	width: auto;
-	max-width: calc(100% - 16px);
+	min-width: 88px;
 	z-index: 5;
 }
 
 .locale-trigger {
 	all: unset;
 	height: 26px;
-	width: auto;
-	max-width: 112px;
-	padding: 0 22px 0 8px;
+	min-width: 88px;
+	padding: 0 6px 0 8px;
 	border-radius: 6px;
 	background: #fff;
 	border: 1px solid rgb(0 29 71 / 0.1);
-	position: relative;
-	display: inline-flex;
+	display: flex;
+	justify-content: space-between;
+	gap: 6px;
 	align-items: center;
 	cursor: pointer;
 }
 
-.locale-trigger::after {
-	content: '';
-	position: absolute;
-	right: 8px;
-	top: 50%;
-	width: 6px;
-	height: 6px;
-	border-right: 1.5px solid var(--ink-soft);
-	border-bottom: 1.5px solid var(--ink-soft);
-	transform: translateY(-50%) rotate(45deg);
-}
-
 .locale-trigger span {
-	display: block;
+	display: flex;
+	align-items: center;
+	height: 100%;
+	flex: 1 1 auto;
+	min-width: 0;
 	font-size: 10px;
-	line-height: 1;
+	line-height: normal;
 	font-style: normal;
 	font-weight: 600;
 	color: var(--ink);
@@ -89,16 +80,32 @@ body {
 	text-overflow: ellipsis;
 }
 
+.locale-caret {
+	width: 8px;
+	height: 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--ink-soft);
+	flex: 0 0 auto;
+}
+
+.locale-caret svg {
+	width: 8px;
+	height: 8px;
+	display: block;
+}
+
 .locale-menu {
 	position: absolute;
 	right: 0;
-	top: calc(100% + 1px);
+	top: calc(100% + 2px);
 	list-style: none;
 	margin: 0;
 	padding: 0;
 	width: max-content;
 	min-width: 100%;
-	max-width: 160px;
+	max-width: calc(100vw - 16px);
 	border-radius: 6px;
 	border: 1px solid rgb(0 29 71 / 0.1);
 	background: #fff;
@@ -114,7 +121,7 @@ body {
 .locale-option {
 	all: unset;
 	width: 100%;
-	height: 24px;
+	height: 26px;
 	padding: 0 8px;
 	display: flex;
 	align-items: center;
@@ -124,6 +131,8 @@ body {
 	font-weight: 600;
 	color: var(--ink);
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .locale-option:hover {

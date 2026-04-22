@@ -68,8 +68,13 @@ function LocaleSwitcher () {
 
 	return (
 		<div className="locale-switcher" ref={rootRef}>
-			<button className="locale-trigger" onClick={() => setIsOpen(!isOpen)} type="button">
+			<button aria-expanded={isOpen} className="locale-trigger" onClick={() => setIsOpen(!isOpen)} type="button">
 				<span>{selected.nativeName}</span>
+				<i aria-hidden className="locale-caret">
+					<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+						<path d="M2 4 L5 7 L8 4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" />
+					</svg>
+				</i>
 			</button>
 
 			{isOpen ? (
