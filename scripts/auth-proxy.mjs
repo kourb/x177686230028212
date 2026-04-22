@@ -3,13 +3,13 @@ import { createServer } from 'node:http'
 const UPSTREAM = process.env.AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const PORT = Number(process.env.AUTH_PROXY_PORT ?? 8787)
 const ALLOW_ORIGIN = process.env.AUTH_PROXY_ALLOW_ORIGIN ?? 'http://localhost:3000'
-const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google'])
+const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/refresh', '/v1/app/auth/account'])
 
 // Apply CORS headers for local browser access.
 function setCors (response) {
 	response.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN)
-	response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-	response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+	response.setHeader('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS')
+	response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }
 
 // Read raw request body into utf-8 string.
@@ -34,11 +34,12 @@ async function handleProxy (request, response) {
 	}
 
 	const upstreamResponse = await fetch(`${UPSTREAM}${path}`, {
-		method: 'POST',
+		method: request.method,
 		headers: {
-			'Content-Type': 'application/json',
+			...(request.method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+			...(request.headers.authorization ? { Authorization: request.headers.authorization } : {}),
 		},
-		body: await readBody(request),
+		...(request.method === 'POST' ? { body: await readBody(request) } : {}),
 	})
 	const text = await upstreamResponse.text()
 
@@ -56,7 +57,7 @@ createServer(async (request, response) => {
 		return
 	}
 
-	if(request.method !== 'POST') {
+	if(request.method !== 'POST' && request.method !== 'DELETE') {
 		setCors(response)
 		response.writeHead(405, { 'Content-Type': 'application/json' })
 		response.end(JSON.stringify({ error: { message: 'Method not allowed' }, data: null }))

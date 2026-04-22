@@ -14,7 +14,9 @@ const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '383303576206-8svtv0iglo3sil07mlflaoulv67b9esr.apps.googleusercontent.com'
 
-type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' | '/v1/app/auth/google'
+type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' | '/v1/app/auth/google' | '/v1/app/auth/refresh'
+
+type AuthDeletePath = '/v1/app/auth/account'
 
 type GoogleCredentialResponse = {
 	credential?: string
@@ -123,6 +125,12 @@ function resolveUserProfile () {
 	}
 }
 
+// Clear persisted auth and profile data after account deletion.
+function clearPersistedSession () {
+	window.localStorage.removeItem(AUTH_STORAGE_KEY)
+	window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY)
+}
+
 // Resolve persisted auth token payload from local storage.
 function resolveAuthPayload () {
 	const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
@@ -136,7 +144,7 @@ function resolveAuthPayload () {
 }
 
 // Resolve request URL for auth endpoint in proxy or direct mode.
-function resolveAuthUrl (path: AuthPath) {
+function resolveAuthUrl (path: AuthPath | AuthDeletePath) {
 	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
 
 	return `${AUTH_REMOTE_BASE_URL}${path}`
@@ -225,6 +233,44 @@ async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
 		throw new Error(body.error?.message ?? 'Authorization request failed')
 	}
 
+	return body.data
+}
+
+// Send authorized DELETE request to auth API.
+async function authDelete (path: AuthDeletePath) {
+	const payload = resolveAuthPayload()
+	if(!payload?.accessToken) throw new Error('Authorization token is missing')
+	let accessToken = payload.accessToken
+
+	const requestDelete = async (accessToken: string) => {
+		const response = await fetch(resolveAuthUrl(path), {
+			method: 'DELETE',
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+		})
+		const body = await response.json() as ApiResponse<unknown>
+		return { response, body }
+	}
+
+	if(payload.refreshToken) {
+		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
+			refreshToken: payload.refreshToken,
+			device: resolveDeviceInfo(),
+		})
+		if(refreshed) {
+			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed))
+			accessToken = refreshed.accessToken
+		}
+	}
+
+	let { response, body } = await requestDelete(accessToken)
+	if(response.status === 401 && accessToken !== payload.accessToken) {
+		({ response, body } = await requestDelete(payload.accessToken))
+	}
+
+	if(response.status === 401) throw new Error('Session expired. Sign in again and retry account deletion')
+	if(!response.ok) throw new Error(body.error?.message ?? 'Account deletion failed')
 	return body.data
 }
 
@@ -593,7 +639,7 @@ function ProfileScreen ({ onOpenHome, onOpenProfileData }: { onOpenHome: () => v
 }
 
 // Render profile data screen from Figma node 521:20347.
-function ProfileDataScreen ({ onBack }: { onBack: () => void }) {
+function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, onAccountDeleted: () => void }) {
 	const { t } = useI18n()
 	const auth = resolveAuthPayload()
 	const email = auth?.user?.email ?? 'alex.german@gmail.com'
@@ -601,6 +647,25 @@ function ProfileDataScreen ({ onBack }: { onBack: () => void }) {
 	const nameParts = fullName.split(' ')
 	const firstName = nameParts[0] ?? 'Aleks'
 	const lastName = nameParts[1] ?? 'German'
+	const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false)
+	const [isDeleteBusy, setIsDeleteBusy] = useState(false)
+	const [deleteError, setDeleteError] = useState('')
+
+	// Delete account via API and reset local auth session.
+	const deleteAccount = async () => {
+		setIsDeleteBusy(true)
+		setDeleteError('')
+
+		try {
+			await authDelete('/v1/app/auth/account')
+			clearPersistedSession()
+			onAccountDeleted()
+		} catch (error) {
+			setDeleteError(error instanceof Error ? error.message : t('authUnexpectedError'))
+		} finally {
+			setIsDeleteBusy(false)
+		}
+	}
 
 	return (
 		<section aria-label="Profile data" className="profile-data-screen">
@@ -652,7 +717,7 @@ function ProfileDataScreen ({ onBack }: { onBack: () => void }) {
 							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
 						</button>
 
-						<button className="profile-row is-danger" type="button">
+						<button className="profile-row is-danger" onClick={() => setIsDeleteDrawerOpen(true)} type="button">
 							<span className="profile-row-left">
 								<Image alt="Delete account" className="profile-row-icon" height={24} src="/assets/icon-profile-trash.svg" unoptimized width={24} />
 								<b>{t('profileItemDeleteAccount')}</b>
@@ -662,6 +727,29 @@ function ProfileDataScreen ({ onBack }: { onBack: () => void }) {
 					</div>
 				</section>
 			</div>
+
+			{isDeleteDrawerOpen ? (
+				<div className="profile-drawer-backdrop">
+					<div className="profile-drawer-sheet" role="dialog" aria-modal="true" aria-label={t('profileDeleteTitle')}>
+						<header className="profile-drawer-header">
+							<h3>{t('profileDeleteTitle')}</h3>
+							<button className="profile-drawer-close" onClick={() => setIsDeleteDrawerOpen(false)} type="button">
+								<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+									<path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+								</svg>
+							</button>
+						</header>
+
+						<p className="profile-drawer-subtitle">{t('profileDeleteSubtitle')}</p>
+						{deleteError ? <p className="profile-drawer-error">{deleteError}</p> : null}
+
+						<div className="profile-drawer-actions">
+							<button className="profile-drawer-delete" disabled={isDeleteBusy} onClick={deleteAccount} type="button">{t('profileDeleteConfirm')}</button>
+							<button className="profile-drawer-cancel" disabled={isDeleteBusy} onClick={() => setIsDeleteDrawerOpen(false)} type="button">{t('profileDeleteCancel')}</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 		</section>
 	)
 }
@@ -694,7 +782,10 @@ function EntryFlow () {
 						? <HomeScreen onOpenProfile={() => setActiveTab('profile')} />
 						: activeTab === 'profile'
 							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} />
-							: <ProfileDataScreen onBack={() => setActiveTab('profile')} />}
+							: <ProfileDataScreen onBack={() => setActiveTab('profile')} onAccountDeleted={() => {
+								setStep('onboarding')
+								setActiveTab('home')
+							}} />}
 		</>
 	)
 }

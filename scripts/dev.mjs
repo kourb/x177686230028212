@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 
 // Start local auth proxy and Next dev server together.
 function run () {
-	const proxy = spawn('node', ['scripts/auth-proxy.mjs'], { stdio: 'inherit', env: process.env })
+	const proxy = spawn('node', ['--watch', 'scripts/auth-proxy.mjs'], { stdio: 'inherit', env: process.env })
 	const next = spawn('next', ['dev'], {
 		stdio: 'inherit',
 		env: {

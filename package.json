@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "node scripts/dev.mjs",
 		"dev:auth-proxy": "node scripts/auth-proxy.mjs",
+		"dev:auth-proxy:watch": "node --watch scripts/auth-proxy.mjs",
 		"build": "next build && node scripts/export-build.mjs",
 		"start": "next start",
 		"lint": "next lint",
