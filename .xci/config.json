@@ -8,5 +8,5 @@
 			"protect": {}
 		}
 	},
-	"dist": ".next"
+	"dist": "build"
 }

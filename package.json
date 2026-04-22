@@ -1,11 +1,11 @@
 {
-	"id": "x174530000000000",
+	"id": "x177687075262441",
 	"name": "VisaAssistentWeb",
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
 		"dev": "next dev",
-		"build": "next build",
+		"build": "next build && node scripts/export-build.mjs",
 		"start": "next start",
 		"lint": "next lint",
 		"lint:fix": "next lint --fix"

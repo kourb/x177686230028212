@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SUPPORTED_LOCALES } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
@@ -48,16 +48,14 @@ function isEmailValid (email: string) {
 
 // Render locale switcher control outside mobile frame.
 function LocaleSwitcher () {
-	const { locale, setLocale, t } = useI18n()
-	const selected = useMemo(() => SUPPORTED_LOCALES.find((item) => item.code === locale) ?? SUPPORTED_LOCALES[0], [locale])
+	const { locale, setLocale } = useI18n()
 
 	return (
 		<div className="locale-switcher">
-			<span>{t('localePicker')}</span>
 			<select onChange={(event) => setLocale(event.target.value as typeof locale)} value={locale}>
 				{SUPPORTED_LOCALES.map((item) => <option key={item.code} value={item.code}>{item.nativeName}</option>)}
 			</select>
-			<i>{selected.code.toUpperCase()}</i>
+			<em>▾</em>
 		</div>
 	)
 }

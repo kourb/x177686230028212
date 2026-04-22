@@ -9,3 +9,4 @@
 - `dev-workflow-no-final-build.md` — Do not run final build checks; user keeps backend running at http://localhost:3000 during active development
 - `figma-new-entry-nodes-591-7457-562-8041.md` — Entry flow switched to new Figma nodes: onboarding first, welcome auth second, keep i18n switching
 - `web-app-no-phone-frame.md` — Build full web layouts; do not frame screens as phone previews/widgets
+- `next-static-build-for-xci.md` — Build pipeline exports static site to `build/` and `.xci` dist points to `build`

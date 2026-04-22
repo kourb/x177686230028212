@@ -45,7 +45,7 @@ body {
 	height: 24px;
 	display: inline-flex;
 	align-items: center;
-	gap: 5px;
+	gap: 4px;
 	padding: 0 6px;
 	border-radius: 999px;
 	background: #fff;
@@ -53,18 +53,16 @@ body {
 	z-index: 5;
 }
 
-.locale-switcher span,
-.locale-switcher i {
-	font-size: 9px;
+.locale-switcher em {
+	font-size: 10px;
 	line-height: 1;
 	font-style: normal;
-	font-weight: 700;
+	font-weight: 600;
 	color: var(--ink-soft);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 
 .locale-switcher select {
+	appearance: none;
 	border: 0;
 	background: transparent;
 	font-size: 10px;
@@ -341,10 +339,6 @@ body {
 	.auth-screen {
 		max-width: none;
 		padding-top: 38px;
-	}
-
-	.locale-switcher span {
-		display: none;
 	}
 }
 
