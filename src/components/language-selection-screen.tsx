@@ -8,6 +8,10 @@ import { I18nProvider, useI18n } from '@/i18n/provider'
 const HERO_IMAGE = '/assets/hero-travel.svg'
 const DEVICE_ID_STORAGE_KEY = 'visa-assistent-device-id'
 const AUTH_STORAGE_KEY = 'visa-assistent-auth'
+const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
+const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1'
+
+type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp'
 
 type ApiResponse<T> = {
 	data: T | null
@@ -42,9 +46,19 @@ function resolveDeviceInfo () {
 	}
 }
 
+// Resolve request URL for auth endpoint in proxy or direct mode.
+function resolveAuthUrl (path: AuthPath) {
+	if(AUTH_USE_PROXY) {
+		if(path === '/v1/app/auth/email/send-otp') return '/api/auth/email/send-otp'
+		return '/api/auth/email/verify-otp'
+	}
+
+	return `${AUTH_REMOTE_BASE_URL}${path}`
+}
+
 // Send POST request to app auth API and unwrap data payload.
-async function authPost<T> (path: '/api/auth/email/send-otp' | '/api/auth/email/verify-otp', payload: Record<string, unknown>) {
-	const response = await fetch(path, {
+async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
+	const response = await fetch(resolveAuthUrl(path), {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
@@ -53,7 +67,7 @@ async function authPost<T> (path: '/api/auth/email/send-otp' | '/api/auth/email/
 	})
 	const body = await response.json() as ApiResponse<T>
 
-	if(!response.ok || !body.data && path === '/api/auth/email/verify-otp') {
+	if(!response.ok || !body.data && path === '/v1/app/auth/email/verify-otp') {
 		throw new Error(body.error?.message ?? 'Authorization request failed')
 	}
 
@@ -189,7 +203,7 @@ function AuthScreen () {
 		setErrorText('')
 
 		try {
-			await authPost<{ success: boolean }>('/api/auth/email/send-otp', { email: email.trim() })
+			await authPost<{ success: boolean }>('/v1/app/auth/email/send-otp', { email: email.trim() })
 			setStep('otp')
 			setInfoText(t('authCodeSent'))
 		} catch (error) {
@@ -205,7 +219,7 @@ function AuthScreen () {
 		setErrorText('')
 
 		try {
-			const tokenPair = await authPost<AuthTokenResponse>('/api/auth/email/verify-otp', {
+			const tokenPair = await authPost<AuthTokenResponse>('/v1/app/auth/email/verify-otp', {
 				email: email.trim(),
 				code: code.trim(),
 				device: resolveDeviceInfo(),
