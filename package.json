@@ -4,7 +4,8 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev",
+		"dev": "node scripts/dev.mjs",
+		"dev:auth-proxy": "node scripts/auth-proxy.mjs",
 		"build": "next build && node scripts/export-build.mjs",
 		"start": "next start",
 		"lint": "next lint",

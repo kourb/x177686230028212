@@ -9,7 +9,8 @@ const HERO_IMAGE = '/assets/hero-travel.svg'
 const DEVICE_ID_STORAGE_KEY = 'visa-assistent-device-id'
 const AUTH_STORAGE_KEY = 'visa-assistent-auth'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
-const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1'
+const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
+const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
 
 type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp'
 
@@ -48,10 +49,7 @@ function resolveDeviceInfo () {
 
 // Resolve request URL for auth endpoint in proxy or direct mode.
 function resolveAuthUrl (path: AuthPath) {
-	if(AUTH_USE_PROXY) {
-		if(path === '/v1/app/auth/email/send-otp') return '/api/auth/email/send-otp'
-		return '/api/auth/email/verify-otp'
-	}
+	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
 
 	return `${AUTH_REMOTE_BASE_URL}${path}`
 }
