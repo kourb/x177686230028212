@@ -1,0 +1,12 @@
+{
+	"type": 1,
+	"mode": 2,
+	"targets": {
+		"test": {
+			"host": "cloudflare",
+			"account": "76372ff0c9750f3580d2424802a3e24e",
+			"protect": {}
+		}
+	},
+	"dist": ".next"
+}
