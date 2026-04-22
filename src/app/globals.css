@@ -30,15 +30,18 @@ body {
 	display: grid;
 	place-items: center;
 	padding: 0;
-	overflow: hidden;
+	overflow-x: hidden;
 }
 
 .app-content {
 	position: relative;
 	width: min(402px, 100%);
 	height: min(812px, 100dvh);
+	max-height: 100dvh;
 	background: #fff;
-	overflow: hidden;
+	overflow-x: hidden;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
 }
 
 .locale-switcher {
@@ -409,6 +412,16 @@ body {
 	.auth-screen {
 		max-width: none;
 		padding-top: 38px;
+	}
+
+	.splash-hero-image,
+	.onboarding-hero-image {
+		top: 32px;
+		left: 50%;
+		width: min(458px, calc(100% - 24px));
+		height: auto;
+		max-width: calc(100% - 24px);
+		transform: translateX(-50%);
 	}
 }
 
