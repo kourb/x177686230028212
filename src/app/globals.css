@@ -7,7 +7,6 @@
 	--line-soft: rgb(0 29 71 / 0.16);
 	--fill-blue: #0066f5;
 	--fill-blue-soft: rgb(0 29 71 / 0.16);
-	--radius-xl: 28px;
 }
 
 * {
@@ -20,48 +19,43 @@ body {
 	padding: 0;
 	min-height: 100%;
 	font-family: 'Geist', 'Manrope', 'Segoe UI', sans-serif;
-	background: radial-gradient(120% 120% at 50% 0%, var(--bg-start) 0%, #d5e3ff 42%, var(--bg-end) 100%);
+	background: #fff;
 }
 
-.screen-root {
+.web-root {
 	position: relative;
 	min-height: 100dvh;
 	display: grid;
 	place-items: center;
-	padding: 24px;
+	padding: 0;
 }
 
-.phone-frame {
+.app-content {
 	position: relative;
 	width: min(402px, 100%);
-	aspect-ratio: 402 / 812;
-	border-radius: var(--radius-xl);
-	overflow: hidden;
+	min-height: 812px;
 	background: #fff;
-	box-shadow:
-		0 36px 90px rgb(36 52 89 / 0.28),
-		0 8px 24px rgb(36 52 89 / 0.2);
+	overflow: hidden;
 }
 
 .locale-switcher {
 	position: absolute;
-	top: 18px;
-	right: 20px;
-	height: 38px;
+	top: 8px;
+	right: 8px;
+	height: 24px;
 	display: inline-flex;
 	align-items: center;
-	gap: 8px;
-	padding: 0 10px;
+	gap: 5px;
+	padding: 0 6px;
 	border-radius: 999px;
-	background: rgb(255 255 255 / 0.88);
+	background: #fff;
 	border: 1px solid rgb(0 29 71 / 0.1);
-	backdrop-filter: blur(10px);
-	z-index: 3;
+	z-index: 5;
 }
 
 .locale-switcher span,
 .locale-switcher i {
-	font-size: 12px;
+	font-size: 9px;
 	line-height: 1;
 	font-style: normal;
 	font-weight: 700;
@@ -73,11 +67,12 @@ body {
 .locale-switcher select {
 	border: 0;
 	background: transparent;
-	font-size: 13px;
+	font-size: 10px;
 	font-weight: 600;
 	color: var(--ink);
 	outline: none;
 	cursor: pointer;
+	padding: 0;
 }
 
 .splash-canvas {
@@ -86,7 +81,6 @@ body {
 	height: 100%;
 	display: grid;
 	place-items: center;
-	overflow: hidden;
 	background: #fff;
 }
 
@@ -100,7 +94,7 @@ body {
 .splash-loading {
 	position: absolute;
 	left: 50%;
-	bottom: 64px;
+	bottom: 42px;
 	transform: translateX(-50%);
 	height: 34px;
 	display: inline-grid;
@@ -112,45 +106,44 @@ body {
 	letter-spacing: 0.03em;
 	color: #f2f6ff;
 	background: rgb(18 38 92 / 0.48);
-	backdrop-filter: blur(6px);
 	animation: pulse 1.4s ease-in-out infinite;
 }
 
 .onboarding-screen {
 	height: 100%;
 	display: grid;
-	grid-template-rows: 540px auto auto;
-	row-gap: 24px;
-	padding-bottom: 34px;
-	background: #fff;
+	grid-template-columns: 1fr 1fr;
+	align-items: stretch;
 }
 
 .onboarding-hero {
 	position: relative;
 	overflow: hidden;
 	background: #fff;
+	min-height: 560px;
 }
 
 .onboarding-hero-image {
 	position: absolute;
-	top: 63px;
-	left: -28px;
-	display: block;
+	top: 86px;
+	left: 50%;
+	transform: translateX(-50%);
 	width: 458px;
 	height: 394px;
 	max-width: none;
 }
 
 .onboarding-copy {
-	padding: 0 16px;
+	padding: 84px 40px 24px;
 	display: grid;
-	gap: 12px;
+	grid-template-rows: auto auto 1fr auto;
+	gap: 14px;
 }
 
 .onboarding-copy h1 {
 	margin: 0;
-	font-size: 34px;
-	line-height: 1.1;
+	font-size: 42px;
+	line-height: 1.08;
 	letter-spacing: -0.02em;
 	font-weight: 600;
 	color: var(--ink);
@@ -158,8 +151,8 @@ body {
 
 .onboarding-copy p {
 	margin: 0;
-	font-size: 17px;
-	line-height: 1.4;
+	font-size: 19px;
+	line-height: 1.45;
 	letter-spacing: -0.02em;
 	font-weight: 400;
 	color: var(--ink);
@@ -168,7 +161,6 @@ body {
 .onboarding-cta {
 	all: unset;
 	height: 56px;
-	margin: 0 16px;
 	border-radius: 999px;
 	display: grid;
 	place-items: center;
@@ -179,15 +171,17 @@ body {
 	color: #fff;
 	background: var(--fill-blue);
 	cursor: pointer;
+	margin-top: 24px;
 }
 
 .auth-screen {
+	max-width: 560px;
+	margin: 0 auto;
+	padding: 62px 0 42px;
 	height: 100%;
 	display: grid;
 	align-content: start;
 	row-gap: 24px;
-	padding: 0 0 22px;
-	background: #fff;
 }
 
 .auth-header {
@@ -333,19 +327,47 @@ body {
 	background: rgb(16 16 16 / 0.12);
 }
 
-@media (width <= 768px) {
-	.screen-root {
-		padding: 12px;
+@media (width <= 960px) {
+	.web-root {
+		padding: 0;
 	}
 
-	.phone-frame {
+	.app-content {
 		width: 100%;
-		max-width: 402px;
+		min-height: 100dvh;
 	}
 
-	.locale-switcher {
-		top: 10px;
-		right: 10px;
+	.onboarding-screen {
+		grid-template-columns: 1fr;
+	}
+
+	.onboarding-hero {
+		min-height: 420px;
+	}
+
+	.onboarding-hero-image {
+		top: 42px;
+	}
+
+	.onboarding-copy {
+		padding: 0 16px 24px;
+	}
+
+	.onboarding-copy h1 {
+		font-size: 34px;
+	}
+
+	.onboarding-copy p {
+		font-size: 17px;
+	}
+
+	.auth-screen {
+		max-width: none;
+		padding-top: 38px;
+	}
+
+	.locale-switcher span {
+		display: none;
 	}
 }
 

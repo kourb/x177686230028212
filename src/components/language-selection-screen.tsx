@@ -138,10 +138,10 @@ function AppEntryContent () {
 	const { t } = useI18n()
 
 	return (
-		<main className="screen-root">
-			<LocaleSwitcher />
+		<main className="web-root">
+			{isReady ? <LocaleSwitcher /> : null}
 
-			<section aria-label="App preview" className="phone-frame">
+			<section aria-label="App content" className="app-content">
 				{isReady ? (
 					<EntryFlow />
 				) : (

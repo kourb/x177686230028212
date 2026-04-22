@@ -8,3 +8,4 @@
 - `figma-screen-sequence-and-i18n-tasks.md` — Splash must hide after readiness; second screen is language selection with dropdown and full UI localization
 - `dev-workflow-no-final-build.md` — Do not run final build checks; user keeps backend running at http://localhost:3000 during active development
 - `figma-new-entry-nodes-591-7457-562-8041.md` — Entry flow switched to new Figma nodes: onboarding first, welcome auth second, keep i18n switching
+- `web-app-no-phone-frame.md` — Build full web layouts; do not frame screens as phone previews/widgets
