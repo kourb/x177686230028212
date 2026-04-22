@@ -65,6 +65,22 @@ function resolveDeviceInfo () {
 	}
 }
 
+// Resolve whether user already has persisted auth token pair.
+function hasPersistedAuthSession () {
+	if(typeof window === 'undefined') return false
+
+	const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+	if(!raw) return false
+
+	try {
+		const parsed = JSON.parse(raw) as AuthTokenResponse | null
+		if(!parsed) return false
+		return Boolean(parsed.accessToken && parsed.refreshToken)
+	} catch {
+		return false
+	}
+}
+
 // Resolve request URL for auth endpoint in proxy or direct mode.
 function resolveAuthUrl (path: AuthPath) {
 	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
@@ -269,7 +285,7 @@ function OnboardingScreen ({ onContinue }: { onContinue: () => void }) {
 }
 
 // Render second auth screen from Figma node 562:8041.
-function AuthScreen () {
+function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 	const { t } = useI18n()
 	const [email, setEmail] = useState('')
 	const [code, setCode] = useState('')
@@ -318,6 +334,7 @@ function AuthScreen () {
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			setStep('done')
 			setInfoText(t('authDone'))
+			onAuthenticated()
 		} catch (error) {
 			setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
 		} finally {
@@ -340,6 +357,7 @@ function AuthScreen () {
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			setStep('done')
 			setInfoText(t('authDone'))
+			onAuthenticated()
 		} catch (error) {
 			setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
 		} finally {
@@ -405,14 +423,64 @@ function AuthScreen () {
 	)
 }
 
-// Render onboarding-to-auth flow after splash.
-function EntryFlow () {
-	const [step, setStep] = useState<'onboarding' | 'auth'>('onboarding')
+// Render post-auth home screen from Figma node 2009:7697.
+function HomeScreen () {
+	const { t } = useI18n()
 
 	return (
-		step === 'onboarding'
-			? <OnboardingScreen onContinue={() => setStep('auth')} />
-			: <AuthScreen />
+		<section aria-label="Home" className="home-screen">
+			<div className="home-scroll">
+				<div className="home-hero-wrap">
+					<Image alt="Travel destination" className="home-hero-image" height={460} src="/assets/home-destination.svg" unoptimized width={402} />
+				</div>
+
+				<div className="home-copy">
+					<h1>{t('homeTitle')}</h1>
+					<p>{t('homeSubtitle')}</p>
+				</div>
+
+				<button className="home-cta" type="button">{t('homeStartVisa')}</button>
+			</div>
+
+			<nav aria-label="Bottom navigation" className="home-tabbar">
+				<button className="home-tab is-active" type="button">
+					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home.svg" unoptimized width={24} />
+				</button>
+				<button className="home-tab" type="button">
+					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
+				</button>
+				<button className="home-tab" type="button">
+					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
+				</button>
+			</nav>
+		</section>
+	)
+}
+
+// Resolve initial entry step from persisted auth state.
+function resolveInitialEntryStep () {
+	if(hasPersistedAuthSession()) return 'home'
+	return 'onboarding'
+}
+
+// Render onboarding-to-auth-to-home flow after splash.
+function EntryFlow () {
+	const [step, setStep] = useState<'onboarding' | 'auth' | 'home'>(resolveInitialEntryStep)
+
+	// Open home screen immediately after successful auth.
+	const onAuthenticated = () => {
+		setStep('home')
+	}
+
+	return (
+		<>
+			{step === 'home' ? null : <LocaleSwitcher />}
+			{step === 'onboarding'
+				? <OnboardingScreen onContinue={() => setStep('auth')} />
+				: step === 'auth'
+					? <AuthScreen onAuthenticated={onAuthenticated} />
+					: <HomeScreen />}
+		</>
 	)
 }
 
@@ -423,8 +491,6 @@ function AppEntryContent () {
 	return (
 		<main className="web-root">
 			<section aria-label="App content" className="app-content">
-				{isReady ? <LocaleSwitcher /> : null}
-
 				{isReady ? (
 					<EntryFlow />
 				) : (
