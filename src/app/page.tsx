@@ -1,16 +1,6 @@
-import Image from 'next/image'
+import LanguageSelectionScreen from '@/components/language-selection-screen'
 
-const SPLASH_IMAGE = '/assets/splash-screen.svg'
-
-// Render first Figma screen as responsive hero frame.
+// Render splash-to-language selection app entry screen.
 export default function HomePage () {
-	return (
-		<main className="screen-root">
-			<section aria-label="Splash screen" className="phone-frame">
-				<div className="screen-canvas">
-					<Image alt="Shengen App splash" className="phone-image" height={852} priority src={SPLASH_IMAGE} unoptimized width={393} />
-				</div>
-			</section>
-		</main>
-	)
+	return <LanguageSelectionScreen />
 }

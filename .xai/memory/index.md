@@ -5,3 +5,6 @@
 - `next-bootstrap-and-first-figma-screen.md` — Next.js app initialized with quest-style baseline and first Figma screen rendered from exported SVG asset
 - `xjs-localstorage-runtime-shim.md` — xjs/node runtime can expose broken `globalThis.localStorage`; add server shim before app render
 - `figma-no-ios-chrome.md` — Do not include iOS status bar/header and home indicator in web layouts from mobile Figma screens
+- `figma-screen-sequence-and-i18n-tasks.md` — Splash must hide after readiness; second screen is language selection with dropdown and full UI localization
+- `dev-workflow-no-final-build.md` — Do not run final build checks; user keeps backend running at http://localhost:3000 during active development
+- `figma-new-entry-nodes-591-7457-562-8041.md` — Entry flow switched to new Figma nodes: onboarding first, welcome auth second, keep i18n switching
