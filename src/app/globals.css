@@ -112,38 +112,38 @@ body {
 .onboarding-screen {
 	height: 100%;
 	display: grid;
-	grid-template-columns: 1fr 1fr;
-	align-items: stretch;
+	grid-template-rows: 540px 134px 56px;
+	row-gap: 24px;
+	padding-bottom: 34px;
 }
 
 .onboarding-hero {
 	position: relative;
 	overflow: hidden;
 	background: #fff;
-	min-height: 560px;
+	min-height: 540px;
 }
 
 .onboarding-hero-image {
 	position: absolute;
-	top: 86px;
-	left: 50%;
-	transform: translateX(-50%);
+	top: 63px;
+	left: -28px;
 	width: 458px;
 	height: 394px;
 	max-width: none;
 }
 
 .onboarding-copy {
-	padding: 84px 40px 24px;
+	padding: 0 16px;
 	display: grid;
-	grid-template-rows: auto auto 1fr auto;
-	gap: 14px;
+	align-content: start;
+	gap: 12px;
 }
 
 .onboarding-copy h1 {
 	margin: 0;
-	font-size: 42px;
-	line-height: 1.08;
+	font-size: 34px;
+	line-height: 1.1;
 	letter-spacing: -0.02em;
 	font-weight: 600;
 	color: var(--ink);
@@ -151,8 +151,8 @@ body {
 
 .onboarding-copy p {
 	margin: 0;
-	font-size: 19px;
-	line-height: 1.45;
+	font-size: 17px;
+	line-height: 1.4;
 	letter-spacing: -0.02em;
 	font-weight: 400;
 	color: var(--ink);
@@ -161,6 +161,7 @@ body {
 .onboarding-cta {
 	all: unset;
 	height: 56px;
+	margin: 0 16px;
 	border-radius: 999px;
 	display: grid;
 	place-items: center;
@@ -171,7 +172,6 @@ body {
 	color: #fff;
 	background: var(--fill-blue);
 	cursor: pointer;
-	margin-top: 24px;
 }
 
 .auth-screen {
@@ -327,7 +327,7 @@ body {
 	background: rgb(16 16 16 / 0.12);
 }
 
-@media (width <= 960px) {
+@media (width <= 480px) {
 	.web-root {
 		padding: 0;
 	}
@@ -335,30 +335,6 @@ body {
 	.app-content {
 		width: 100%;
 		min-height: 100dvh;
-	}
-
-	.onboarding-screen {
-		grid-template-columns: 1fr;
-	}
-
-	.onboarding-hero {
-		min-height: 420px;
-	}
-
-	.onboarding-hero-image {
-		top: 42px;
-	}
-
-	.onboarding-copy {
-		padding: 0 16px 24px;
-	}
-
-	.onboarding-copy h1 {
-		font-size: 34px;
-	}
-
-	.onboarding-copy p {
-		font-size: 17px;
 	}
 
 	.auth-screen {
