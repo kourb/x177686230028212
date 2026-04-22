@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import './server-local-storage-polyfill'
 import './globals.css'
 
 export const metadata: Metadata = {

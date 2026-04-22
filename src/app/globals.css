@@ -33,9 +33,21 @@ body {
 	background: #fff;
 }
 
-.phone-image {
+.screen-canvas {
+	--cut-top: 52px;
+	--cut-bottom: 40px;
+	position: relative;
 	width: 100%;
 	height: 100%;
+	overflow: hidden;
+}
+
+.phone-image {
+	position: absolute;
+	top: calc(-1 * var(--cut-top));
+	left: 0;
+	width: 100%;
+	height: calc(100% + var(--cut-top) + var(--cut-bottom));
 	display: block;
 	object-fit: cover;
 }

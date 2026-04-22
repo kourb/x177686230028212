@@ -7,7 +7,9 @@ export default function HomePage () {
 	return (
 		<main className="screen-root">
 			<section aria-label="Splash screen" className="phone-frame">
-				<Image alt="Shengen App splash" className="phone-image" height={852} priority src={SPLASH_IMAGE} unoptimized width={393} />
+				<div className="screen-canvas">
+					<Image alt="Shengen App splash" className="phone-image" height={852} priority src={SPLASH_IMAGE} unoptimized width={393} />
+				</div>
 			</section>
 		</main>
 	)
