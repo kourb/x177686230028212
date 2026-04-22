@@ -146,7 +146,7 @@ function AppEntryContent () {
 					<EntryFlow />
 				) : (
 					<div className="splash-canvas">
-						<div aria-hidden className="splash-square" />
+						<Image alt="Travel illustration" className="splash-hero-image" height={394} priority src={HERO_IMAGE} unoptimized width={458} />
 						<div className="splash-loading">{t('loadingLabel')}</div>
 					</div>
 				)}
