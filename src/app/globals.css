@@ -593,6 +593,10 @@ body {
 	border-bottom: none;
 }
 
+.profile-row.is-danger b {
+	color: #f50d00;
+}
+
 .profile-row-left {
 	display: inline-flex;
 	align-items: center;
@@ -617,6 +621,91 @@ body {
 	height: 24px;
 	display: block;
 	flex: 0 0 auto;
+}
+
+.profile-data-screen {
+	height: 100%;
+	display: grid;
+	grid-template-rows: 1fr;
+	background: #fff;
+	overflow: hidden;
+}
+
+.profile-data-scroll {
+	overflow-y: auto;
+	padding-bottom: 16px;
+	display: grid;
+	align-content: start;
+	gap: 24px;
+}
+
+.profile-data-toolbar {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: center;
+	padding: 0 8px;
+	height: 40px;
+	margin-top: 0;
+}
+
+.profile-data-icon-button {
+	all: unset;
+	width: 40px;
+	height: 40px;
+	display: inline-grid;
+	place-items: center;
+	cursor: pointer;
+}
+
+.profile-data-toolbar-icon {
+	width: 24px;
+	height: 24px;
+	display: block;
+}
+
+.profile-data-block {
+	padding: 0 16px;
+	display: grid;
+	gap: 16px;
+}
+
+.profile-data-block h2 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.3;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	height: 29px;
+	display: flex;
+	align-items: center;
+}
+
+.profile-data-field {
+	display: grid;
+	gap: 8px;
+}
+
+.profile-data-field label {
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: var(--ink);
+}
+
+.profile-data-input {
+	height: 56px;
+	border-radius: 12px;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	display: flex;
+	align-items: center;
+	padding: 0 16px;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: var(--ink);
 }
 
 @media (width <= 480px) {

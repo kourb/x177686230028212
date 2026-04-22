@@ -43,6 +43,9 @@ type AuthTokenResponse = {
 	refreshToken: string
 	accessTokenExpiresAt: number | string
 	refreshTokenExpiresAt: number | string
+	user?: {
+		email?: string
+	}
 	isNewUser: boolean
 }
 
@@ -115,6 +118,18 @@ function resolveUserProfile () {
 		const profile = JSON.parse(raw) as UserProfile | null
 		if(!profile?.displayName) return null
 		return profile
+	} catch {
+		return null
+	}
+}
+
+// Resolve persisted auth token payload from local storage.
+function resolveAuthPayload () {
+	const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+	if(!raw) return null
+
+	try {
+		return JSON.parse(raw) as AuthTokenResponse
 	} catch {
 		return null
 	}
@@ -500,7 +515,7 @@ function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
 }
 
 // Render profile/settings screen from Figma node 562:10062.
-function ProfileScreen ({ onOpenHome }: { onOpenHome: () => void }) {
+function ProfileScreen ({ onOpenHome, onOpenProfileData }: { onOpenHome: () => void, onOpenProfileData: () => void }) {
 	const { t } = useI18n()
 
 	return (
@@ -514,7 +529,7 @@ function ProfileScreen ({ onOpenHome }: { onOpenHome: () => void }) {
 				<section className="profile-section" aria-label={t('profileSectionMain')}>
 					<h2>{t('profileSectionMain')}</h2>
 					<div className="profile-list">
-						<button className="profile-row" type="button">
+						<button className="profile-row" onClick={onOpenProfileData} type="button">
 							<span className="profile-row-left">
 								<Image alt="Profile data" className="profile-row-icon" height={24} src="/assets/icon-settings-profile.svg" unoptimized width={24} />
 								<b>{t('profileItemProfileData')}</b>
@@ -577,6 +592,80 @@ function ProfileScreen ({ onOpenHome }: { onOpenHome: () => void }) {
 	)
 }
 
+// Render profile data screen from Figma node 521:20347.
+function ProfileDataScreen ({ onBack }: { onBack: () => void }) {
+	const { t } = useI18n()
+	const auth = resolveAuthPayload()
+	const email = auth?.user?.email ?? 'alex.german@gmail.com'
+	const fullName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
+	const nameParts = fullName.split(' ')
+	const firstName = nameParts[0] ?? 'Aleks'
+	const lastName = nameParts[1] ?? 'German'
+
+	return (
+		<section aria-label="Profile data" className="profile-data-screen">
+			<div className="profile-data-scroll">
+				<header className="profile-data-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<button aria-label={t('profileDataLanguage')} className="profile-data-icon-button" type="button">
+						<Image alt="Language" className="profile-data-toolbar-icon" height={24} src="/assets/icon-language.svg" unoptimized width={24} />
+					</button>
+				</header>
+
+				<section className="profile-data-block" aria-label={t('profileItemProfileData')}>
+					<h2>{t('profileItemProfileData')}</h2>
+
+					<div className="profile-data-field">
+						<label>{t('profileDataFirstName')}</label>
+						<div className="profile-data-input">{firstName}</div>
+					</div>
+
+					<div className="profile-data-field">
+						<label>{t('profileDataLastName')}</label>
+						<div className="profile-data-input">{lastName}</div>
+					</div>
+
+					<div className="profile-data-field">
+						<label>{t('emailLabel')}</label>
+						<div className="profile-data-input">{email}</div>
+					</div>
+				</section>
+
+				<section className="profile-section" aria-label={t('profileSectionExtra')}>
+					<h2>{t('profileSectionExtra')}</h2>
+					<div className="profile-list">
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Biometrics" className="profile-row-icon" height={24} src="/assets/icon-profile-biometrics.svg" unoptimized width={24} />
+								<b>{t('profileItemBiometrics')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+
+						<button className="profile-row" type="button">
+							<span className="profile-row-left">
+								<Image alt="Password" className="profile-row-icon" height={24} src="/assets/icon-profile-password.svg" unoptimized width={24} />
+								<b>{t('profileItemChangePassword')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+
+						<button className="profile-row is-danger" type="button">
+							<span className="profile-row-left">
+								<Image alt="Delete account" className="profile-row-icon" height={24} src="/assets/icon-profile-trash.svg" unoptimized width={24} />
+								<b>{t('profileItemDeleteAccount')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+					</div>
+				</section>
+			</div>
+		</section>
+	)
+}
+
 // Resolve initial entry step from persisted auth state.
 function resolveInitialEntryStep () {
 	if(hasPersistedAuthSession()) return 'home'
@@ -586,7 +675,7 @@ function resolveInitialEntryStep () {
 // Render onboarding-to-auth-to-home flow after splash.
 function EntryFlow () {
 	const [step, setStep] = useState<'onboarding' | 'auth' | 'home'>(resolveInitialEntryStep)
-	const [activeTab, setActiveTab] = useState<'home' | 'profile'>('home')
+	const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'profile-data'>('home')
 
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
@@ -603,7 +692,9 @@ function EntryFlow () {
 					? <AuthScreen onAuthenticated={onAuthenticated} />
 					: activeTab === 'home'
 						? <HomeScreen onOpenProfile={() => setActiveTab('profile')} />
-						: <ProfileScreen onOpenHome={() => setActiveTab('home')} />}
+						: activeTab === 'profile'
+							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} />
+							: <ProfileDataScreen onBack={() => setActiveTab('profile')} />}
 		</>
 	)
 }
