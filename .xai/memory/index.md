@@ -13,3 +13,4 @@
 - `no-auto-lint.md` — Do not run lint automatically; run checks only when user explicitly asks
 - `project-design-rules-added.md` — Added project-local design delivery rules under `.xai/rules/design-delivery.md` to enforce deterministic Figma-first implementation
 - `auth-email-otp-flow.md` — App auth supports email OTP endpoints; verify requires `device` object (`deviceId`, `deviceName`) and returns token pair in `data`
+- `auth-cors-proxy-localhost.md` — Browser CORS blocks direct frontend calls to remote auth host; use Next API proxy routes under `/api/auth/...` for localhost testing
