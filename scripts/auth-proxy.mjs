@@ -3,12 +3,12 @@ import { createServer } from 'node:http'
 const UPSTREAM = process.env.AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const PORT = Number(process.env.AUTH_PROXY_PORT ?? 8787)
 const ALLOW_ORIGIN = process.env.AUTH_PROXY_ALLOW_ORIGIN ?? 'http://localhost:3000'
-const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/refresh', '/v1/app/auth/account'])
+const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard'])
 
 // Apply CORS headers for local browser access.
 function setCors (response) {
 	response.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN)
-	response.setHeader('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS')
+	response.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
 	response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }
 
@@ -57,7 +57,7 @@ createServer(async (request, response) => {
 		return
 	}
 
-	if(request.method !== 'POST' && request.method !== 'DELETE') {
+	if(request.method !== 'GET' && request.method !== 'POST' && request.method !== 'DELETE') {
 		setCors(response)
 		response.writeHead(405, { 'Content-Type': 'application/json' })
 		response.end(JSON.stringify({ error: { message: 'Method not allowed' }, data: null }))

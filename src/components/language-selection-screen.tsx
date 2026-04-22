@@ -18,6 +18,8 @@ type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' 
 
 type AuthDeletePath = '/v1/app/auth/account'
 
+type AuthGetPath = '/v1/app/auth/sessions' | '/v1/app/dashboard'
+
 type GoogleCredentialResponse = {
 	credential?: string
 }
@@ -46,7 +48,12 @@ type AuthTokenResponse = {
 	accessTokenExpiresAt: number | string
 	refreshTokenExpiresAt: number | string
 	user?: {
+		userId?: string
 		email?: string
+		role?: string
+		isEmailVerified?: boolean
+		linkedProviders?: string[]
+		hasPassword?: boolean
 	}
 	isNewUser: boolean
 }
@@ -143,8 +150,13 @@ function resolveAuthPayload () {
 	}
 }
 
+// Persist refreshed auth payload when API issues new token pair.
+function setAuthPayload (payload: AuthTokenResponse) {
+	window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
+}
+
 // Resolve request URL for auth endpoint in proxy or direct mode.
-function resolveAuthUrl (path: AuthPath | AuthDeletePath) {
+function resolveAuthUrl (path: AuthPath | AuthDeletePath | AuthGetPath) {
 	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
 
 	return `${AUTH_REMOTE_BASE_URL}${path}`
@@ -259,7 +271,7 @@ async function authDelete (path: AuthDeletePath) {
 			device: resolveDeviceInfo(),
 		})
 		if(refreshed) {
-			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(refreshed))
+			setAuthPayload(refreshed)
 			accessToken = refreshed.accessToken
 		}
 	}
@@ -271,6 +283,39 @@ async function authDelete (path: AuthDeletePath) {
 
 	if(response.status === 401) throw new Error('Session expired. Sign in again and retry account deletion')
 	if(!response.ok) throw new Error(body.error?.message ?? 'Account deletion failed')
+	return body.data
+}
+
+// Send authorized GET request and refresh expired access token once.
+async function authGet<T> (path: AuthGetPath) {
+	const payload = resolveAuthPayload()
+	if(!payload?.accessToken) throw new Error('Authorization token is missing')
+
+	const requestGet = async (accessToken: string) => {
+		const response = await fetch(resolveAuthUrl(path), {
+			method: 'GET',
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+			},
+		})
+		const body = await response.json() as ApiResponse<T>
+		return { response, body }
+	}
+
+	let { response, body } = await requestGet(payload.accessToken)
+	if(response.status === 401 && payload.refreshToken) {
+		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
+			refreshToken: payload.refreshToken,
+			device: resolveDeviceInfo(),
+		})
+		if(refreshed) {
+			setAuthPayload(refreshed)
+			;
+			({ response, body } = await requestGet(refreshed.accessToken))
+		}
+	}
+
+	if(!response.ok) throw new Error(body.error?.message ?? 'Request failed')
 	return body.data
 }
 
@@ -561,7 +606,7 @@ function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
 }
 
 // Render profile/settings screen from Figma node 562:10062.
-function ProfileScreen ({ onOpenHome, onOpenProfileData }: { onOpenHome: () => void, onOpenProfileData: () => void }) {
+function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper }: { onOpenHome: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void }) {
 	const { t } = useI18n()
 
 	return (
@@ -619,6 +664,14 @@ function ProfileScreen ({ onOpenHome, onOpenProfileData }: { onOpenHome: () => v
 							</span>
 							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
 						</button>
+
+						<button className="profile-row" onClick={onOpenDeveloper} type="button">
+							<span className="profile-row-left">
+								<Image alt="Developer mode" className="profile-row-icon" height={24} src="/assets/icon-settings-profile.svg" unoptimized width={24} />
+								<b>{t('profileItemDeveloperMode')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
 					</div>
 				</section>
 			</div>
@@ -634,6 +687,96 @@ function ProfileScreen ({ onOpenHome, onOpenProfileData }: { onOpenHome: () => v
 					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile-active.svg" unoptimized width={24} />
 				</button>
 			</nav>
+		</section>
+	)
+}
+
+// Render developer diagnostics with server/account metadata.
+function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
+	const { t } = useI18n()
+	const [isLoading, setIsLoading] = useState(true)
+	const [errorText, setErrorText] = useState('')
+	const [sessionsData, setSessionsData] = useState<unknown>(null)
+	const [dashboardData, setDashboardData] = useState<unknown>(null)
+	const auth = resolveAuthPayload()
+
+	useEffect(() => {
+		let active = true
+
+		const load = async () => {
+			setIsLoading(true)
+			setErrorText('')
+
+			try {
+				const [sessions, dashboard] = await Promise.all([
+					authGet<unknown>('/v1/app/auth/sessions'),
+					authGet<unknown>('/v1/app/dashboard'),
+				])
+
+				if(!active) return
+				setSessionsData(sessions)
+				setDashboardData(dashboard)
+			} catch (error) {
+				if(!active) return
+				setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
+			} finally {
+				if(active) setIsLoading(false)
+			}
+		}
+
+		load()
+		return () => {
+			active = false
+		}
+	}, [t])
+
+	return (
+		<section aria-label="Developer mode" className="dev-screen">
+			<header className="dev-toolbar">
+				<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+					<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+				</button>
+				<h2>{t('profileItemDeveloperMode')}</h2>
+			</header>
+
+			<div className="dev-content">
+				<div className="dev-card">
+					<b>{t('devAccountId')}</b>
+					<p>{auth?.user?.userId ?? 'n/a'}</p>
+				</div>
+
+				<div className="dev-card">
+					<b>{t('emailLabel')}</b>
+					<p>{auth?.user?.email ?? 'n/a'}</p>
+				</div>
+
+				<div className="dev-card">
+					<b>{t('devAccountRole')}</b>
+					<p>{auth?.user?.role ?? 'n/a'}</p>
+				</div>
+
+				<div className="dev-card">
+					<b>{t('devLinkedProviders')}</b>
+					<p>{auth?.user?.linkedProviders?.join(', ') || 'n/a'}</p>
+				</div>
+
+				{isLoading ? <p className="dev-status">{t('devLoading')}</p> : null}
+				{errorText ? <p className="dev-status is-error">{errorText}</p> : null}
+
+				{sessionsData ? (
+					<div className="dev-json-block">
+						<b>{t('devSessions')}</b>
+						<pre>{JSON.stringify(sessionsData, null, 2)}</pre>
+					</div>
+				) : null}
+
+				{dashboardData ? (
+					<div className="dev-json-block">
+						<b>{t('devDashboard')}</b>
+						<pre>{JSON.stringify(dashboardData, null, 2)}</pre>
+					</div>
+				) : null}
+			</div>
 		</section>
 	)
 }
@@ -763,7 +906,7 @@ function resolveInitialEntryStep () {
 // Render onboarding-to-auth-to-home flow after splash.
 function EntryFlow () {
 	const [step, setStep] = useState<'onboarding' | 'auth' | 'home'>(resolveInitialEntryStep)
-	const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'profile-data'>('home')
+	const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'profile-data' | 'developer-mode'>('home')
 
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
@@ -781,11 +924,13 @@ function EntryFlow () {
 					: activeTab === 'home'
 						? <HomeScreen onOpenProfile={() => setActiveTab('profile')} />
 						: activeTab === 'profile'
-							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} />
-							: <ProfileDataScreen onBack={() => setActiveTab('profile')} onAccountDeleted={() => {
-								setStep('onboarding')
-								setActiveTab('home')
-							}} />}
+							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} onOpenDeveloper={() => setActiveTab('developer-mode')} />
+							: activeTab === 'profile-data'
+								? <ProfileDataScreen onBack={() => setActiveTab('profile')} onAccountDeleted={() => {
+									setStep('onboarding')
+									setActiveTab('home')
+								}} />
+								: <DeveloperModeScreen onBack={() => setActiveTab('profile')} />}
 		</>
 	)
 }
