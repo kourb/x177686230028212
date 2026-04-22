@@ -377,26 +377,10 @@ body {
 	color: var(--ink);
 }
 
-.auth-icon {
+.auth-icon-image {
 	width: 24px;
 	height: 24px;
-	display: inline-grid;
-	place-items: center;
-	font-size: 15px;
-	line-height: 1;
-	font-weight: 700;
-	font-style: normal;
-	border-radius: 50%;
-}
-
-.auth-icon.google {
-	color: #0d51d8;
-	background: rgb(13 81 216 / 0.12);
-}
-
-.auth-icon.apple {
-	color: #101010;
-	background: rgb(16 16 16 / 0.12);
+	display: block;
 }
 
 @media (width <= 480px) {

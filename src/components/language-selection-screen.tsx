@@ -144,11 +144,11 @@ function AuthScreen () {
 
 			<div className="auth-socials">
 				<button className="auth-social" type="button">
-					<b className="auth-icon google">G</b>
+					<Image alt="Google" className="auth-icon-image" height={24} src="/assets/icon-google.svg" unoptimized width={24} />
 					{t('googleContinue')}
 				</button>
 				<button className="auth-social" type="button">
-					<b className="auth-icon apple">A</b>
+					<Image alt="Apple" className="auth-icon-image" height={24} src="/assets/icon-apple.svg" unoptimized width={24} />
 					{t('appleContinue')}
 				</button>
 			</div>
