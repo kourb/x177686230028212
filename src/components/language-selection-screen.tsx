@@ -14,11 +14,13 @@ const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '383303576206-8svtv0iglo3sil07mlflaoulv67b9esr.apps.googleusercontent.com'
 
-type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' | '/v1/app/auth/google' | '/v1/app/auth/refresh'
+type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' | '/v1/app/auth/google' | '/v1/app/auth/refresh' | '/v1/app/passports'
 
 type AuthDeletePath = '/v1/app/auth/account'
 
-type AuthGetPath = '/v1/app/auth/sessions' | '/v1/app/dashboard'
+type AuthDeleteDynamicPath = `/v1/app/passports/${string}`
+
+type AuthGetPath = '/v1/app/auth/sessions' | '/v1/app/dashboard' | '/v1/app/passports'
 
 type GoogleCredentialResponse = {
 	credential?: string
@@ -62,7 +64,56 @@ type UserProfile = {
 	displayName: string
 }
 
+type PassportEntry = {
+	id: string
+	fullName: string
+	passportNumber: string
+	visaLabel: string
+	citizenship: string
+	firstName: string
+	lastName: string
+	birthDate: string
+	gender: string
+	issueDate: string
+	expiryDate: string
+	issuedBy: string
+}
+
+type PassportDto = {
+	publicId: string
+	firstName: string
+	lastName: string
+	birthDate: string
+	gender: number | string
+	citizenship: string | null
+	passportNumber: string
+	issueDate: string | null
+	expiryDate: string
+	issuingAuthority: string | null
+}
+
 let googleScriptPromise: Promise<void> | null = null
+
+// Normalize token expiration value into unix milliseconds.
+function resolveExpireAtMs (value: number | string | undefined) {
+	if(value === undefined || value === null) return 0
+	if(typeof value === 'number') return value > 1e12 ? value : value * 1000
+	if(/^\d+$/.test(value)) {
+		const numeric = Number(value)
+		return numeric > 1e12 ? numeric : numeric * 1000
+	}
+	const parsed = Date.parse(value)
+	if(Number.isNaN(parsed)) return 0
+	return parsed
+}
+
+// Resolve whether refresh token is still valid for session reuse.
+function hasValidRefreshToken (payload: AuthTokenResponse | null) {
+	if(!payload?.refreshToken) return false
+	const expiresAt = resolveExpireAtMs(payload.refreshTokenExpiresAt)
+	if(!expiresAt) return false
+	return expiresAt > Date.now()
+}
 
 // Resolve stable device metadata required by auth endpoints.
 function resolveDeviceInfo () {
@@ -92,7 +143,12 @@ function hasPersistedAuthSession () {
 	try {
 		const parsed = JSON.parse(raw) as AuthTokenResponse | null
 		if(!parsed) return false
-		return Boolean(parsed.accessToken && parsed.refreshToken)
+		if(!parsed.accessToken) return false
+		if(!hasValidRefreshToken(parsed)) {
+			clearPersistedSession()
+			return false
+		}
+		return true
 	} catch {
 		return false
 	}
@@ -138,6 +194,76 @@ function clearPersistedSession () {
 	window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY)
 }
 
+// Format API date string into dd.mm.yyyy for UI fields.
+function formatPassportDate (value: string | null | undefined) {
+	if(!value) return ''
+	const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/)
+	if(!match) return String(value)
+	return `${match[3]}.${match[2]}.${match[1]}`
+}
+
+// Convert dd.mm.yyyy UI date into API yyyy-mm-dd.
+function toApiPassportDate (value: string) {
+	const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+	if(!match) return value
+	return `${match[3]}-${match[2]}-${match[1]}`
+}
+
+// Map API passport dto into UI passport entry model.
+function mapPassportDto (dto: PassportDto): PassportEntry {
+	const gender = Number(dto.gender) === 2 ? 'Женский' : 'Мужской'
+	return {
+		id: dto.publicId,
+		fullName: `${dto.firstName} ${dto.lastName}`.trim().toUpperCase(),
+		passportNumber: dto.passportNumber,
+		visaLabel: 'Шенгенская виза в Италию (Тип C)',
+		citizenship: dto.citizenship ?? 'THE RUSSIAN FEDERATION',
+		firstName: dto.firstName,
+		lastName: dto.lastName,
+		birthDate: formatPassportDate(dto.birthDate),
+		gender,
+		issueDate: formatPassportDate(dto.issueDate),
+		expiryDate: formatPassportDate(dto.expiryDate),
+		issuedBy: dto.issuingAuthority ?? 'THE RUSSIAN FEDERATION',
+	}
+}
+
+// Build new passport draft defaults for add flow.
+function createPassportDraft () {
+	return {
+		id: `draft-${Date.now()}`,
+		fullName: 'ALEKS GERMAN',
+		passportNumber: '650000001',
+		visaLabel: 'Шенгенская виза в Италию (Тип C)',
+		citizenship: 'THE RUSSIAN FEDERATION',
+		firstName: 'ALEKS',
+		lastName: 'GERMAN',
+		birthDate: '08.02.1996',
+		gender: 'Мужской',
+		issueDate: '01.10.2020',
+		expiryDate: '01.10.2030',
+		issuedBy: 'THE RUSSIAN FEDERATION',
+	} satisfies PassportEntry
+}
+
+// Build create-passport API payload from UI draft data.
+function mapPassportDraftToPayload (draft: PassportEntry) {
+	return {
+		lastName: draft.lastName,
+		firstName: draft.firstName,
+		middleName: null,
+		birthDate: toApiPassportDate(draft.birthDate),
+		gender: draft.gender === 'Женский' ? 2 : 1,
+		citizenship: draft.citizenship,
+		passportSeries: null,
+		passportNumber: draft.passportNumber,
+		issueDate: toApiPassportDate(draft.issueDate),
+		expiryDate: toApiPassportDate(draft.expiryDate),
+		issuingAuthority: draft.issuedBy,
+		isPrimary: false,
+	}
+}
+
 // Resolve persisted auth token payload from local storage.
 function resolveAuthPayload () {
 	const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
@@ -156,7 +282,7 @@ function setAuthPayload (payload: AuthTokenResponse) {
 }
 
 // Resolve request URL for auth endpoint in proxy or direct mode.
-function resolveAuthUrl (path: AuthPath | AuthDeletePath | AuthGetPath) {
+function resolveAuthUrl (path: AuthPath | AuthDeletePath | AuthDeleteDynamicPath | AuthGetPath) {
 	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
 
 	return `${AUTH_REMOTE_BASE_URL}${path}`
@@ -248,11 +374,54 @@ async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
 	return body.data
 }
 
+// Send authorized POST request and refresh access token before retry.
+async function authPostAuthorized<T> (path: '/v1/app/passports', payload: Record<string, unknown>) {
+	const authPayload = resolveAuthPayload()
+	if(!authPayload?.accessToken) throw new Error('Authorization token is missing')
+
+	const requestPost = async (token: string) => {
+		const response = await fetch(resolveAuthUrl(path), {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(payload),
+		})
+		const body = await response.json() as ApiResponse<T>
+		return { response, body }
+	}
+
+	let { response, body } = await requestPost(authPayload.accessToken)
+	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
+		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
+			refreshToken: authPayload.refreshToken,
+			device: resolveDeviceInfo(),
+		})
+
+		if(refreshed) {
+			setAuthPayload(refreshed)
+			;({ response, body } = await requestPost(refreshed.accessToken))
+		}
+	}
+
+	if(response.status === 401) {
+		clearPersistedSession()
+		throw new Error('Session expired. Sign in again')
+	}
+	if(!response.ok || !body.data) throw new Error(body.error?.message ?? 'Authorization request failed')
+	return body.data
+}
+
 // Send authorized DELETE request to auth API.
 async function authDelete (path: AuthDeletePath) {
+	return authDeletePath(path)
+}
+
+// Send authorized DELETE request with one refresh retry.
+async function authDeletePath (path: AuthDeletePath | AuthDeleteDynamicPath) {
 	const payload = resolveAuthPayload()
 	if(!payload?.accessToken) throw new Error('Authorization token is missing')
-	let accessToken = payload.accessToken
 
 	const requestDelete = async (accessToken: string) => {
 		const response = await fetch(resolveAuthUrl(path), {
@@ -265,23 +434,22 @@ async function authDelete (path: AuthDeletePath) {
 		return { response, body }
 	}
 
-	if(payload.refreshToken) {
+	let { response, body } = await requestDelete(payload.accessToken)
+	if(response.status === 401 && hasValidRefreshToken(payload)) {
 		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
 			refreshToken: payload.refreshToken,
 			device: resolveDeviceInfo(),
 		})
 		if(refreshed) {
 			setAuthPayload(refreshed)
-			accessToken = refreshed.accessToken
+			;({ response, body } = await requestDelete(refreshed.accessToken))
 		}
 	}
 
-	let { response, body } = await requestDelete(accessToken)
-	if(response.status === 401 && accessToken !== payload.accessToken) {
-		({ response, body } = await requestDelete(payload.accessToken))
+	if(response.status === 401) {
+		clearPersistedSession()
+		throw new Error('Session expired. Sign in again and retry account deletion')
 	}
-
-	if(response.status === 401) throw new Error('Session expired. Sign in again and retry account deletion')
 	if(!response.ok) throw new Error(body.error?.message ?? 'Account deletion failed')
 	return body.data
 }
@@ -303,18 +471,21 @@ async function authGet<T> (path: AuthGetPath) {
 	}
 
 	let { response, body } = await requestGet(payload.accessToken)
-	if(response.status === 401 && payload.refreshToken) {
+	if(response.status === 401 && hasValidRefreshToken(payload)) {
 		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
 			refreshToken: payload.refreshToken,
 			device: resolveDeviceInfo(),
 		})
 		if(refreshed) {
 			setAuthPayload(refreshed)
-			;
-			({ response, body } = await requestGet(refreshed.accessToken))
+			;({ response, body } = await requestGet(refreshed.accessToken))
 		}
 	}
 
+	if(response.status === 401) {
+		clearPersistedSession()
+		throw new Error('Session expired. Sign in again')
+	}
 	if(!response.ok) throw new Error(body.error?.message ?? 'Request failed')
 	return body.data
 }
@@ -606,7 +777,7 @@ function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
 }
 
 // Render profile/settings screen from Figma node 562:10062.
-function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper }: { onOpenHome: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void }) {
+function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper, onOpenPassports }: { onOpenHome: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void }) {
 	const { t } = useI18n()
 
 	return (
@@ -628,7 +799,7 @@ function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper }: { on
 							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
 						</button>
 
-						<button className="profile-row" type="button">
+						<button className="profile-row" onClick={onOpenPassports} type="button">
 							<span className="profile-row-left">
 								<Image alt="Passports" className="profile-row-icon" height={24} src="/assets/icon-settings-passport.svg" unoptimized width={24} />
 								<b>{t('profileItemPassports')}</b>
@@ -691,6 +862,226 @@ function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper }: { on
 	)
 }
 
+// Render saved passports list screen from Figma node 521:20478.
+function PassportsListScreen ({ passports, isLoading, errorText, onBack, onAdd, onEdit, onDelete }: { passports: PassportEntry[], isLoading: boolean, errorText: string, onBack: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void }) {
+	const { t } = useI18n()
+	const hasEntries = passports.length > 0
+
+	return (
+		<section aria-label="Saved passports" className="passports-screen">
+			<div className="passports-scroll">
+				<header className="passports-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					{hasEntries ? null : <p className="passports-toolbar-title">{t('passportSavedTitle')}</p>}
+				</header>
+
+				{isLoading ? <p className="dev-status passports-status">{t('devLoading')}</p> : null}
+				{errorText ? <p className="dev-status is-error passports-status">{errorText}</p> : null}
+
+				{!isLoading && !errorText && hasEntries ? (
+					<div className="passports-stack">
+						<h1>{t('passportSavedTitle')}</h1>
+						{passports.map((passport) => (
+							<article className="passport-card" key={passport.id}>
+								<div className="passport-card-body">
+									<h2>{passport.fullName}</h2>
+									<p>{`${t('passportNumberLabel')}: ${passport.passportNumber}`}</p>
+								</div>
+								<div className="passport-card-actions">
+									<button onClick={() => onEdit(passport.id)} type="button">{t('passportEdit')}</button>
+									<button className="is-danger" onClick={() => onDelete(passport.id)} type="button">{t('passportDelete')}</button>
+								</div>
+							</article>
+						))}
+
+						<button className="passport-add-card" onClick={onAdd} type="button">
+							<span>{t('passportAddHint')}</span>
+							<p>{`${t('passportNumberLabel')}: 650000001\n${t('passportAddSubhint')}`}</p>
+							<i>
+								<Image alt="Plus" height={24} src="/assets/icon-plus.svg" unoptimized width={24} />
+							</i>
+						</button>
+					</div>
+				) : null}
+
+				{!isLoading && !errorText && !hasEntries ? (
+					<div className="passports-empty">
+						<div className="passports-empty-picture">
+							<Image alt="Save passport" className="passports-empty-image" height={316} src="/assets/passports-empty-figure.svg" unoptimized width={370} />
+						</div>
+
+						<div className="passports-empty-copy">
+							<h2>{t('passportEmptyTitle')}</h2>
+							<p>{t('passportEmptySubtitle')}</p>
+						</div>
+
+						<button className="passport-primary" onClick={onAdd} type="button">{t('passportAddButton')}</button>
+					</div>
+				) : null}
+			</div>
+		</section>
+	)
+}
+
+// Render passport form first step from Figma node 521:20487.
+function PassportStepOneScreen ({ draft, onBack, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Passport step one" className="passports-screen">
+			<div className="passports-scroll">
+				<header className="passport-flow-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<button aria-label="Home" className="profile-data-icon-button" type="button">
+						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+					</button>
+				</header>
+
+				<div className="passport-flow-copy">
+					<h1>{t('passportFlowTitle')}</h1>
+					<p>{t('passportFlowSubtitle')}</p>
+				</div>
+
+				<div className="passport-fields">
+					<div className="passport-field-row">
+						<label>{t('passportCitizenship')}</label>
+						<div className="profile-data-input with-icon with-right-icon"><Image alt="Search" height={24} src="/assets/icon-search.svg" unoptimized width={24} /><input onChange={(event) => onChange('citizenship', event.target.value)} type="text" value={draft.citizenship} /><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div>
+					</div>
+
+					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
+					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
+					<div className="passport-field-row"><label>{t('passportBirthDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('birthDate', event.target.value)} type="text" value={draft.birthDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportGender')}</label><div className="profile-data-input with-right-icon"><select onChange={(event) => onChange('gender', event.target.value)} value={draft.gender}><option value="Мужской">Мужской</option><option value="Женский">Женский</option></select><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div></div>
+				</div>
+
+				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render passport form second step from Figma node 521:20499.
+function PassportStepTwoScreen ({ draft, onBack, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Passport step two" className="passports-screen">
+			<div className="passports-scroll">
+				<header className="passport-flow-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<button aria-label="Home" className="profile-data-icon-button" type="button">
+						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+					</button>
+				</header>
+
+				<div className="passport-flow-copy">
+					<h1>{t('passportFlowTitle')}</h1>
+					<p>{t('passportFlowSubtitle')}</p>
+				</div>
+
+				<div className="passport-fields">
+					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
+					<div className="passport-field-row"><label>{t('passportIssueDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('issueDate', event.target.value)} type="text" value={draft.issueDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportExpiryDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('expiryDate', event.target.value)} type="text" value={draft.expiryDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportIssuedBy')}</label><div className="profile-data-input"><input onChange={(event) => onChange('issuedBy', event.target.value)} type="text" value={draft.issuedBy} /></div></div>
+				</div>
+
+				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render single-screen passport edit form with immediate save action.
+function PassportEditScreen ({ draft, onBack, onChange, onSave }: { draft: PassportEntry, onBack: () => void, onChange: (field: keyof PassportEntry, value: string) => void, onSave: () => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Passport edit" className="passports-screen">
+			<div className="passports-scroll">
+				<header className="passport-flow-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<button aria-label="Home" className="profile-data-icon-button" type="button">
+						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+					</button>
+				</header>
+
+				<div className="passport-flow-copy">
+					<h1>{t('passportEditTitle')}</h1>
+					<p>{t('passportFlowSubtitle')}</p>
+				</div>
+
+				<div className="passport-fields">
+					<div className="passport-field-row">
+						<label>{t('passportCitizenship')}</label>
+						<div className="profile-data-input with-icon with-right-icon"><Image alt="Search" height={24} src="/assets/icon-search.svg" unoptimized width={24} /><input onChange={(event) => onChange('citizenship', event.target.value)} type="text" value={draft.citizenship} /><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div>
+					</div>
+
+					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
+					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
+					<div className="passport-field-row"><label>{t('passportBirthDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('birthDate', event.target.value)} type="text" value={draft.birthDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportGender')}</label><div className="profile-data-input with-right-icon"><select onChange={(event) => onChange('gender', event.target.value)} value={draft.gender}><option value="Мужской">Мужской</option><option value="Женский">Женский</option></select><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
+					<div className="passport-field-row"><label>{t('passportIssueDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('issueDate', event.target.value)} type="text" value={draft.issueDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportExpiryDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('expiryDate', event.target.value)} type="text" value={draft.expiryDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
+					<div className="passport-field-row"><label>{t('passportIssuedBy')}</label><div className="profile-data-input"><input onChange={(event) => onChange('issuedBy', event.target.value)} type="text" value={draft.issuedBy} /></div></div>
+				</div>
+
+				<button className="passport-primary" onClick={onSave} type="button">{t('passportSaveButton')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render passport review screen from Figma node 521:20510.
+function PassportReviewScreen ({ draft, actionLabel, onBack, onSave }: { draft: PassportEntry, actionLabel: string, onBack: () => void, onSave: () => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Passport review" className="passports-screen">
+			<div className="passports-scroll">
+				<header className="passport-flow-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<button aria-label="Home" className="profile-data-icon-button" type="button">
+						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+					</button>
+				</header>
+
+				<div className="passport-flow-copy is-review">
+					<h1>{t('passportReviewTitle')}</h1>
+					<p>{t('passportReviewSubtitle')}</p>
+				</div>
+
+				<div className="passport-fields is-review">
+					<div className="passport-field-row"><label>{t('passportCitizenship')}</label><div className="profile-data-input">{draft.citizenship}</div></div>
+					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input">{draft.firstName}</div></div>
+					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input">{draft.lastName}</div></div>
+					<div className="passport-field-row"><label>{t('passportBirthDate')}</label><div className="profile-data-input">{draft.birthDate}</div></div>
+					<div className="passport-field-row"><label>{t('passportGender')}</label><div className="profile-data-input">{draft.gender}</div></div>
+					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input">{draft.passportNumber}</div></div>
+					<div className="passport-field-row"><label>{t('passportIssueDate')}</label><div className="profile-data-input">{draft.issueDate}</div></div>
+					<div className="passport-field-row"><label>{t('passportExpiryDate')}</label><div className="profile-data-input">{draft.expiryDate}</div></div>
+					<div className="passport-field-row"><label>{t('passportIssuedBy')}</label><div className="profile-data-input">{draft.issuedBy}</div></div>
+				</div>
+
+				<div className="passport-review-bottom">
+					<button className="passport-primary" onClick={onSave} type="button">{actionLabel}</button>
+				</div>
+			</div>
+		</section>
+	)
+}
+
 // Render developer diagnostics with server/account metadata.
 function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
 	const { t } = useI18n()
@@ -728,7 +1119,7 @@ function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
 		return () => {
 			active = false
 		}
-	}, [t])
+	}, [])
 
 	return (
 		<section aria-label="Developer mode" className="dev-screen">
@@ -783,16 +1174,32 @@ function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
 
 // Render profile data screen from Figma node 521:20347.
 function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, onAccountDeleted: () => void }) {
-	const { t } = useI18n()
+	const { t, locale, setLocale } = useI18n()
 	const auth = resolveAuthPayload()
 	const email = auth?.user?.email ?? 'alex.german@gmail.com'
 	const fullName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
 	const nameParts = fullName.split(' ')
 	const firstName = nameParts[0] ?? 'Aleks'
 	const lastName = nameParts[1] ?? 'German'
+	const [isLocaleOpen, setIsLocaleOpen] = useState(false)
 	const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false)
 	const [isDeleteBusy, setIsDeleteBusy] = useState(false)
 	const [deleteError, setDeleteError] = useState('')
+	const localeRootRef = useRef<HTMLDivElement | null>(null)
+	const selectedLocale = SUPPORTED_LOCALES.find((item) => item.code === locale) ?? SUPPORTED_LOCALES[0]
+
+	useEffect(() => {
+		if(!isLocaleOpen) return
+
+		const onPointerDown = (event: PointerEvent) => {
+			if(!localeRootRef.current) return
+			if(localeRootRef.current.contains(event.target as Node)) return
+			setIsLocaleOpen(false)
+		}
+
+		document.addEventListener('pointerdown', onPointerDown)
+		return () => document.removeEventListener('pointerdown', onPointerDown)
+	}, [isLocaleOpen])
 
 	// Delete account via API and reset local auth session.
 	const deleteAccount = async () => {
@@ -817,9 +1224,26 @@ function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, 
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
 						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 					</button>
-					<button aria-label={t('profileDataLanguage')} className="profile-data-icon-button" type="button">
-						<Image alt="Language" className="profile-data-toolbar-icon" height={24} src="/assets/icon-language.svg" unoptimized width={24} />
-					</button>
+					<div className="profile-data-language" ref={localeRootRef}>
+						<button aria-expanded={isLocaleOpen} aria-label={t('profileDataLanguage')} className="profile-data-icon-button" onClick={() => setIsLocaleOpen(!isLocaleOpen)} type="button">
+							<Image alt="Language" className="profile-data-toolbar-icon" height={24} src="/assets/icon-language.svg" unoptimized width={24} />
+						</button>
+
+						{isLocaleOpen ? (
+							<ul className="locale-menu" role="listbox">
+								{SUPPORTED_LOCALES.map((item) => (
+									<li key={item.code}>
+										<button className={item.code === locale ? 'locale-option is-active' : 'locale-option'} onClick={() => {
+											setLocale(item.code)
+											setIsLocaleOpen(false)
+										}} type="button">
+											<span>{item.nativeName}</span>
+										</button>
+									</li>
+								))}
+							</ul>
+						) : null}
+					</div>
 				</header>
 
 				<section className="profile-data-block" aria-label={t('profileItemProfileData')}>
@@ -905,13 +1329,91 @@ function resolveInitialEntryStep () {
 
 // Render onboarding-to-auth-to-home flow after splash.
 function EntryFlow () {
+	const { t } = useI18n()
 	const [step, setStep] = useState<'onboarding' | 'auth' | 'home'>(resolveInitialEntryStep)
-	const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'profile-data' | 'developer-mode'>('home')
+	const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'>('home')
+	const [passportFlowMode, setPassportFlowMode] = useState<'create' | 'edit'>('create')
+	const [passportDraft, setPassportDraft] = useState<PassportEntry>(createPassportDraft)
+	const [passports, setPassports] = useState<PassportEntry[]>([])
+	const [isPassportsLoading, setIsPassportsLoading] = useState(false)
+	const [passportsError, setPassportsError] = useState('')
 
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
 		setStep('home')
 		setActiveTab('home')
+	}
+
+	// Load saved passports list from backend API.
+	const loadPassports = async () => {
+		setIsPassportsLoading(true)
+		setPassportsError('')
+
+		try {
+			const list = await authGet<PassportDto[]>('/v1/app/passports')
+			setPassports((list ?? []).map((item) => mapPassportDto(item)))
+		} catch (error) {
+			setPassportsError(error instanceof Error ? error.message : 'Failed to load passports')
+		} finally {
+			setIsPassportsLoading(false)
+		}
+	}
+
+	// Open passport add flow from saved passports list.
+	const openPassportAdd = () => {
+		setPassportFlowMode('create')
+		setPassportDraft(createPassportDraft())
+		setActiveTab('passports-step-one')
+	}
+
+	// Open passports list and request latest backend records.
+	const openPassportsList = async () => {
+		setActiveTab('passports-list')
+		await loadPassports()
+	}
+
+	// Update passport draft field and recompute derived full name.
+	const updatePassportDraftField = (field: keyof PassportEntry, value: string) => {
+		setPassportDraft((current) => {
+			const next = { ...current, [field]: value }
+			if(field === 'firstName' || field === 'lastName') next.fullName = `${next.firstName} ${next.lastName}`.trim().toUpperCase()
+			return next
+		})
+	}
+
+	// Open single-screen passport edit form from existing passport card action.
+	const openPassportEdit = (id: string) => {
+		const found = passports.find((item) => item.id === id)
+		if(!found) return
+		setPassportFlowMode('edit')
+		setPassportDraft(found)
+		setActiveTab('passports-edit')
+	}
+
+	// Remove passport from saved passports list.
+	const removePassport = async (id: string) => {
+		setPassportsError('')
+
+		try {
+			await authDeletePath(`/v1/app/passports/${id}`)
+			await loadPassports()
+		} catch (error) {
+			setPassportsError(error instanceof Error ? error.message : 'Failed to delete passport')
+		}
+	}
+
+	// Save current passport draft into list and return to overview.
+	const savePassportDraft = async () => {
+		setPassportsError('')
+
+		try {
+			await authPostAuthorized('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
+			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
+			await loadPassports()
+			setActiveTab('passports-list')
+		} catch (error) {
+			setPassportsError(error instanceof Error ? error.message : 'Failed to save passport')
+		}
 	}
 
 	return (
@@ -924,13 +1426,23 @@ function EntryFlow () {
 					: activeTab === 'home'
 						? <HomeScreen onOpenProfile={() => setActiveTab('profile')} />
 						: activeTab === 'profile'
-							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} onOpenDeveloper={() => setActiveTab('developer-mode')} />
+							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} onOpenDeveloper={() => setActiveTab('developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => setActiveTab('profile')} onAccountDeleted={() => {
 									setStep('onboarding')
 									setActiveTab('home')
 								}} />
-								: <DeveloperModeScreen onBack={() => setActiveTab('profile')} />}
+								: activeTab === 'developer-mode'
+									? <DeveloperModeScreen onBack={() => setActiveTab('profile')} />
+									: activeTab === 'passports-list'
+										? <PassportsListScreen passports={passports} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => setActiveTab('profile')} onAdd={openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} />
+										: activeTab === 'passports-step-one'
+											? <PassportStepOneScreen draft={passportDraft} onBack={() => setActiveTab('passports-list')} onChange={updatePassportDraftField} onNext={() => setActiveTab('passports-step-two')} />
+										: activeTab === 'passports-step-two'
+											? <PassportStepTwoScreen draft={passportDraft} onBack={() => setActiveTab('passports-step-one')} onChange={updatePassportDraftField} onNext={() => setActiveTab('passports-review')} />
+											: activeTab === 'passports-review'
+												? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => setActiveTab('passports-step-two')} onSave={savePassportDraft} />
+												: <PassportEditScreen draft={passportDraft} onBack={() => setActiveTab('passports-list')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
 		</>
 	)
 }
