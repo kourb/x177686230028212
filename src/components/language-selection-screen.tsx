@@ -92,6 +92,10 @@ type PassportDto = {
 	issuingAuthority: string | null
 }
 
+type EntryStep = 'onboarding' | 'auth' | 'home'
+
+type HomeTab = 'home' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+
 let googleScriptPromise: Promise<void> | null = null
 
 // Normalize token expiration value into unix milliseconds.
@@ -1322,26 +1326,95 @@ function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, 
 }
 
 // Resolve initial entry step from persisted auth state.
-function resolveInitialEntryStep () {
+function resolveInitialEntryStep (): EntryStep {
 	if(hasPersistedAuthSession()) return 'home'
 	return 'onboarding'
+}
+
+// Convert current app view into URL hash route.
+function buildEntryRoute (step: EntryStep, tab: HomeTab) {
+	if(step === 'home') return `#/home/${tab}`
+	return `#/${step}`
+}
+
+// Parse URL hash route back into app view state.
+function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
+	if(typeof window === 'undefined') return { step: fallbackStep, tab: fallbackTab }
+	const hash = window.location.hash.replace(/^#\/?/, '')
+	if(!hash) return { step: fallbackStep, tab: fallbackTab }
+	const parts = hash.split('/').filter(Boolean)
+	if(parts[0] === 'onboarding') return { step: 'onboarding' as EntryStep, tab: 'home' as HomeTab }
+	if(parts[0] === 'auth') return { step: 'auth' as EntryStep, tab: 'home' as HomeTab }
+	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
+	const tab = parts[1] as HomeTab | undefined
+	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
+	const tabs: HomeTab[] = ['home', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
+	return { step: 'home' as EntryStep, tab }
 }
 
 // Render onboarding-to-auth-to-home flow after splash.
 function EntryFlow () {
 	const { t } = useI18n()
-	const [step, setStep] = useState<'onboarding' | 'auth' | 'home'>(resolveInitialEntryStep)
-	const [activeTab, setActiveTab] = useState<'home' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'>('home')
+	const [{ step, tab: activeTab }, setNavigation] = useState(() => {
+		const fallbackStep = resolveInitialEntryStep()
+		const initial = parseEntryRoute(fallbackStep, 'home')
+		if(fallbackStep !== 'home' && initial.step === 'home') return { step: fallbackStep, tab: 'home' as HomeTab }
+		return initial
+	})
 	const [passportFlowMode, setPassportFlowMode] = useState<'create' | 'edit'>('create')
 	const [passportDraft, setPassportDraft] = useState<PassportEntry>(createPassportDraft)
 	const [passports, setPassports] = useState<PassportEntry[]>([])
 	const [isPassportsLoading, setIsPassportsLoading] = useState(false)
 	const [passportsError, setPassportsError] = useState('')
+	const isPopNavigationRef = useRef(false)
+
+	// Move app to target view and sync browser history state.
+	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
+		setNavigation((current) => {
+			if(current.step === nextStep && current.tab === nextTab) return current
+			return { step: nextStep, tab: nextTab }
+		})
+
+		const route = buildEntryRoute(nextStep, nextTab)
+		if(typeof window === 'undefined') return
+		if(window.location.hash === route) return
+		if(mode === 'replace') {
+			window.history.replaceState({ step: nextStep, tab: nextTab }, '', route)
+			return
+		}
+		window.history.pushState({ step: nextStep, tab: nextTab }, '', route)
+	}
+
+	useEffect(() => {
+		if(typeof window === 'undefined') return
+
+		const route = buildEntryRoute(step, activeTab)
+		if(!window.location.hash) window.history.replaceState({ step, tab: activeTab }, '', route)
+
+		const onPopstate = () => {
+			isPopNavigationRef.current = true
+			const fallbackStep = resolveInitialEntryStep()
+			const next = parseEntryRoute(fallbackStep, 'home')
+			setNavigation(next)
+			window.setTimeout(() => {
+				isPopNavigationRef.current = false
+			}, 0)
+		}
+
+		window.addEventListener('popstate', onPopstate)
+		return () => window.removeEventListener('popstate', onPopstate)
+	}, [])
+
+	useEffect(() => {
+		if(isPopNavigationRef.current || typeof window === 'undefined') return
+		const route = buildEntryRoute(step, activeTab)
+		if(window.location.hash !== route) window.history.replaceState({ step, tab: activeTab }, '', route)
+	}, [step, activeTab])
 
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
-		setStep('home')
-		setActiveTab('home')
+		navigate('home', 'home')
 	}
 
 	// Load saved passports list from backend API.
@@ -1363,12 +1436,12 @@ function EntryFlow () {
 	const openPassportAdd = () => {
 		setPassportFlowMode('create')
 		setPassportDraft(createPassportDraft())
-		setActiveTab('passports-step-one')
+		navigate('home', 'passports-step-one')
 	}
 
 	// Open passports list and request latest backend records.
 	const openPassportsList = async () => {
-		setActiveTab('passports-list')
+		navigate('home', 'passports-list')
 		await loadPassports()
 	}
 
@@ -1387,7 +1460,7 @@ function EntryFlow () {
 		if(!found) return
 		setPassportFlowMode('edit')
 		setPassportDraft(found)
-		setActiveTab('passports-edit')
+		navigate('home', 'passports-edit')
 	}
 
 	// Remove passport from saved passports list.
@@ -1410,7 +1483,7 @@ function EntryFlow () {
 			await authPostAuthorized('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
 			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
 			await loadPassports()
-			setActiveTab('passports-list')
+			navigate('home', 'passports-list')
 		} catch (error) {
 			setPassportsError(error instanceof Error ? error.message : 'Failed to save passport')
 		}
@@ -1420,29 +1493,28 @@ function EntryFlow () {
 		<>
 			{step === 'home' ? null : <LocaleSwitcher />}
 			{step === 'onboarding'
-				? <OnboardingScreen onContinue={() => setStep('auth')} />
+				? <OnboardingScreen onContinue={() => navigate('auth', 'home')} />
 				: step === 'auth'
 					? <AuthScreen onAuthenticated={onAuthenticated} />
 					: activeTab === 'home'
-						? <HomeScreen onOpenProfile={() => setActiveTab('profile')} />
+						? <HomeScreen onOpenProfile={() => navigate('home', 'profile')} />
 						: activeTab === 'profile'
-							? <ProfileScreen onOpenHome={() => setActiveTab('home')} onOpenProfileData={() => setActiveTab('profile-data')} onOpenDeveloper={() => setActiveTab('developer-mode')} onOpenPassports={openPassportsList} />
+							? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
-								? <ProfileDataScreen onBack={() => setActiveTab('profile')} onAccountDeleted={() => {
-									setStep('onboarding')
-									setActiveTab('home')
+								? <ProfileDataScreen onBack={() => navigate('home', 'profile')} onAccountDeleted={() => {
+									navigate('onboarding', 'home')
 								}} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen onBack={() => setActiveTab('profile')} />
+									? <DeveloperModeScreen onBack={() => navigate('home', 'profile')} />
 									: activeTab === 'passports-list'
-										? <PassportsListScreen passports={passports} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => setActiveTab('profile')} onAdd={openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} />
+										? <PassportsListScreen passports={passports} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', 'profile')} onAdd={openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} />
 										: activeTab === 'passports-step-one'
-											? <PassportStepOneScreen draft={passportDraft} onBack={() => setActiveTab('passports-list')} onChange={updatePassportDraftField} onNext={() => setActiveTab('passports-step-two')} />
+											? <PassportStepOneScreen draft={passportDraft} onBack={() => navigate('home', 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
 										: activeTab === 'passports-step-two'
-											? <PassportStepTwoScreen draft={passportDraft} onBack={() => setActiveTab('passports-step-one')} onChange={updatePassportDraftField} onNext={() => setActiveTab('passports-review')} />
+											? <PassportStepTwoScreen draft={passportDraft} onBack={() => navigate('home', 'passports-step-one')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
 											: activeTab === 'passports-review'
-												? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => setActiveTab('passports-step-two')} onSave={savePassportDraft} />
-												: <PassportEditScreen draft={passportDraft} onBack={() => setActiveTab('passports-list')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
+												? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => navigate('home', 'passports-step-two')} onSave={savePassportDraft} />
+												: <PassportEditScreen draft={passportDraft} onBack={() => navigate('home', 'passports-list')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
 		</>
 	)
 }

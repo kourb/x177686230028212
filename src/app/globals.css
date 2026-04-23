@@ -1195,6 +1195,7 @@ body {
 
 .passport-primary {
 	all: unset;
+	width: calc(100% - 32px);
 	height: 56px;
 	margin: 8px 16px 0;
 	border-radius: 999px;
