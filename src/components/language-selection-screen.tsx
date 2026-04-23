@@ -1440,10 +1440,14 @@ function EntryFlow () {
 	}
 
 	// Open passports list and request latest backend records.
-	const openPassportsList = async () => {
+	const openPassportsList = () => {
 		navigate('home', 'passports-list')
-		await loadPassports()
 	}
+
+	useEffect(() => {
+		if(step !== 'home' || activeTab !== 'passports-list') return
+		loadPassports()
+	}, [step, activeTab])
 
 	// Update passport draft field and recompute derived full name.
 	const updatePassportDraftField = (field: keyof PassportEntry, value: string) => {
