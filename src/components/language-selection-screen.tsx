@@ -94,7 +94,19 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+
+type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
+
+type VisaTypeCode = 'type-c' | 'type-d'
+
+const VISA_DESTINATION_OPTIONS: { code: VisaDestinationCode, labelKey: 'visaDestinationItaly' | 'visaDestinationFrance' | 'visaDestinationSpain' | 'visaDestinationHungary' | 'visaDestinationGreece', flagSrc: string }[] = [
+	{ code: 'italy', labelKey: 'visaDestinationItaly', flagSrc: '/assets/flag-italy.svg' },
+	{ code: 'france', labelKey: 'visaDestinationFrance', flagSrc: '/assets/flag-france.svg' },
+	{ code: 'spain', labelKey: 'visaDestinationSpain', flagSrc: '/assets/flag-spain.svg' },
+	{ code: 'hungary', labelKey: 'visaDestinationHungary', flagSrc: '/assets/flag-hungary.svg' },
+	{ code: 'greece', labelKey: 'visaDestinationGreece', flagSrc: '/assets/flag-greece.svg' },
+]
 
 let googleScriptPromise: Promise<void> | null = null
 
@@ -746,7 +758,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 }
 
 // Render post-auth home screen from Figma node 2009:7697.
-function HomeScreen ({ onOpenDocuments, onOpenProfile }: { onOpenDocuments: () => void, onOpenProfile: () => void }) {
+function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOpenDocuments: () => void, onOpenProfile: () => void, onOpenVisaStart: () => void }) {
 	const { t } = useI18n()
 	const displayName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
 
@@ -762,7 +774,7 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile }: { onOpenDocuments: () =
 					<p>{t('homeSubtitle')}</p>
 				</div>
 
-				<button className="home-cta" type="button">{t('homeStartVisa')}</button>
+				<button className="home-cta" onClick={onOpenVisaStart} type="button">{t('homeStartVisa')}</button>
 			</div>
 
 			<nav aria-label="Bottom navigation" className="home-tabbar">
@@ -776,6 +788,145 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile }: { onOpenDocuments: () =
 					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
 				</button>
 			</nav>
+		</section>
+	)
+}
+
+// Render visa setup first step screen from Figma node 520:15433.
+function VisaStartScreen ({ selectedDestination, onBack, onHome, onContinue, onSelectDestination }: { selectedDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onContinue: () => void, onSelectDestination: (destination: VisaDestinationCode) => void }) {
+	const { t } = useI18n()
+	const destinationOption = VISA_DESTINATION_OPTIONS.find((item) => item.code === selectedDestination) ?? VISA_DESTINATION_OPTIONS[0]
+
+	return (
+		<section aria-label="Visa setup" className="visa-screen">
+			<div className="visa-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress" role="presentation">
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{t('visaStartTitle')}</h1>
+					</div>
+				</header>
+
+				<div className="visa-form">
+					<div className="visa-field">
+						<label>{t('visaCitizenship')}</label>
+						<div className="profile-data-input with-right-icon">
+							<span>{t('visaCitizenshipValue')}</span>
+							<Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} />
+						</div>
+					</div>
+
+					<div className="visa-field">
+						<label>{t('visaResidence')}</label>
+						<div className="profile-data-input with-right-icon">
+							<span>{t('visaResidenceValue')}</span>
+							<Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} />
+						</div>
+					</div>
+
+					<div className="visa-field">
+						<label>{t('visaDestination')}</label>
+						<div className="profile-data-input with-right-icon">
+							<span>{t(destinationOption.labelKey)}</span>
+							<Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} />
+						</div>
+					</div>
+
+					<div className="visa-popular">
+						<label>{t('visaPopularDestinations')}</label>
+						<div className="visa-chip-row">
+							{VISA_DESTINATION_OPTIONS.map((item) => (
+								<button className={`visa-chip${selectedDestination === item.code ? ' is-active' : ''}`} key={item.code} onClick={() => onSelectDestination(item.code)} type="button">
+									<Image alt={t(item.labelKey)} className="visa-chip-flag" height={24} src={item.flagSrc} unoptimized width={24} />
+									<span>{t(item.labelKey)}</span>
+								</button>
+							))}
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render visa type selection screen from Figma node 520:15444.
+function VisaTypeScreen ({ selectedType, onBack, onHome, onSelectType }: { selectedType: VisaTypeCode, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Visa type" className="visa-screen">
+			<div className="visa-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress" role="presentation">
+						<span />
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{t('visaTypeTitle')}</h1>
+					</div>
+				</header>
+
+				<div className="visa-form">
+					<section className="visa-field">
+						<label>{t('visaTypeCaption')}</label>
+						<button className={`visa-type-card${selectedType === 'type-c' ? ' is-active' : ''}`} onClick={() => onSelectType('type-c')} type="button">
+							<div className="visa-type-card-copy">
+								<span className="visa-type-badge">{t('visaTypePopular')}</span>
+								<h2>{t('visaTypeC')}</h2>
+								<b>{t('visaLearnMore')}</b>
+							</div>
+							<i className="visa-type-radio" />
+						</button>
+
+						<button className={`visa-type-card${selectedType === 'type-d' ? ' is-active' : ''}`} onClick={() => onSelectType('type-d')} type="button">
+							<div className="visa-type-card-copy">
+								<h2>{t('visaTypeD')}</h2>
+								<b>{t('visaLearnMore')}</b>
+							</div>
+							<i className="visa-type-radio" />
+						</button>
+					</section>
+				</div>
+			</div>
+
+			<div className="visa-bottom">
+				<button className="passport-primary" type="button">{t('authContinue')}</button>
+			</div>
 		</section>
 	)
 }
@@ -1387,7 +1538,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -1406,6 +1557,8 @@ function EntryFlow () {
 	const [passports, setPassports] = useState<PassportEntry[]>([])
 	const [isPassportsLoading, setIsPassportsLoading] = useState(false)
 	const [passportsError, setPassportsError] = useState('')
+	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
+	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
 	const isPopNavigationRef = useRef(false)
 
 	// Move app to target view and sync browser history state.
@@ -1540,9 +1693,13 @@ function EntryFlow () {
 				: step === 'auth'
 					? <AuthScreen onAuthenticated={onAuthenticated} />
 					: activeTab === 'home'
-						? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
+						? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onOpenVisaStart={() => navigate('home', 'visa-start')} />
 						: activeTab === 'documents'
 							? <DocumentsScreen onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
+							: activeTab === 'visa-start'
+								? <VisaStartScreen selectedDestination={selectedVisaDestination} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectDestination={setSelectedVisaDestination} />
+							: activeTab === 'visa-type'
+								? <VisaTypeScreen selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onHome={() => navigate('home', 'home')} onSelectType={setSelectedVisaType} />
 							: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
