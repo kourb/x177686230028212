@@ -510,6 +510,91 @@ body {
 	display: block;
 }
 
+.documents-screen {
+	height: 100%;
+	display: grid;
+	grid-template-rows: 1fr auto;
+	overflow: hidden;
+	background: #fff;
+}
+
+.documents-scroll {
+	overflow-y: auto;
+	padding: 0 0 16px;
+	display: grid;
+	align-content: start;
+	gap: 48px;
+}
+
+.documents-top-copy {
+	padding: 0 16px;
+	display: grid;
+	gap: 12px;
+	margin-top: 62px;
+}
+
+.documents-top-copy h1 {
+	margin: 0;
+	font-size: 34px;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	font-weight: 600;
+	color: var(--ink);
+}
+
+.documents-top-copy p {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: var(--ink);
+	white-space: pre-line;
+}
+
+.documents-empty {
+	display: grid;
+	gap: 0;
+}
+
+.documents-empty-picture {
+	padding: 24px 16px 0;
+	display: grid;
+	place-items: center;
+}
+
+.documents-empty-image {
+	width: min(370px, 100%);
+	height: auto;
+	display: block;
+}
+
+.documents-empty-copy {
+	padding: 0 16px;
+	display: grid;
+	gap: 12px;
+	text-align: center;
+}
+
+.documents-empty-copy h2 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.3;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	white-space: pre-line;
+}
+
+.documents-empty-copy p {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
 .profile-screen {
 	height: 100%;
 	display: grid;

@@ -94,7 +94,7 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
 let googleScriptPromise: Promise<void> | null = null
 
@@ -746,7 +746,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 }
 
 // Render post-auth home screen from Figma node 2009:7697.
-function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
+function HomeScreen ({ onOpenDocuments, onOpenProfile }: { onOpenDocuments: () => void, onOpenProfile: () => void }) {
 	const { t } = useI18n()
 	const displayName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
 
@@ -769,7 +769,46 @@ function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
 				<button className="home-tab is-active" type="button">
 					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home.svg" unoptimized width={24} />
 				</button>
-				<button className="home-tab" type="button">
+				<button className="home-tab" onClick={onOpenDocuments} type="button">
+					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
+				</button>
+				<button className="home-tab" onClick={onOpenProfile} type="button">
+					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
+				</button>
+			</nav>
+		</section>
+	)
+}
+
+// Render documents and insurance screen from Figma node 521:20268.
+function DocumentsScreen ({ onOpenHome, onOpenProfile }: { onOpenHome: () => void, onOpenProfile: () => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Documents and insurances" className="documents-screen">
+			<div className="documents-scroll">
+				<section className="documents-top-copy" aria-label="Documents heading">
+					<h1>{t('documentsTitle')}</h1>
+					<p>{t('documentsSubtitle')}</p>
+				</section>
+
+				<section className="documents-empty" aria-label="No documents">
+					<div className="documents-empty-picture">
+						<Image alt="Documents and insurance" className="documents-empty-image" height={316} src="/assets/documents-empty-figure.svg" unoptimized width={370} />
+					</div>
+
+					<div className="documents-empty-copy">
+						<h2>{t('documentsEmptyTitle')}</h2>
+						<p>{t('documentsEmptySubtitle')}</p>
+					</div>
+				</section>
+			</div>
+
+			<nav aria-label="Bottom navigation" className="home-tabbar">
+				<button className="home-tab" onClick={onOpenHome} type="button">
+					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+				</button>
+				<button className="home-tab is-active" type="button">
 					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
 				</button>
 				<button className="home-tab" onClick={onOpenProfile} type="button">
@@ -781,7 +820,7 @@ function HomeScreen ({ onOpenProfile }: { onOpenProfile: () => void }) {
 }
 
 // Render profile/settings screen from Figma node 562:10062.
-function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper, onOpenPassports }: { onOpenHome: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void }) {
+function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpenDeveloper, onOpenPassports }: { onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void }) {
 	const { t } = useI18n()
 
 	return (
@@ -855,7 +894,7 @@ function ProfileScreen ({ onOpenHome, onOpenProfileData, onOpenDeveloper, onOpen
 				<button className="home-tab" onClick={onOpenHome} type="button">
 					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 				</button>
-				<button className="home-tab" type="button">
+				<button className="home-tab" onClick={onOpenDocuments} type="button">
 					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
 				</button>
 				<button className="home-tab is-active" type="button">
@@ -1348,7 +1387,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -1501,9 +1540,11 @@ function EntryFlow () {
 				: step === 'auth'
 					? <AuthScreen onAuthenticated={onAuthenticated} />
 					: activeTab === 'home'
-						? <HomeScreen onOpenProfile={() => navigate('home', 'profile')} />
-						: activeTab === 'profile'
-							? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
+						? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
+						: activeTab === 'documents'
+							? <DocumentsScreen onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
+							: activeTab === 'profile'
+								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => navigate('home', 'profile')} onAccountDeleted={() => {
 									navigate('onboarding', 'home')
