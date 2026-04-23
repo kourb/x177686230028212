@@ -1313,7 +1313,7 @@ function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
 		return () => {
 			active = false
 		}
-	}, [])
+	}, [t])
 
 	return (
 		<section aria-label="Developer mode" className="dev-screen">
@@ -1380,7 +1380,6 @@ function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, 
 	const [isDeleteBusy, setIsDeleteBusy] = useState(false)
 	const [deleteError, setDeleteError] = useState('')
 	const localeRootRef = useRef<HTMLDivElement | null>(null)
-	const selectedLocale = SUPPORTED_LOCALES.find((item) => item.code === locale) ?? SUPPORTED_LOCALES[0]
 
 	useEffect(() => {
 		if(!isLocaleOpen) return
@@ -1581,8 +1580,11 @@ function EntryFlow () {
 	useEffect(() => {
 		if(typeof window === 'undefined') return
 
-		const route = buildEntryRoute(step, activeTab)
-		if(!window.location.hash) window.history.replaceState({ step, tab: activeTab }, '', route)
+		if(!window.location.hash) {
+			const fallbackStep = resolveInitialEntryStep()
+			const initial = parseEntryRoute(fallbackStep, 'home')
+			window.history.replaceState({ step: initial.step, tab: initial.tab }, '', buildEntryRoute(initial.step, initial.tab))
+		}
 
 		const onPopstate = () => {
 			isPopNavigationRef.current = true
