@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
-import { SUPPORTED_LOCALES } from '@/i18n/config'
+import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
 const HERO_IMAGE = '/assets/hero-travel.svg'
@@ -107,6 +107,61 @@ const VISA_DESTINATION_OPTIONS: { code: VisaDestinationCode, labelKey: 'visaDest
 	{ code: 'hungary', labelKey: 'visaDestinationHungary', flagSrc: '/assets/flag-hungary.svg' },
 	{ code: 'greece', labelKey: 'visaDestinationGreece', flagSrc: '/assets/flag-greece.svg' },
 ]
+
+const VISA_DESTINATION_VISA_TEXT: Record<LocaleCode, Record<VisaDestinationCode, string>> = {
+	ru: {
+		italy: 'в Италию',
+		france: 'во Францию',
+		spain: 'в Испанию',
+		hungary: 'в Венгрию',
+		greece: 'в Грецию',
+	},
+	en: {
+		italy: 'to Italy',
+		france: 'to France',
+		spain: 'to Spain',
+		hungary: 'to Hungary',
+		greece: 'to Greece',
+	},
+	de: {
+		italy: 'fur Italien',
+		france: 'fur Frankreich',
+		spain: 'fur Spanien',
+		hungary: 'fur Ungarn',
+		greece: 'fur Griechenland',
+	},
+	fr: {
+		italy: 'pour l Italie',
+		france: 'pour la France',
+		spain: 'pour l Espagne',
+		hungary: 'pour la Hongrie',
+		greece: 'pour la Grece',
+	},
+	es: {
+		italy: 'para Italia',
+		france: 'para Francia',
+		spain: 'para Espana',
+		hungary: 'para Hungria',
+		greece: 'para Grecia',
+	},
+	it: {
+		italy: 'per Italia',
+		france: 'per Francia',
+		spain: 'per Spagna',
+		hungary: 'per Ungheria',
+		greece: 'per Grecia',
+	},
+}
+
+// Compose visa type title for the selected destination country.
+function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationCode, type: 'C' | 'D') {
+	if(locale === 'ru') return `Шенгенская виза ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Тип ${type})`
+	if(locale === 'en') return `Schengen visa ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Type ${type})`
+	if(locale === 'de') return `Schengen-Visum ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Typ ${type})`
+	if(locale === 'fr') return `Visa Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Type ${type})`
+	if(locale === 'es') return `Visado Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Tipo ${type})`
+	return `Visto Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Tipo ${type})`
+}
 
 let googleScriptPromise: Promise<void> | null = null
 
@@ -871,8 +926,8 @@ function VisaStartScreen ({ selectedDestination, onBack, onHome, onContinue, onS
 }
 
 // Render visa type selection screen from Figma node 520:15444.
-function VisaTypeScreen ({ selectedType, onBack, onHome, onSelectType }: { selectedType: VisaTypeCode, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void }) {
-	const { t } = useI18n()
+function VisaTypeScreen ({ selectedDestination, selectedType, onBack, onHome, onSelectType }: { selectedDestination: VisaDestinationCode, selectedType: VisaTypeCode, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void }) {
+	const { locale, t } = useI18n()
 
 	return (
 		<section aria-label="Visa type" className="visa-screen">
@@ -907,7 +962,7 @@ function VisaTypeScreen ({ selectedType, onBack, onHome, onSelectType }: { selec
 						<button className={`visa-type-card${selectedType === 'type-c' ? ' is-active' : ''}`} onClick={() => onSelectType('type-c')} type="button">
 							<div className="visa-type-card-copy">
 								<span className="visa-type-badge">{t('visaTypePopular')}</span>
-								<h2>{t('visaTypeC')}</h2>
+								<h2>{resolveVisaTypeTitle(locale, selectedDestination, 'C')}</h2>
 								<b>{t('visaLearnMore')}</b>
 							</div>
 							<i className="visa-type-radio" />
@@ -915,7 +970,7 @@ function VisaTypeScreen ({ selectedType, onBack, onHome, onSelectType }: { selec
 
 						<button className={`visa-type-card${selectedType === 'type-d' ? ' is-active' : ''}`} onClick={() => onSelectType('type-d')} type="button">
 							<div className="visa-type-card-copy">
-								<h2>{t('visaTypeD')}</h2>
+								<h2>{resolveVisaTypeTitle(locale, selectedDestination, 'D')}</h2>
 								<b>{t('visaLearnMore')}</b>
 							</div>
 							<i className="visa-type-radio" />
@@ -1701,7 +1756,7 @@ function EntryFlow () {
 							: activeTab === 'visa-start'
 								? <VisaStartScreen selectedDestination={selectedVisaDestination} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectDestination={setSelectedVisaDestination} />
 							: activeTab === 'visa-type'
-								? <VisaTypeScreen selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onHome={() => navigate('home', 'home')} onSelectType={setSelectedVisaType} />
+								? <VisaTypeScreen selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onHome={() => navigate('home', 'home')} onSelectType={setSelectedVisaType} />
 							: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
