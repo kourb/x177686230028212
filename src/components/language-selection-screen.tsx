@@ -94,7 +94,7 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
@@ -207,6 +207,15 @@ const PASSPORT_SCAN_TEXT: Record<LocaleCode, { cameraHint: string, checkingTitle
 	fr: { cameraHint: 'Placez les deux pages dans le cadre afin que rien ne soit coupe.', checkingTitle: 'Verification des donnees', checkingSubtitle: 'Nous verifierons que tout est correctement rempli. Cela ne prendra que quelques secondes.', searching: 'Recherche des donnees...' },
 	es: { cameraHint: 'Coloca ambas paginas dentro del marco para que no se corte nada.', checkingTitle: 'Comprobando datos', checkingSubtitle: 'Nos aseguraremos de que todo este completado correctamente. Solo tardara unos segundos.', searching: 'Buscando datos...' },
 	it: { cameraHint: 'Posiziona entrambe le pagine nella cornice, senza tagliare nulla.', checkingTitle: 'Verifica dei dati', checkingSubtitle: 'Controlleremo che tutto sia compilato correttamente. Serviranno solo pochi secondi.', searching: 'Ricerca dati...' },
+}
+
+const VISA_PERSONAL_TEXT: Record<LocaleCode, { title: string, subtitle: string, birthPlace: string, birthPlaceValue: string, marital: string, maritalValue: string, profession: string, professionValue: string, employer: string, employerValue: string, workAddress: string, workAddressValue: string, residenceAddress: string, residenceAddressValue: string, phone: string, phoneValue: string, email: string, emailValue: string }> = {
+	ru: { title: 'Личные данные', subtitle: 'Укажите личные данные, необходимые для дальнейшего оформления визы.', birthPlace: 'Место рождения', birthPlaceValue: 'Российская Федерация, Краснодарский край', marital: 'Семейное положение', maritalValue: 'Женат / Замужем', profession: 'Профессия', professionValue: 'Менеджер', employer: 'Работодатель', employerValue: 'Сбербанк', workAddress: 'Адрес работы', workAddressValue: 'г. Москва, ул. Поклонная, д. 3, корп. 1, эт. 1, пом. 3', residenceAddress: 'Адрес проживания в России', residenceAddressValue: 'г. Москва, ул. Ленина, д. 6', phone: 'Номер телефона', phoneValue: '+7 928 920 20 24', email: 'Электронная почта', emailValue: 'alex.german@gmail.com' },
+	en: { title: 'Personal data', subtitle: 'Provide the personal data needed for further visa processing.', birthPlace: 'Place of birth', birthPlaceValue: 'Russian Federation, Krasnodar Krai', marital: 'Marital status', maritalValue: 'Married', profession: 'Profession', professionValue: 'Manager', employer: 'Employer', employerValue: 'Sberbank', workAddress: 'Work address', workAddressValue: 'Moscow, Poklonnaya St., 3, bldg. 1, floor 1, room 3', residenceAddress: 'Residence address in Russia', residenceAddressValue: 'Moscow, Lenina St., 6', phone: 'Phone number', phoneValue: '+7 928 920 20 24', email: 'Email', emailValue: 'alex.german@gmail.com' },
+	de: { title: 'Personliche Daten', subtitle: 'Geben Sie die personlichen Daten fur die weitere Visumbearbeitung an.', birthPlace: 'Geburtsort', birthPlaceValue: 'Russische Foderation, Region Krasnodar', marital: 'Familienstand', maritalValue: 'Verheiratet', profession: 'Beruf', professionValue: 'Manager', employer: 'Arbeitgeber', employerValue: 'Sberbank', workAddress: 'Arbeitsadresse', workAddressValue: 'Moskau, Poklonnaya Str. 3, Geb. 1, Etage 1, Raum 3', residenceAddress: 'Wohnadresse in Russland', residenceAddressValue: 'Moskau, Lenina Str. 6', phone: 'Telefonnummer', phoneValue: '+7 928 920 20 24', email: 'E-Mail', emailValue: 'alex.german@gmail.com' },
+	fr: { title: 'Donnees personnelles', subtitle: 'Indiquez les donnees personnelles necessaires a la suite de la demande de visa.', birthPlace: 'Lieu de naissance', birthPlaceValue: 'Federation de Russie, krai de Krasnodar', marital: 'Situation familiale', maritalValue: 'Marie(e)', profession: 'Profession', professionValue: 'Manager', employer: 'Employeur', employerValue: 'Sberbank', workAddress: 'Adresse professionnelle', workAddressValue: 'Moscou, rue Poklonnaya, 3, bat. 1, etage 1, bureau 3', residenceAddress: 'Adresse de residence en Russie', residenceAddressValue: 'Moscou, rue Lenina, 6', phone: 'Numero de telephone', phoneValue: '+7 928 920 20 24', email: 'E-mail', emailValue: 'alex.german@gmail.com' },
+	es: { title: 'Datos personales', subtitle: 'Indica los datos personales necesarios para continuar con el visado.', birthPlace: 'Lugar de nacimiento', birthPlaceValue: 'Federacion de Rusia, krai de Krasnodar', marital: 'Estado civil', maritalValue: 'Casado/a', profession: 'Profesion', professionValue: 'Gerente', employer: 'Empleador', employerValue: 'Sberbank', workAddress: 'Direccion de trabajo', workAddressValue: 'Moscu, calle Poklonnaya, 3, edif. 1, piso 1, oficina 3', residenceAddress: 'Direccion de residencia en Rusia', residenceAddressValue: 'Moscu, calle Lenina, 6', phone: 'Numero de telefono', phoneValue: '+7 928 920 20 24', email: 'Correo electronico', emailValue: 'alex.german@gmail.com' },
+	it: { title: 'Dati personali', subtitle: 'Inserisci i dati personali necessari per proseguire con il visto.', birthPlace: 'Luogo di nascita', birthPlaceValue: 'Federazione Russa, territorio di Krasnodar', marital: 'Stato civile', maritalValue: 'Sposato/a', profession: 'Professione', professionValue: 'Manager', employer: 'Datore di lavoro', employerValue: 'Sberbank', workAddress: 'Indirizzo di lavoro', workAddressValue: 'Mosca, via Poklonnaya, 3, edificio 1, piano 1, ufficio 3', residenceAddress: 'Indirizzo di residenza in Russia', residenceAddressValue: 'Mosca, via Lenina, 6', phone: 'Numero di telefono', phoneValue: '+7 928 920 20 24', email: 'Email', emailValue: 'alex.german@gmail.com' },
 }
 
 // Compose visa type title for the selected destination country.
@@ -1327,6 +1336,97 @@ function PassportRecognitionScreen ({ onBack }: { onBack: () => void }) {
 	)
 }
 
+// Render first personal-data visa form from Figma node 520:15627.
+function VisaPersonalOneScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_PERSONAL_TEXT[locale]
+
+	return (
+		<section aria-label="Personal data" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<VisaPersonalHeader copy={copy} onBack={onBack} onHome={onHome} progressClass="is-half" />
+				<div className="visa-personal-form">
+					<VisaPersonalField icon="search" label={copy.birthPlace} value={copy.birthPlaceValue} />
+					<VisaPersonalField icon="chevron" label={copy.marital} value={copy.maritalValue} />
+					<VisaPersonalField icon="search" label={copy.profession} value={copy.professionValue} />
+					<VisaPersonalField label={copy.employer} value={copy.employerValue} />
+					<VisaPersonalField icon="search" label={copy.workAddress} value={copy.workAddressValue} />
+				</div>
+			</div>
+
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render second personal-data visa form from Figma node 520:15639.
+function VisaPersonalTwoScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_PERSONAL_TEXT[locale]
+
+	return (
+		<section aria-label="Personal data" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<VisaPersonalHeader copy={copy} onBack={onBack} onHome={onHome} progressClass="is-full" />
+				<div className="visa-personal-form">
+					<VisaPersonalField icon="search" label={copy.residenceAddress} value={copy.residenceAddressValue} />
+					<VisaPersonalField label={copy.phone} value={copy.phoneValue} />
+					<VisaPersonalField label={copy.email} value={copy.emailValue} />
+				</div>
+
+				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render shared personal-data toolbar and title area.
+function VisaPersonalHeader ({ copy, progressClass, onBack, onHome }: { copy: (typeof VISA_PERSONAL_TEXT)[LocaleCode], progressClass: string, onBack: () => void, onHome: () => void }) {
+	const { t } = useI18n()
+
+	return (
+		<header className="visa-toolbar">
+			<div className="visa-toolbar-controls">
+				<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+					<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+				</button>
+				<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+					<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+				</button>
+			</div>
+
+			<div className={`visa-progress ${progressClass}`} role="presentation">
+				<span />
+				<span className="is-active" />
+				<span />
+				<span />
+				<span />
+				<i />
+			</div>
+
+			<div className="visa-copy">
+				<h1>{copy.title}</h1>
+				<p>{copy.subtitle}</p>
+			</div>
+		</header>
+	)
+}
+
+// Render one read-only personal-data field row.
+function VisaPersonalField ({ icon, label, value }: { icon?: 'search' | 'chevron', label: string, value: string }) {
+	return (
+		<div className="visa-personal-field">
+			<label>{label}</label>
+			<div className="profile-data-input with-right-icon">
+				<span>{value}</span>
+				{icon ? <Image alt="Field icon" height={24} src={icon === 'search' ? '/assets/icon-search.svg' : '/assets/icon-chevron-down.svg'} unoptimized width={24} /> : null}
+			</div>
+		</div>
+	)
+}
+
 // Render saved passports list screen from Figma node 521:20478.
 function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, isLoading, errorText, onBack, onAdd, onEdit, onDelete, onSelect }: { passports: PassportEntry[], selectedPassportId: string | null, isSelectionMode: boolean, isLoading: boolean, errorText: string, onBack: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void, onSelect: (id: string) => void }) {
 	const { t } = useI18n()
@@ -1808,7 +1908,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -1931,7 +2031,7 @@ function EntryFlow () {
 		const found = passports.find((item) => item.id === id)
 		if(!found) return
 		setSelectedVisaPassport(found)
-		navigate('home', 'visa-passport')
+		navigate('home', 'visa-personal-one')
 	}
 
 	// Select visa type card without leaving the current step.
@@ -1990,7 +2090,7 @@ function EntryFlow () {
 			await loadPassports()
 			if(passportFlowMode === 'visa-create') {
 				setSelectedVisaPassport(mapPassportDto(saved))
-				navigate('home', 'visa-passport')
+				navigate('home', 'visa-personal-one')
 				return
 			}
 
@@ -2024,6 +2124,10 @@ function EntryFlow () {
 								? <PassportCameraScreen onBack={() => navigate('home', 'visa-passport')} onCapture={() => navigate('home', 'passport-recognition')} />
 							: activeTab === 'passport-recognition'
 								? <PassportRecognitionScreen onBack={() => navigate('home', 'passport-camera')} />
+							: activeTab === 'visa-personal-one'
+								? <VisaPersonalOneScreen onBack={() => navigate('home', 'visa-passport')} onContinue={() => navigate('home', 'visa-personal-two')} onHome={() => navigate('home', 'home')} />
+							: activeTab === 'visa-personal-two'
+								? <VisaPersonalTwoScreen onBack={() => navigate('home', 'visa-personal-one')} onContinue={() => navigate('home', 'home')} onHome={() => navigate('home', 'home')} />
 							: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'

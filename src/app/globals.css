@@ -1238,6 +1238,33 @@ body {
 	}
 }
 
+.visa-personal-scroll {
+	gap: 24px;
+}
+
+.visa-personal-form {
+	padding: 0 16px;
+	display: grid;
+	gap: 16px;
+}
+
+.visa-personal-field {
+	display: grid;
+	gap: 8px;
+}
+
+.visa-personal-field label {
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.visa-personal-inline-button {
+	margin-top: 0;
+}
+
 .profile-screen {
 	height: 100%;
 	display: grid;
