@@ -1527,6 +1527,15 @@ body {
 	background: #fff;
 }
 
+.passport-card.is-active {
+	border-color: #0066f5;
+	box-shadow: 0 0 0 1px #0066f5;
+}
+
+.visa-selected-passport {
+	margin: 0 16px;
+}
+
 .passport-card-body {
 	padding: 24px;
 	display: grid;
@@ -1572,6 +1581,11 @@ body {
 
 .passport-card-actions button:first-child {
 	border-right: 1px solid rgb(0 29 71 / 0.08);
+}
+
+.passport-card-actions button:only-child {
+	grid-column: 1 / -1;
+	border-right: 0;
 }
 
 .passport-card-actions button.is-danger {

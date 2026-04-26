@@ -1065,7 +1065,7 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 }
 
 // Render passport upload entry screen from Figma node 520:15466.
-function VisaPassportScreen ({ onBack, onHome, onAddPassport, onSelectSaved }: { onBack: () => void, onHome: () => void, onAddPassport: () => void, onSelectSaved: () => void }) {
+function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, onSelectSaved }: { selectedPassport: PassportEntry | null, onBack: () => void, onHome: () => void, onAddPassport: () => void, onSelectSaved: () => void }) {
 	const { locale, t } = useI18n()
 	const copy = VISA_PASSPORT_TEXT[locale]
 
@@ -1103,6 +1103,13 @@ function VisaPassportScreen ({ onBack, onHome, onAddPassport, onSelectSaved }: {
 						{copy.rules.map((item) => <li key={item}>{item}</li>)}
 					</ul>
 				</section>
+
+				{selectedPassport ? <article className="passport-card visa-selected-passport">
+					<div className="passport-card-body">
+						<h2>{selectedPassport.fullName}</h2>
+						<p>{`${t('passportNumberLabel')}: ${selectedPassport.passportNumber}`}</p>
+					</div>
+				</article> : null}
 
 				<div className="visa-passport-actions">
 					<button className="passport-primary" onClick={onAddPassport} type="button">{copy.add}</button>
@@ -1239,7 +1246,7 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 }
 
 // Render saved passports list screen from Figma node 521:20478.
-function PassportsListScreen ({ passports, isLoading, errorText, onBack, onAdd, onEdit, onDelete }: { passports: PassportEntry[], isLoading: boolean, errorText: string, onBack: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void }) {
+function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, isLoading, errorText, onBack, onAdd, onEdit, onDelete, onSelect }: { passports: PassportEntry[], selectedPassportId: string | null, isSelectionMode: boolean, isLoading: boolean, errorText: string, onBack: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void, onSelect: (id: string) => void }) {
 	const { t } = useI18n()
 	const hasEntries = passports.length > 0
 
@@ -1260,14 +1267,14 @@ function PassportsListScreen ({ passports, isLoading, errorText, onBack, onAdd, 
 					<div className="passports-stack">
 						<h1>{t('passportSavedTitle')}</h1>
 						{passports.map((passport) => (
-							<article className="passport-card" key={passport.id}>
+							<article className={`passport-card${selectedPassportId === passport.id ? ' is-active' : ''}`} key={passport.id}>
 								<div className="passport-card-body">
 									<h2>{passport.fullName}</h2>
 									<p>{`${t('passportNumberLabel')}: ${passport.passportNumber}`}</p>
 								</div>
 								<div className="passport-card-actions">
-									<button onClick={() => onEdit(passport.id)} type="button">{t('passportEdit')}</button>
-									<button className="is-danger" onClick={() => onDelete(passport.id)} type="button">{t('passportDelete')}</button>
+									{isSelectionMode ? <button onClick={() => onSelect(passport.id)} type="button">{selectedPassportId === passport.id ? t('authDone') : t('authContinue')}</button> : <button onClick={() => onEdit(passport.id)} type="button">{t('passportEdit')}</button>}
+									{isSelectionMode ? null : <button className="is-danger" onClick={() => onDelete(passport.id)} type="button">{t('passportDelete')}</button>}
 								</div>
 							</article>
 						))}
@@ -1733,9 +1740,11 @@ function EntryFlow () {
 		if(fallbackStep !== 'home' && initial.step === 'home') return { step: fallbackStep, tab: 'home' as HomeTab }
 		return initial
 	})
-	const [passportFlowMode, setPassportFlowMode] = useState<'create' | 'edit'>('create')
+	const [passportFlowMode, setPassportFlowMode] = useState<'create' | 'edit' | 'visa-create'>('create')
+	const [passportListMode, setPassportListMode] = useState<'profile' | 'visa'>('profile')
 	const [passportDraft, setPassportDraft] = useState<PassportEntry>(createPassportDraft)
 	const [passports, setPassports] = useState<PassportEntry[]>([])
+	const [selectedVisaPassport, setSelectedVisaPassport] = useState<PassportEntry | null>(null)
 	const [isPassportsLoading, setIsPassportsLoading] = useState(false)
 	const [passportsError, setPassportsError] = useState('')
 	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
@@ -1816,9 +1825,31 @@ function EntryFlow () {
 		navigate('home', 'passports-step-one')
 	}
 
+	// Open passport add flow and select the saved result for visa application.
+	const openVisaPassportAdd = () => {
+		setPassportFlowMode('visa-create')
+		setPassportDraft(createPassportDraft())
+		navigate('home', 'passports-step-one')
+	}
+
 	// Open passports list and request latest backend records.
 	const openPassportsList = () => {
+		setPassportListMode('profile')
 		navigate('home', 'passports-list')
+	}
+
+	// Open saved passports list for visa application selection.
+	const openVisaPassportsList = () => {
+		setPassportListMode('visa')
+		navigate('home', 'passports-list')
+	}
+
+	// Select existing passport for the current visa application.
+	const selectVisaPassport = (id: string) => {
+		const found = passports.find((item) => item.id === id)
+		if(!found) return
+		setSelectedVisaPassport(found)
+		navigate('home', 'visa-passport')
 	}
 
 	// Select visa type card without leaving the current step.
@@ -1861,14 +1892,20 @@ function EntryFlow () {
 		}
 	}
 
-	// Save current passport draft into list and return to overview.
+	// Save current passport draft and route according to active passport flow.
 	const savePassportDraft = async () => {
 		setPassportsError('')
 
 		try {
-			await authPostAuthorized('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
+			const saved = await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
 			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
 			await loadPassports()
+			if(passportFlowMode === 'visa-create') {
+				setSelectedVisaPassport(mapPassportDto(saved))
+				navigate('home', 'visa-passport')
+				return
+			}
+
 			navigate('home', 'passports-list')
 		} catch (error) {
 			setPassportsError(error instanceof Error ? error.message : 'Failed to save passport')
@@ -1894,7 +1931,7 @@ function EntryFlow () {
 									navigate('home', 'visa-passport')
 								}} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
 							: activeTab === 'visa-passport'
-								? <VisaPassportScreen onAddPassport={openPassportAdd} onBack={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectSaved={openPassportsList} />
+								? <VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectSaved={openVisaPassportsList} />
 							: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
@@ -1904,9 +1941,9 @@ function EntryFlow () {
 								: activeTab === 'developer-mode'
 									? <DeveloperModeScreen onBack={() => navigate('home', 'profile')} />
 									: activeTab === 'passports-list'
-										? <PassportsListScreen passports={passports} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', 'profile')} onAdd={openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} />
+										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'
-											? <PassportStepOneScreen draft={passportDraft} onBack={() => navigate('home', 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
+											? <PassportStepOneScreen draft={passportDraft} onBack={() => navigate('home', passportFlowMode === 'visa-create' ? 'visa-passport' : 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
 										: activeTab === 'passports-step-two'
 											? <PassportStepTwoScreen draft={passportDraft} onBack={() => navigate('home', 'passports-step-one')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
 											: activeTab === 'passports-review'
