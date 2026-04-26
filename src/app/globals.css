@@ -682,6 +682,10 @@ body {
 	background: linear-gradient(90deg, var(--fill-blue) 0 50%, rgb(0 29 71 / 0.16) 50% 100%);
 }
 
+.visa-progress.is-full span.is-active {
+	background: var(--fill-blue);
+}
+
 .visa-form {
 	display: grid;
 	gap: 16px;
@@ -1001,6 +1005,237 @@ body {
 	letter-spacing: -0.02em;
 	color: var(--ink);
 	cursor: pointer;
+}
+
+.passport-camera-screen {
+	position: relative;
+	height: 100%;
+	overflow: hidden;
+	background:
+		linear-gradient(rgb(0 8 20 / 0.72), rgb(0 8 20 / 0.72)),
+		radial-gradient(circle at 28% 22%, rgb(255 255 255 / 0.18), transparent 18%),
+		linear-gradient(145deg, #16365a 0%, #0b1324 46%, #364b38 100%);
+}
+
+.passport-camera-back {
+	all: unset;
+	position: absolute;
+	top: 62px;
+	left: 8px;
+	z-index: 2;
+	width: 40px;
+	height: 40px;
+	display: grid;
+	place-items: center;
+	filter: brightness(0) invert(1);
+	cursor: pointer;
+}
+
+.passport-camera-frame {
+	position: absolute;
+	top: 126px;
+	left: 28px;
+	right: 28px;
+	height: 491px;
+	border: 4px dashed #fff;
+	border-radius: 12px;
+}
+
+.passport-camera-frame span {
+	position: absolute;
+	top: 50%;
+	left: 0;
+	right: 0;
+	border-top: 2px dashed #fff;
+}
+
+.passport-camera-frame i {
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	border-color: #fff;
+	border-style: solid;
+}
+
+.passport-camera-frame i:nth-child(1) {
+	top: -14px;
+	left: -14px;
+	border-width: 4px 0 0 4px;
+	border-radius: 12px 0 0;
+}
+
+.passport-camera-frame i:nth-child(2) {
+	top: -14px;
+	right: -14px;
+	border-width: 4px 4px 0 0;
+	border-radius: 0 12px 0 0;
+}
+
+.passport-camera-frame i:nth-child(3) {
+	bottom: -14px;
+	left: -14px;
+	border-width: 0 0 4px 4px;
+	border-radius: 0 0 0 12px;
+}
+
+.passport-camera-frame i:nth-child(4) {
+	right: -14px;
+	bottom: -14px;
+	border-width: 0 4px 4px 0;
+	border-radius: 0 0 12px;
+}
+
+.passport-camera-screen p {
+	position: absolute;
+	top: 665px;
+	left: 16px;
+	right: 16px;
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+	text-align: center;
+	color: #fff;
+}
+
+.passport-camera-controls {
+	position: absolute;
+	left: 61px;
+	right: 61px;
+	bottom: 58px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.passport-camera-close,
+.passport-camera-flash,
+.passport-camera-shutter {
+	all: unset;
+	position: relative;
+	cursor: pointer;
+}
+
+.passport-camera-close,
+.passport-camera-flash {
+	width: 40px;
+	height: 40px;
+}
+
+.passport-camera-close::before,
+.passport-camera-close::after {
+	content: '';
+	position: absolute;
+	top: 19px;
+	left: 9px;
+	width: 22px;
+	height: 4px;
+	border-radius: 999px;
+	background: #fff;
+}
+
+.passport-camera-close::before {
+	transform: rotate(45deg);
+}
+
+.passport-camera-close::after {
+	transform: rotate(-45deg);
+}
+
+.passport-camera-shutter {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	box-shadow: inset 0 0 0 8px #fff;
+}
+
+.passport-camera-shutter::after {
+	content: '';
+	position: absolute;
+	inset: 18px;
+	border-radius: 50%;
+	background: #fff;
+}
+
+.passport-camera-flash::before {
+	content: '';
+	position: absolute;
+	top: 6px;
+	left: 13px;
+	width: 14px;
+	height: 28px;
+	background: #fff;
+	clip-path: polygon(55% 0, 100% 0, 65% 38%, 100% 38%, 30% 100%, 45% 52%, 0 52%);
+}
+
+.passport-recognition-scroll {
+	gap: 24px;
+	padding-bottom: 34px;
+}
+
+.passport-recognition-picture {
+	height: 406px;
+	margin: 0 16px;
+	border-radius: 16px;
+	background:
+		linear-gradient(90deg, rgb(0 102 245 / 0.1), transparent 30% 70%, rgb(0 102 245 / 0.08)),
+		linear-gradient(#f8fafc, #edf3fb);
+	position: relative;
+	overflow: hidden;
+}
+
+.passport-recognition-picture::before,
+.passport-recognition-picture::after {
+	content: '';
+	position: absolute;
+	border-radius: 12px;
+	background: #fff;
+	box-shadow: 0 8px 32px rgb(0 29 71 / 0.12);
+}
+
+.passport-recognition-picture::before {
+	left: 34px;
+	top: 48px;
+	width: 132px;
+	height: 188px;
+}
+
+.passport-recognition-picture::after {
+	right: 34px;
+	top: 48px;
+	width: 132px;
+	height: 188px;
+}
+
+.passport-recognition-loader {
+	display: grid;
+	place-items: center;
+	gap: 16px;
+}
+
+.passport-recognition-loader p {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.passport-recognition-loader i {
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	border: 4px solid rgb(0 29 71 / 0.16);
+	border-top-color: var(--ink);
+	animation: passport-loader 1s linear infinite;
+}
+
+@keyframes passport-loader {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .profile-screen {
