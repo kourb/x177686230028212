@@ -94,7 +94,7 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
@@ -189,6 +189,15 @@ const VISA_WARNING_TEXT: Record<LocaleCode, { subtitle: string, duration: string
 	fr: { subtitle: 'Consultez les conditions supplementaires du visa.', duration: 'Duree de validite', entry: { single: 'Entree unique', multiple: 'Entrees multiples' }, fee: 'Frais consulaires', confirm: 'Confirmer' },
 	es: { subtitle: 'Revisa las condiciones adicionales del visado.', duration: 'Periodo de validez', entry: { single: 'Entrada unica', multiple: 'Entradas multiples' }, fee: 'Tasa consular', confirm: 'Confirmar' },
 	it: { subtitle: 'Consulta le condizioni aggiuntive del visto.', duration: 'Periodo di validita', entry: { single: 'Ingresso singolo', multiple: 'Ingressi multipli' }, fee: 'Tassa consolare', confirm: 'Conferma' },
+}
+
+const VISA_PASSPORT_TEXT: Record<LocaleCode, { title: string, subtitle: string, before: string, rules: string[], add: string, saved: string }> = {
+	ru: { title: 'Загрузка паспорта', subtitle: 'Автоматически заполним данные, необходимые для оформления визы.', before: 'Перед загрузкой документа:', rules: ['Загрузите страницу с вашей фотографией и именем (полный разворот).', 'Убедитесь в том, что загранпаспорт не просрочен и не поврежден.', 'Изображение должно быть четким и хорошо читаемым. Без бликов, пальцев в кадре и размытия.'], add: 'Добавить паспорт', saved: 'Выбрать сохраненный паспорт' },
+	en: { title: 'Passport upload', subtitle: 'We will automatically fill in the data needed for the visa application.', before: 'Before uploading the document:', rules: ['Upload the page with your photo and name (full spread).', 'Make sure your passport is not expired or damaged.', 'The image must be sharp and readable, without glare, fingers in frame, or blur.'], add: 'Add passport', saved: 'Choose saved passport' },
+	de: { title: 'Pass hochladen', subtitle: 'Wir fullen die fur den Visumantrag erforderlichen Daten automatisch aus.', before: 'Vor dem Hochladen des Dokuments:', rules: ['Laden Sie die Seite mit Foto und Namen hoch (ganze Doppelseite).', 'Stellen Sie sicher, dass der Reisepass nicht abgelaufen oder beschadigt ist.', 'Das Bild muss scharf und gut lesbar sein, ohne Spiegelungen, Finger im Bild oder Unscharfe.'], add: 'Pass hinzufugen', saved: 'Gespeicherten Pass auswahlen' },
+	fr: { title: 'Telechargement du passeport', subtitle: 'Nous remplirons automatiquement les donnees necessaires a la demande de visa.', before: 'Avant de telecharger le document:', rules: ['Telechargez la page avec votre photo et votre nom (double page complete).', 'Assurez-vous que le passeport n est pas expire ni endommage.', 'L image doit etre nette et lisible, sans reflets, doigts dans le cadre ni flou.'], add: 'Ajouter un passeport', saved: 'Choisir un passeport enregistre' },
+	es: { title: 'Carga de pasaporte', subtitle: 'Completaremos automaticamente los datos necesarios para la solicitud de visado.', before: 'Antes de cargar el documento:', rules: ['Carga la pagina con tu foto y nombre (doble pagina completa).', 'Asegurate de que el pasaporte no este vencido ni danado.', 'La imagen debe ser nitida y legible, sin reflejos, dedos en el encuadre ni desenfoque.'], add: 'Agregar pasaporte', saved: 'Elegir pasaporte guardado' },
+	it: { title: 'Caricamento passaporto', subtitle: 'Compileremo automaticamente i dati necessari per la richiesta del visto.', before: 'Prima di caricare il documento:', rules: ['Carica la pagina con foto e nome (doppia pagina completa).', 'Assicurati che il passaporto non sia scaduto o danneggiato.', 'L immagine deve essere nitida e leggibile, senza riflessi, dita nell inquadratura o sfocature.'], add: 'Aggiungi passaporto', saved: 'Scegli passaporto salvato' },
 }
 
 // Compose visa type title for the selected destination country.
@@ -964,7 +973,7 @@ function VisaStartScreen ({ selectedDestination, onBack, onHome, onContinue, onS
 }
 
 // Render visa type selection screen from Figma node 520:15444.
-function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, onCloseWarning }: { selectedDestination: VisaDestinationCode, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, onCloseWarning: () => void }) {
+function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, onCloseWarning: () => void, onConfirmWarning: () => void }) {
 	const { locale, t } = useI18n()
 	const typeLetter = selectedType === 'type-c' ? 'C' : 'D'
 	const selectedDetail = VISA_TYPE_DETAILS[selectedDestination][selectedType]
@@ -1048,9 +1057,58 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 						<li>{warningText.fee}: {selectedDetail.consularFee}</li>
 					</ul>
 
-					<button className="passport-primary visa-warning-confirm" onClick={onCloseWarning} type="button">{warningText.confirm}</button>
+					<button className="passport-primary visa-warning-confirm" onClick={onConfirmWarning} type="button">{warningText.confirm}</button>
 				</section>
 			</div> : null}
+		</section>
+	)
+}
+
+// Render passport upload entry screen from Figma node 520:15466.
+function VisaPassportScreen ({ onBack, onHome, onAddPassport, onSelectSaved }: { onBack: () => void, onHome: () => void, onAddPassport: () => void, onSelectSaved: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_PASSPORT_TEXT[locale]
+
+	return (
+		<section aria-label="Passport upload" className="visa-screen">
+			<div className="visa-scroll visa-passport-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress is-half" role="presentation">
+						<span />
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{copy.title}</h1>
+						<p>{copy.subtitle}</p>
+					</div>
+				</header>
+
+				<section className="visa-passport-rules">
+					<h2>{copy.before}</h2>
+					<ul>
+						{copy.rules.map((item) => <li key={item}>{item}</li>)}
+					</ul>
+				</section>
+
+				<div className="visa-passport-actions">
+					<button className="passport-primary" onClick={onAddPassport} type="button">{copy.add}</button>
+					<button className="visa-secondary-button" onClick={onSelectSaved} type="button">{copy.saved}</button>
+				</div>
+			</div>
 		</section>
 	)
 }
@@ -1661,7 +1719,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -1831,7 +1889,12 @@ function EntryFlow () {
 							: activeTab === 'visa-start'
 								? <VisaStartScreen selectedDestination={selectedVisaDestination} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectDestination={setSelectedVisaDestination} />
 							: activeTab === 'visa-type'
-								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
+								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onConfirmWarning={() => {
+									setIsVisaWarningOpen(false)
+									navigate('home', 'visa-passport')
+								}} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
+							: activeTab === 'visa-passport'
+								? <VisaPassportScreen onAddPassport={openPassportAdd} onBack={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectSaved={openPassportsList} />
 							: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'

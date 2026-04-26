@@ -669,6 +669,19 @@ body {
 	white-space: pre-line;
 }
 
+.visa-copy p {
+	margin: 12px 0 0;
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.visa-progress.is-half span.is-active {
+	background: linear-gradient(90deg, var(--fill-blue) 0 50%, rgb(0 29 71 / 0.16) 50% 100%);
+}
+
 .visa-form {
 	display: grid;
 	gap: 16px;
@@ -926,6 +939,68 @@ body {
 .visa-warning-confirm {
 	width: 100%;
 	margin: 8px 0 0;
+}
+
+.visa-passport-scroll {
+	gap: 24px;
+	padding-bottom: 34px;
+}
+
+.visa-passport-rules {
+	padding: 0 16px;
+	display: grid;
+	gap: 12px;
+}
+
+.visa-passport-rules h2 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.3;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.visa-passport-rules ul {
+	margin: 0;
+	padding: 0 0 0 24px;
+	display: grid;
+	gap: 4px;
+}
+
+.visa-passport-rules li {
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.visa-passport-actions {
+	padding: 0;
+	display: grid;
+	gap: 16px;
+}
+
+.visa-passport-actions .passport-primary {
+	margin-top: 0;
+}
+
+.visa-secondary-button {
+	all: unset;
+	width: calc(100% - 32px);
+	height: 56px;
+	margin: 0 16px;
+	border-radius: 999px;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	display: grid;
+	place-items: center;
+	font-size: 17px;
+	line-height: 1.4;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	cursor: pointer;
 }
 
 .profile-screen {
