@@ -100,6 +100,12 @@ type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
 type VisaTypeCode = 'type-c' | 'type-d'
 
+type VisaTypeDetail = {
+	durationDays: number
+	entryKey: 'single' | 'multiple'
+	consularFee: string
+}
+
 const VISA_DESTINATION_OPTIONS: { code: VisaDestinationCode, labelKey: 'visaDestinationItaly' | 'visaDestinationFrance' | 'visaDestinationSpain' | 'visaDestinationHungary' | 'visaDestinationGreece', flagSrc: string }[] = [
 	{ code: 'italy', labelKey: 'visaDestinationItaly', flagSrc: '/assets/flag-italy.svg' },
 	{ code: 'france', labelKey: 'visaDestinationFrance', flagSrc: '/assets/flag-france.svg' },
@@ -151,6 +157,38 @@ const VISA_DESTINATION_VISA_TEXT: Record<LocaleCode, Record<VisaDestinationCode,
 		hungary: 'per Ungheria',
 		greece: 'per Grecia',
 	},
+}
+
+const VISA_TYPE_DETAILS: Record<VisaDestinationCode, Record<VisaTypeCode, VisaTypeDetail>> = {
+	italy: {
+		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
+		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
+	},
+	france: {
+		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
+		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
+	},
+	spain: {
+		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
+		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
+	},
+	hungary: {
+		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
+		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
+	},
+	greece: {
+		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
+		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
+	},
+}
+
+const VISA_WARNING_TEXT: Record<LocaleCode, { subtitle: string, duration: string, entry: Record<VisaTypeDetail['entryKey'], string>, fee: string, confirm: string }> = {
+	ru: { subtitle: 'Ознакомьтесь с дополнительными условиями по визе.', duration: 'Срок действия', entry: { single: 'Однократный въезд', multiple: 'Многократный въезд' }, fee: 'Консульский сбор', confirm: 'Подтвердить' },
+	en: { subtitle: 'Review the additional visa conditions.', duration: 'Validity period', entry: { single: 'Single entry', multiple: 'Multiple entry' }, fee: 'Consular fee', confirm: 'Confirm' },
+	de: { subtitle: 'Prufen Sie die zusatzlichen Visumbedingungen.', duration: 'Gultigkeitsdauer', entry: { single: 'Einmalige Einreise', multiple: 'Mehrfache Einreise' }, fee: 'Konsulargebuhr', confirm: 'Bestatigen' },
+	fr: { subtitle: 'Consultez les conditions supplementaires du visa.', duration: 'Duree de validite', entry: { single: 'Entree unique', multiple: 'Entrees multiples' }, fee: 'Frais consulaires', confirm: 'Confirmer' },
+	es: { subtitle: 'Revisa las condiciones adicionales del visado.', duration: 'Periodo de validez', entry: { single: 'Entrada unica', multiple: 'Entradas multiples' }, fee: 'Tasa consular', confirm: 'Confirmar' },
+	it: { subtitle: 'Consulta le condizioni aggiuntive del visto.', duration: 'Periodo di validita', entry: { single: 'Ingresso singolo', multiple: 'Ingressi multipli' }, fee: 'Tassa consolare', confirm: 'Conferma' },
 }
 
 // Compose visa type title for the selected destination country.
@@ -926,8 +964,11 @@ function VisaStartScreen ({ selectedDestination, onBack, onHome, onContinue, onS
 }
 
 // Render visa type selection screen from Figma node 520:15444.
-function VisaTypeScreen ({ selectedDestination, selectedType, onBack, onHome, onSelectType }: { selectedDestination: VisaDestinationCode, selectedType: VisaTypeCode, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void }) {
+function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, onCloseWarning }: { selectedDestination: VisaDestinationCode, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, onCloseWarning: () => void }) {
 	const { locale, t } = useI18n()
+	const typeLetter = selectedType === 'type-c' ? 'C' : 'D'
+	const selectedDetail = VISA_TYPE_DETAILS[selectedDestination][selectedType]
+	const warningText = VISA_WARNING_TEXT[locale]
 
 	return (
 		<section aria-label="Visa type" className="visa-screen">
@@ -980,8 +1021,36 @@ function VisaTypeScreen ({ selectedDestination, selectedType, onBack, onHome, on
 			</div>
 
 			<div className="visa-bottom">
-				<button className="passport-primary" type="button">{t('authContinue')}</button>
+				<button className="passport-primary" onClick={onContinue} type="button">{t('authContinue')}</button>
 			</div>
+
+			{isWarningOpen ? <div className="visa-warning-overlay" role="presentation">
+				<section aria-label={resolveVisaTypeTitle(locale, selectedDestination, typeLetter)} className="visa-warning-sheet" role="dialog" aria-modal="true">
+					<i className="visa-warning-grabber" />
+					<div className="visa-warning-header">
+						<h2>{resolveVisaTypeTitle(locale, selectedDestination, typeLetter)}</h2>
+						<button aria-label={t('notificationsClose')} className="visa-warning-close" onClick={onCloseWarning} type="button" />
+					</div>
+
+					<p>{warningText.subtitle}</p>
+
+					<div className="visa-warning-card">
+						<div className="visa-type-card-copy">
+							{selectedType === 'type-c' ? <span className="visa-type-badge">{t('visaTypePopular')}</span> : null}
+							<h2>{resolveVisaTypeTitle(locale, selectedDestination, typeLetter)}</h2>
+						</div>
+						<i className="visa-type-radio" />
+					</div>
+
+					<ul className="visa-warning-list">
+						<li>{warningText.duration} — {selectedDetail.durationDays} {locale === 'ru' ? 'дней' : 'days'}</li>
+						<li>{warningText.entry[selectedDetail.entryKey]}</li>
+						<li>{warningText.fee}: {selectedDetail.consularFee}</li>
+					</ul>
+
+					<button className="passport-primary visa-warning-confirm" onClick={onCloseWarning} type="button">{warningText.confirm}</button>
+				</section>
+			</div> : null}
 		</section>
 	)
 }
@@ -1613,6 +1682,7 @@ function EntryFlow () {
 	const [passportsError, setPassportsError] = useState('')
 	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
 	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
+	const [isVisaWarningOpen, setIsVisaWarningOpen] = useState(false)
 	const isPopNavigationRef = useRef(false)
 
 	// Move app to target view and sync browser history state.
@@ -1693,6 +1763,11 @@ function EntryFlow () {
 		navigate('home', 'passports-list')
 	}
 
+	// Select visa type card without leaving the current step.
+	const selectVisaType = (type: VisaTypeCode) => {
+		setSelectedVisaType(type)
+	}
+
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'passports-list') return
 		loadPassports()
@@ -1756,7 +1831,7 @@ function EntryFlow () {
 							: activeTab === 'visa-start'
 								? <VisaStartScreen selectedDestination={selectedVisaDestination} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectDestination={setSelectedVisaDestination} />
 							: activeTab === 'visa-type'
-								? <VisaTypeScreen selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onHome={() => navigate('home', 'home')} onSelectType={setSelectedVisaType} />
+								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
 							: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
