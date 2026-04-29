@@ -682,6 +682,14 @@ body {
 	background: linear-gradient(90deg, var(--fill-blue) 0 50%, rgb(0 29 71 / 0.16) 50% 100%);
 }
 
+.visa-progress.visa-progress-trip i.is-done {
+	background: var(--fill-blue);
+}
+
+.visa-progress.visa-progress-trip span.is-active {
+	background: linear-gradient(90deg, var(--fill-blue) 0 50%, rgb(0 29 71 / 0.16) 50% 100%);
+}
+
 .visa-progress.is-full span.is-active {
 	background: var(--fill-blue);
 }
@@ -1264,6 +1272,7 @@ body {
 .visa-personal-inline-button {
 	margin-top: 0;
 }
+
 
 .profile-screen {
 	height: 100%;
@@ -1950,7 +1959,9 @@ body {
 }
 
 .profile-data-input.with-icon img,
-.profile-data-input.with-right-icon img {
+.profile-data-input.with-right-icon img,
+.profile-data-input.with-icon svg,
+.profile-data-input.with-right-icon svg {
 	width: 24px;
 	height: 24px;
 	flex: 0 0 auto;
@@ -1960,6 +1971,21 @@ body {
 .profile-data-input.with-right-icon span {
 	flex: 1 1 auto;
 	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.profile-data-input .field-clear-btn {
+	all: unset;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	flex: 0 0 auto;
+	cursor: pointer;
+	color: rgb(0 29 71 / 0.52);
 }
 
 .passport-primary {
@@ -2042,4 +2068,528 @@ body {
 	100% {
 		opacity: 0.68;
 	}
+}
+
+/* ─── Visa Photo upload screen (Step 7.1) ─── */
+
+.visa-photo-reqs {
+	padding: 0 16px;
+	display: grid;
+	gap: 12px;
+}
+
+.visa-photo-reqs h2 {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.visa-photo-reqs ul {
+	margin: 0;
+	padding: 0 0 0 20px;
+	display: grid;
+	gap: 4px;
+}
+
+.visa-photo-reqs li {
+	font-size: 17px;
+	font-weight: 400;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.visa-photo-actions {
+	padding: 0 16px;
+	display: grid;
+	gap: 16px;
+}
+
+.visa-photo-file-input {
+	display: none;
+}
+
+/* ─── Visa Photo camera screen (520:15990) ─── */
+
+.visa-photo-camera-screen {
+	position: fixed;
+	inset: 0;
+	background: #000;
+	overflow: hidden;
+	z-index: 10;
+}
+
+.visa-photo-camera-video {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.visa-photo-camera-canvas {
+	display: none;
+}
+
+.visa-photo-camera-overlay {
+	position: absolute;
+	inset: 0;
+	background: rgb(0 8 20 / 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.visa-photo-camera-cutout {
+	width: 86%;
+	aspect-ratio: 346 / 445;
+	border-radius: 12px;
+	background: transparent;
+	box-shadow: 0 0 0 9999px rgb(0 8 20 / 0.8);
+}
+
+.visa-photo-camera-corners {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
+}
+
+.visa-photo-camera-corners i {
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	border-color: #fff;
+	border-style: solid;
+	border-width: 0;
+}
+
+.visa-photo-camera-corners .tl {
+	top: calc(50% - 445px * 0.86 / 2 - 10px);
+	left: calc(50% - 86% / 2 - 10px);
+	border-top-width: 4px;
+	border-left-width: 4px;
+	border-radius: 12px 0 0 0;
+}
+
+.visa-photo-camera-corners .tr {
+	top: calc(50% - 445px * 0.86 / 2 - 10px);
+	right: calc(50% - 86% / 2 - 10px);
+	border-top-width: 4px;
+	border-right-width: 4px;
+	border-radius: 0 12px 0 0;
+}
+
+.visa-photo-camera-corners .bl {
+	bottom: calc(50% - 445px * 0.86 / 2 - 10px);
+	left: calc(50% - 86% / 2 - 10px);
+	border-bottom-width: 4px;
+	border-left-width: 4px;
+	border-radius: 0 0 0 12px;
+}
+
+.visa-photo-camera-corners .br {
+	bottom: calc(50% - 445px * 0.86 / 2 - 10px);
+	right: calc(50% - 86% / 2 - 10px);
+	border-bottom-width: 4px;
+	border-right-width: 4px;
+	border-radius: 0 0 12px 0;
+}
+
+.visa-photo-camera-back {
+	position: absolute;
+	top: 16px;
+	left: 8px;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 8px;
+}
+
+.visa-photo-camera-hint {
+	position: absolute;
+	bottom: 140px;
+	left: 16px;
+	right: 16px;
+	margin: 0;
+	font-size: 17px;
+	font-weight: 400;
+	line-height: 1.4;
+	color: #fff;
+	text-align: center;
+	letter-spacing: -0.02em;
+}
+
+.visa-photo-camera-controls {
+	position: absolute;
+	bottom: 52px;
+	left: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 64px;
+}
+
+.visa-photo-camera-shutter {
+	width: 72px;
+	height: 72px;
+	border-radius: 50%;
+	border: 3px solid rgba(255 255 255 / 0.6);
+	background: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+}
+
+.visa-photo-camera-shutter span {
+	width: 54px;
+	height: 54px;
+	border-radius: 50%;
+	background: #fff;
+	display: block;
+}
+
+.visa-photo-camera-shutter:disabled {
+	opacity: 0.4;
+}
+
+.visa-photo-camera-error {
+	position: absolute;
+	bottom: 80px;
+	left: 16px;
+	right: 16px;
+	margin: 0;
+	font-size: 15px;
+	color: #ff4444;
+	text-align: center;
+	background: rgba(0 0 0 / 0.6);
+	padding: 8px 12px;
+	border-radius: 8px;
+}
+
+/* ─── Visa Photo check screen (Step 7.2) ─── */
+
+.visa-photo-preview {
+	padding: 0 16px;
+	display: flex;
+	justify-content: center;
+}
+
+.visa-photo-preview img {
+	width: 100%;
+	max-width: 370px;
+	aspect-ratio: 370 / 406;
+	object-fit: cover;
+	border-radius: 12px;
+	background: rgb(0 29 71 / 0.06);
+}
+
+.visa-photo-loader {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: 0 16px;
+}
+
+.visa-photo-loader p {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 400;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	text-align: center;
+}
+
+.visa-photo-spinner {
+	display: block;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	border: 4px solid rgb(0 29 71 / 0.16);
+	border-top-color: var(--ink);
+	animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+	to { transform: rotate(360deg); }
+}
+
+/* ─── Review screens progress bar (Steps 8.1–8.4) ─── */
+
+.visa-progress-review {
+	/* same base as visa-progress-trip */
+}
+
+/* Completed dot */
+.visa-progress-review i.is-done {
+	background: var(--fill-blue);
+}
+
+/* Completed full bar (step 2 done) */
+.visa-progress-review i.is-bar {
+	width: 48px;
+	background: var(--ink);
+}
+
+/* Current review bar: partial fill via CSS var */
+.visa-progress-review span.is-active-review,
+.visa-progress-review span:first-of-type {
+	position: relative;
+	background: rgb(0 29 71 / 0.16);
+	overflow: hidden;
+}
+
+.visa-progress-review span:first-of-type::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	width: var(--review-filled, 0px);
+	background: var(--fill-blue);
+	border-radius: 999px;
+}
+
+/* ─── Review editable input override ─── */
+
+.visa-personal-form .profile-data-input input {
+	all: unset;
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: var(--ink);
+}
+
+/* ─── Review file attachment field ─── */
+
+.review-file-field {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-height: 56px;
+	padding: 12px 16px;
+	background: #fff;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	border-radius: 12px;
+}
+
+.review-file-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.review-file-name {
+	flex: 1;
+	font-size: 17px;
+	font-weight: 400;
+	line-height: 1.4;
+	color: var(--ink);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.review-file-link {
+	all: unset;
+	font-size: 17px;
+	font-weight: 500;
+	color: #0066f5;
+	cursor: pointer;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.review-file-replace {
+	all: unset;
+	font-size: 15px;
+	font-weight: 500;
+	color: #0066f5;
+	cursor: pointer;
+}
+
+/* ─── Visa Applicants screen (Step 9) ─── */
+
+.applicants-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 0 16px 24px;
+}
+
+.applicant-card {
+	background: #fff;
+	border: 1px solid rgb(0 29 71 / 0.12);
+	border-radius: 16px;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.applicant-card-add {
+	border-style: dashed;
+}
+
+.applicant-badge {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 10px;
+	border-radius: 999px;
+	background: rgb(0 101 244 / 0.12);
+	color: rgb(0 101 244);
+	font-size: 13px;
+	font-weight: 500;
+	align-self: flex-start;
+}
+
+.applicant-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.applicant-name {
+	font-size: 20px;
+	font-weight: 500;
+	color: var(--ink);
+	letter-spacing: -0.02em;
+}
+
+.applicant-detail {
+	font-size: 15px;
+	font-weight: 400;
+	color: rgb(0 29 71 / 0.52);
+	line-height: 1.4;
+}
+
+.applicant-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.applicant-btn {
+	flex: 1;
+	height: 44px;
+	border-radius: 12px;
+	border: 1.5px solid rgb(0 29 71 / 0.2);
+	background: transparent;
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.applicant-btn-delete {
+	color: #e53935;
+	border-color: rgb(229 57 53 / 0.25);
+}
+
+.applicant-btn-add {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	flex: 1;
+	color: #0066f5;
+	border-color: rgb(0 102 245 / 0.3);
+}
+
+/* ─── Documents screen — draft cards ─── */
+
+.documents-drafts {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px 16px 0;
+}
+
+.draft-card {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	background: #fff;
+	border: 1px solid rgb(0 29 71 / 0.12);
+	border-radius: 16px;
+	padding: 16px;
+}
+
+.draft-card-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.draft-card-title {
+	font-size: 17px;
+	font-weight: 500;
+	color: var(--ink);
+}
+
+.draft-card-meta {
+	font-size: 14px;
+	color: rgb(0 29 71 / 0.52);
+}
+
+.draft-card-status {
+	font-size: 13px;
+	color: #f59e0b;
+	font-weight: 500;
+}
+
+.draft-card-btn {
+	all: unset;
+	font-size: 15px;
+	font-weight: 500;
+	color: #0066f5;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+/* ─── Review title: first line gray ─── */
+
+.review-title-sub {
+	display: block;
+	color: rgb(0 29 71 / 0.4);
+	font-size: inherit;
+	font-weight: inherit;
+}
+
+/* ─── Review photo: replace button below file box ─── */
+
+.visa-personal-field > .review-file-replace {
+	all: unset;
+	display: block;
+	margin-top: 10px;
+	font-size: 17px;
+	font-weight: 500;
+	color: #0066f5;
+	cursor: pointer;
+}
+
+/* ─── Review disabled button state ─── */
+
+.review-btn-disabled {
+	background: rgb(0 29 71 / 0.16);
+	color: rgb(0 29 71 / 0.4);
+	pointer-events: none;
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
+import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState } from 'react'
 import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
@@ -94,11 +94,27 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
 type VisaTypeCode = 'type-c' | 'type-d'
+
+type VisaApplicant = {
+	passport: PassportEntry
+	personal: typeof VISA_PERSONAL_TEXT['ru']
+	trip: typeof VISA_TRIP_TEXT['ru']
+	docs: typeof VISA_DOCS_TEXT['ru']
+	photoDataUrl: string
+}
+
+type VisaDraft = {
+	id: string
+	createdAt: number
+	visaType: VisaTypeCode
+	visaDestination: VisaDestinationCode
+	applicants: VisaApplicant[]
+}
 
 type VisaTypeDetail = {
 	durationDays: number
@@ -216,6 +232,33 @@ const VISA_PERSONAL_TEXT: Record<LocaleCode, { title: string, subtitle: string, 
 	fr: { title: 'Donnees personnelles', subtitle: 'Indiquez les donnees personnelles necessaires a la suite de la demande de visa.', birthPlace: 'Lieu de naissance', birthPlaceValue: 'Federation de Russie, krai de Krasnodar', marital: 'Situation familiale', maritalValue: 'Marie(e)', profession: 'Profession', professionValue: 'Manager', employer: 'Employeur', employerValue: 'Sberbank', workAddress: 'Adresse professionnelle', workAddressValue: 'Moscou, rue Poklonnaya, 3, bat. 1, etage 1, bureau 3', residenceAddress: 'Adresse de residence en Russie', residenceAddressValue: 'Moscou, rue Lenina, 6', phone: 'Numero de telephone', phoneValue: '+7 928 920 20 24', email: 'E-mail', emailValue: 'alex.german@gmail.com' },
 	es: { title: 'Datos personales', subtitle: 'Indica los datos personales necesarios para continuar con el visado.', birthPlace: 'Lugar de nacimiento', birthPlaceValue: 'Federacion de Rusia, krai de Krasnodar', marital: 'Estado civil', maritalValue: 'Casado/a', profession: 'Profesion', professionValue: 'Gerente', employer: 'Empleador', employerValue: 'Sberbank', workAddress: 'Direccion de trabajo', workAddressValue: 'Moscu, calle Poklonnaya, 3, edif. 1, piso 1, oficina 3', residenceAddress: 'Direccion de residencia en Rusia', residenceAddressValue: 'Moscu, calle Lenina, 6', phone: 'Numero de telefono', phoneValue: '+7 928 920 20 24', email: 'Correo electronico', emailValue: 'alex.german@gmail.com' },
 	it: { title: 'Dati personali', subtitle: 'Inserisci i dati personali necessari per proseguire con il visto.', birthPlace: 'Luogo di nascita', birthPlaceValue: 'Federazione Russa, territorio di Krasnodar', marital: 'Stato civile', maritalValue: 'Sposato/a', profession: 'Professione', professionValue: 'Manager', employer: 'Datore di lavoro', employerValue: 'Sberbank', workAddress: 'Indirizzo di lavoro', workAddressValue: 'Mosca, via Poklonnaya, 3, edificio 1, piano 1, ufficio 3', residenceAddress: 'Indirizzo di residenza in Russia', residenceAddressValue: 'Mosca, via Lenina, 6', phone: 'Numero di telefono', phoneValue: '+7 928 920 20 24', email: 'Email', emailValue: 'alex.german@gmail.com' },
+}
+
+const VISA_DOCS_TEXT: Record<LocaleCode, { title: string, subtitle: string, hotel: string, hotelFile: string, flights: string, flightsFile: string, insurance: string, insuranceFile: string }> = {
+	ru: { title: 'Данные о поездке', subtitle: 'Заполните информацию о поездке для дальнейшего оформления визы', hotel: 'Бронирование отеля', hotelFile: 'hotel.pdf', flights: 'Бронирование авиабилетов', flightsFile: 'tickets.pdf', insurance: 'Медицинская страховка', insuranceFile: 'insurance.pdf' },
+	en: { title: 'Trip data', subtitle: 'Fill in trip details for further visa processing', hotel: 'Hotel booking', hotelFile: 'hotel.pdf', flights: 'Flight ticket booking', flightsFile: 'tickets.pdf', insurance: 'Medical insurance', insuranceFile: 'insurance.pdf' },
+	de: { title: 'Reisedaten', subtitle: 'Geben Sie die Reisedaten fur die weitere Visumbearbeitung an', hotel: 'Hotelbuchung', hotelFile: 'hotel.pdf', flights: 'Flugticketbuchung', flightsFile: 'tickets.pdf', insurance: 'Krankenversicherung', insuranceFile: 'insurance.pdf' },
+	fr: { title: 'Donnees de voyage', subtitle: 'Remplissez les informations de voyage pour la demande de visa', hotel: 'Reservation d hotel', hotelFile: 'hotel.pdf', flights: 'Reservation de billets d avion', flightsFile: 'tickets.pdf', insurance: 'Assurance medicale', insuranceFile: 'insurance.pdf' },
+	es: { title: 'Datos del viaje', subtitle: 'Completa los datos del viaje para continuar con el visado', hotel: 'Reserva de hotel', hotelFile: 'hotel.pdf', flights: 'Reserva de vuelos', flightsFile: 'tickets.pdf', insurance: 'Seguro medico', insuranceFile: 'insurance.pdf' },
+	it: { title: 'Dati del viaggio', subtitle: 'Compila le informazioni del viaggio per proseguire con il visto', hotel: 'Prenotazione hotel', hotelFile: 'hotel.pdf', flights: 'Prenotazione voli', flightsFile: 'tickets.pdf', insurance: 'Assicurazione medica', insuranceFile: 'insurance.pdf' },
+}
+
+const VISA_PHOTO_TEXT: Record<LocaleCode, { title: string, subtitle: string, reqTitle: string, req1: string, req2: string, req3: string, req4: string, req5: string, upload: string, camera: string, checkTitle: string, checkSubtitle: string, checking: string, cameraHint: string }> = {
+	ru: { title: 'Загрузка фотографии', subtitle: 'Загрузите соответствующее фото — мы используем его для оформления заявки.', reqTitle: 'Требования к фотографии:', req1: 'Для каждой новой визы необходима фотография, не использованная ранее.', req2: 'Размер фотографии 35×45 мм, белый фон.', req3: 'Формат фотографии: JPEG, мин. 600 DPI.', req4: 'Лицо должно занимать 70–80% площади загруженной фотографии.', req5: 'Без очков и головных уборов — лицо должно быть полностью видно.', upload: 'Загрузить с устройства', camera: 'Сделать фотографию', checkTitle: 'Проверяем фото', checkSubtitle: 'Проверяем соответствие требованиям визы. Это займёт всего несколько секунд.', checking: 'Проверяем на ошибки...', cameraHint: 'Держите лицо в центре рамки и смотрите прямо в камеру.' },
+	en: { title: 'Photo upload', subtitle: 'Upload the appropriate photo — we will use it to process your application.', reqTitle: 'Photo requirements:', req1: 'Each new visa requires a photo not previously used.', req2: 'Photo size 35×45 mm, white background.', req3: 'Photo format: JPEG, min. 600 DPI.', req4: 'Face must occupy 70–80% of the uploaded photo area.', req5: 'No glasses or headwear — face must be fully visible.', upload: 'Upload from device', camera: 'Take a photo', checkTitle: 'Checking photo', checkSubtitle: 'Checking compliance with visa requirements. This will take just a few seconds.', checking: 'Checking for errors...', cameraHint: 'Keep your face in the center of the frame and look straight into the camera.' },
+	de: { title: 'Foto hochladen', subtitle: 'Laden Sie das entsprechende Foto hoch — wir verwenden es fur Ihre Bewerbung.', reqTitle: 'Fotoanforderungen:', req1: 'Fur jedes neue Visum ist ein noch nicht verwendetes Foto erforderlich.', req2: 'Fotogroße 35×45 mm, weißer Hintergrund.', req3: 'Fotoformat: JPEG, min. 600 DPI.', req4: 'Das Gesicht muss 70–80% der hochgeladenen Fotoflache einnehmen.', req5: 'Keine Brille oder Kopfbedeckung — das Gesicht muss vollstandig sichtbar sein.', upload: 'Vom Gerat hochladen', camera: 'Foto aufnehmen', checkTitle: 'Foto wird gepruft', checkSubtitle: 'Wir prufen die Einhaltung der Visaanforderungen. Das dauert nur wenige Sekunden.', checking: 'Auf Fehler prufen...', cameraHint: 'Halten Sie Ihr Gesicht in der Mitte des Rahmens und schauen Sie direkt in die Kamera.' },
+	fr: { title: 'Telechargement de photo', subtitle: 'Telechargez la photo appropriee — nous l utiliserons pour traiter votre demande.', reqTitle: 'Exigences photo :', req1: 'Chaque nouveau visa necessite une photo non utilisee auparavant.', req2: 'Taille de la photo 35×45 mm, fond blanc.', req3: 'Format photo : JPEG, min. 600 DPI.', req4: 'Le visage doit occuper 70 a 80% de la superficie de la photo.', req5: 'Pas de lunettes ni de couvre-chef — le visage doit etre entierement visible.', upload: 'Telecharger depuis l appareil', camera: 'Prendre une photo', checkTitle: 'Verification de la photo', checkSubtitle: 'Nous verifions la conformite aux exigences du visa. Cela ne prendra que quelques secondes.', checking: 'Verification des erreurs...', cameraHint: 'Gardez votre visage au centre du cadre et regardez directement dans la camera.' },
+	es: { title: 'Subir foto', subtitle: 'Sube la foto adecuada — la usaremos para procesar tu solicitud.', reqTitle: 'Requisitos de la foto:', req1: 'Cada nuevo visado requiere una foto no usada anteriormente.', req2: 'Tamaño de foto 35×45 mm, fondo blanco.', req3: 'Formato de foto: JPEG, min. 600 DPI.', req4: 'El rostro debe ocupar el 70–80% del area de la foto.', req5: 'Sin gafas ni tocados — el rostro debe ser completamente visible.', upload: 'Subir desde dispositivo', camera: 'Tomar una foto', checkTitle: 'Verificando foto', checkSubtitle: 'Comprobamos el cumplimiento de los requisitos del visado. Solo tardara unos segundos.', checking: 'Comprobando errores...', cameraHint: 'Mantén tu rostro en el centro del encuadre y mira directamente a la cámara.' },
+	it: { title: 'Caricamento foto', subtitle: 'Carica la foto appropriata — la useremo per elaborare la tua domanda.', reqTitle: 'Requisiti foto:', req1: 'Ogni nuovo visto richiede una foto non utilizzata in precedenza.', req2: 'Dimensione foto 35×45 mm, sfondo bianco.', req3: 'Formato foto: JPEG, min. 600 DPI.', req4: 'Il viso deve occupare il 70–80% dell\'area della foto.', req5: 'Senza occhiali o copricapo — il viso deve essere completamente visibile.', upload: 'Carica dal dispositivo', camera: 'Scattare una foto', checkTitle: 'Verifica foto', checkSubtitle: 'Verifichiamo la conformita ai requisiti del visto. Ci vorranno solo pochi secondi.', checking: 'Controllo errori...', cameraHint: 'Tieni il viso al centro del riquadro e guarda direttamente nella fotocamera.' },
+}
+
+const VISA_TRIP_TEXT: Record<LocaleCode, { title: string, subtitle: string, purpose: string, purposeValue: string, entryDate: string, exitDate: string, dateValue: string, residenceCountry: string, residenceCountryValue: string, prevVisas: string, prevVisasValue: string }> = {
+	ru: { title: 'Данные о поездке', subtitle: 'Заполните информацию о поездке для дальнейшего оформления визы', purpose: 'Цель поездки', purposeValue: 'Туризм', entryDate: 'Предполагаемая дата въезда', exitDate: 'Предполагаемая дата выезда', dateValue: '01.10.2020', residenceCountry: 'Страна пребывания за последние 3 года', residenceCountryValue: 'Российская Федерация', prevVisas: 'Наличие предыдущих шенгенских виз', prevVisasValue: 'Нет' },
+	en: { title: 'Trip data', subtitle: 'Fill in trip details for further visa processing', purpose: 'Purpose of travel', purposeValue: 'Tourism', entryDate: 'Expected entry date', exitDate: 'Expected exit date', dateValue: '01.10.2020', residenceCountry: 'Country of residence in the last 3 years', residenceCountryValue: 'Russian Federation', prevVisas: 'Previous Schengen visas', prevVisasValue: 'No' },
+	de: { title: 'Reisedaten', subtitle: 'Geben Sie die Reisedaten fur die weitere Visumbearbeitung an', purpose: 'Reisezweck', purposeValue: 'Tourismus', entryDate: 'Voraussichtliches Einreisedatum', exitDate: 'Voraussichtliches Ausreisedatum', dateValue: '01.10.2020', residenceCountry: 'Wohnsitzland in den letzten 3 Jahren', residenceCountryValue: 'Russische Foderation', prevVisas: 'Fruhere Schengen-Visa', prevVisasValue: 'Nein' },
+	fr: { title: 'Donnees de voyage', subtitle: 'Remplissez les informations de voyage pour la demande de visa', purpose: 'Objet du voyage', purposeValue: 'Tourisme', entryDate: 'Date d entree prevue', exitDate: 'Date de sortie prevue', dateValue: '01.10.2020', residenceCountry: 'Pays de residence au cours des 3 dernieres annees', residenceCountryValue: 'Federation de Russie', prevVisas: 'Visas Schengen anterieurs', prevVisasValue: 'Non' },
+	es: { title: 'Datos del viaje', subtitle: 'Completa los datos del viaje para continuar con el visado', purpose: 'Proposito del viaje', purposeValue: 'Turismo', entryDate: 'Fecha de entrada prevista', exitDate: 'Fecha de salida prevista', dateValue: '01.10.2020', residenceCountry: 'Pais de residencia en los ultimos 3 anos', residenceCountryValue: 'Federacion de Rusia', prevVisas: 'Visados Schengen anteriores', prevVisasValue: 'No' },
+	it: { title: 'Dati del viaggio', subtitle: 'Compila le informazioni del viaggio per proseguire con il visto', purpose: 'Scopo del viaggio', purposeValue: 'Turismo', entryDate: 'Data di ingresso prevista', exitDate: 'Data di uscita prevista', dateValue: '01.10.2020', residenceCountry: 'Paese di residenza negli ultimi 3 anni', residenceCountryValue: 'Federazione Russa', prevVisas: 'Precedenti visti Schengen', prevVisasValue: 'No' },
 }
 
 // Compose visa type title for the selected destination country.
@@ -1139,8 +1182,9 @@ function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, 
 }
 
 // Render documents and insurance screen from Figma node 521:20268.
-function DocumentsScreen ({ onOpenHome, onOpenProfile }: { onOpenHome: () => void, onOpenProfile: () => void }) {
+function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft }: { onOpenHome: () => void, onOpenProfile: () => void, drafts: VisaDraft[], onContinueDraft: (id: string) => void }) {
 	const { t } = useI18n()
+	const hasDrafts = drafts.length > 0
 
 	return (
 		<section aria-label="Documents and insurances" className="documents-screen">
@@ -1150,16 +1194,30 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile }: { onOpenHome: () => voi
 					<p>{t('documentsSubtitle')}</p>
 				</section>
 
-				<section className="documents-empty" aria-label="No documents">
-					<div className="documents-empty-picture">
-						<Image alt="Documents and insurance" className="documents-empty-image" height={316} src="/assets/documents-empty-figure.svg" unoptimized width={370} />
-					</div>
-
-					<div className="documents-empty-copy">
-						<h2>{t('documentsEmptyTitle')}</h2>
-						<p>{t('documentsEmptySubtitle')}</p>
-					</div>
-				</section>
+				{hasDrafts ? (
+					<section className="documents-drafts" aria-label="Visa applications">
+						{drafts.map((draft, i) => (
+							<div className="draft-card" key={draft.id}>
+								<div className="draft-card-info">
+									<span className="draft-card-title">{`Заявление #${i + 1}`}</span>
+									<span className="draft-card-meta">{`${draft.applicants.length} заявител${draft.applicants.length === 1 ? 'ь' : draft.applicants.length < 5 ? 'я' : 'ей'} · Тип ${draft.visaType === 'type-c' ? 'C' : 'D'}`}</span>
+									<span className="draft-card-status">{'Черновик'}</span>
+								</div>
+								<button className="draft-card-btn" onClick={() => onContinueDraft(draft.id)} type="button">{'Продолжить'}</button>
+							</div>
+						))}
+					</section>
+				) : (
+					<section className="documents-empty" aria-label="No documents">
+						<div className="documents-empty-picture">
+							<Image alt="Documents and insurance" className="documents-empty-image" height={316} src="/assets/documents-empty-figure.svg" unoptimized width={370} />
+						</div>
+						<div className="documents-empty-copy">
+							<h2>{t('documentsEmptyTitle')}</h2>
+							<p>{t('documentsEmptySubtitle')}</p>
+						</div>
+					</section>
+				)}
 			</div>
 
 			<nav aria-label="Bottom navigation" className="home-tabbar">
@@ -1415,13 +1473,613 @@ function VisaPersonalHeader ({ copy, progressClass, onBack, onHome }: { copy: (t
 }
 
 // Render one read-only personal-data field row.
-function VisaPersonalField ({ icon, label, value }: { icon?: 'search' | 'chevron', label: string, value: string }) {
+function VisaPersonalField ({ icon, label, value }: { icon?: 'search' | 'chevron' | 'calendar', label: string, value: string }) {
+	const iconSrc = icon === 'search' ? '/assets/icon-search.svg' : icon === 'calendar' ? '/assets/icon-calendar.svg' : '/assets/icon-chevron-down.svg'
 	return (
 		<div className="visa-personal-field">
 			<label>{label}</label>
 			<div className="profile-data-input with-right-icon">
 				<span>{value}</span>
-				{icon ? <Image alt="Field icon" height={24} src={icon === 'search' ? '/assets/icon-search.svg' : '/assets/icon-chevron-down.svg'} unoptimized width={24} /> : null}
+				{icon ? <Image alt="Field icon" height={24} src={iconSrc} unoptimized width={24} /> : null}
+			</div>
+		</div>
+	)
+}
+
+// Render trip data form from Figma node 520:15649.
+function VisaTripScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_TRIP_TEXT[locale]
+
+	return (
+		<section aria-label="Trip data" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress visa-progress-trip" role="presentation">
+						<i className="is-done" />
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{copy.title}</h1>
+						<p>{copy.subtitle}</p>
+					</div>
+				</header>
+
+				<div className="visa-personal-form">
+					<VisaPersonalField icon="chevron" label={copy.purpose} value={copy.purposeValue} />
+					<VisaPersonalField icon="calendar" label={copy.entryDate} value={copy.dateValue} />
+					<VisaPersonalField icon="calendar" label={copy.exitDate} value={copy.dateValue} />
+					<VisaPersonalField icon="search" label={copy.residenceCountry} value={copy.residenceCountryValue} />
+					<VisaPersonalField icon="chevron" label={copy.prevVisas} value={copy.prevVisasValue} />
+				</div>
+
+				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render photo upload entry screen from Figma node 593:9070.
+function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () => void, onHome: () => void, onUpload: (dataUrl: string) => void, onCamera: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_PHOTO_TEXT[locale]
+	const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+	// Convert selected file to data URL and pass up.
+	const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0]
+		if(!file) return
+		const reader = new FileReader()
+		reader.onload = () => onUpload(reader.result as string)
+		reader.readAsDataURL(file)
+	}
+
+	return (
+		<section aria-label="Photo upload" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress visa-progress-trip" role="presentation">
+						<i className="is-done" />
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{copy.title}</h1>
+						<p>{copy.subtitle}</p>
+					</div>
+				</header>
+
+				<div className="visa-photo-reqs">
+					<h2>{copy.reqTitle}</h2>
+					<ul>
+						<li><b>{copy.req1}</b></li>
+						<li>{copy.req2}</li>
+						<li>{copy.req3}</li>
+						<li>{copy.req4}</li>
+						<li>{copy.req5}</li>
+					</ul>
+				</div>
+
+				<div className="visa-photo-actions">
+					<input accept="image/*" className="visa-photo-file-input" onChange={handleFileChange} ref={fileInputRef} type="file" />
+					<button className="passport-primary" onClick={() => fileInputRef.current?.click()} type="button">{copy.upload}</button>
+					<button className="visa-secondary-button" onClick={onCamera} type="button">{copy.camera}</button>
+				</div>
+			</div>
+		</section>
+	)
+}
+
+// Render fullscreen camera screen from Figma node 520:15990.
+function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCapture: (dataUrl: string) => void }) {
+	const { locale } = useI18n()
+	const copy = VISA_PHOTO_TEXT[locale]
+	const videoRef = useRef<HTMLVideoElement | null>(null)
+	const canvasRef = useRef<HTMLCanvasElement | null>(null)
+	const streamRef = useRef<MediaStream | null>(null)
+	const [isReady, setIsReady] = useState(false)
+	const [error, setError] = useState('')
+
+	useEffect(() => {
+		let active = true
+
+		// Start front camera stream via WebRTC getUserMedia.
+		navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+			.then((stream) => {
+				if(!active) { stream.getTracks().forEach((t) => t.stop()); return }
+				streamRef.current = stream
+				if(videoRef.current) {
+					videoRef.current.srcObject = stream
+					videoRef.current.play().then(() => { if(active) setIsReady(true) })
+				}
+			})
+			.catch((err) => { if(active) setError(err instanceof Error ? err.message : 'Camera unavailable') })
+
+		return () => {
+			active = false
+			streamRef.current?.getTracks().forEach((t) => t.stop())
+			streamRef.current = null
+		}
+	}, [])
+
+	// Capture current video frame to canvas and return data URL.
+	const capture = () => {
+		const video = videoRef.current
+		const canvas = canvasRef.current
+		if(!video || !canvas) return
+		canvas.width = video.videoWidth
+		canvas.height = video.videoHeight
+		canvas.getContext('2d')?.drawImage(video, 0, 0)
+		onCapture(canvas.toDataURL('image/jpeg', 0.92))
+	}
+
+	return (
+		<section aria-label="Camera" className="visa-photo-camera-screen">
+			<video autoPlay className="visa-photo-camera-video" muted playsInline ref={videoRef} />
+			<canvas className="visa-photo-camera-canvas" ref={canvasRef} />
+
+			{/* Dark overlay with face cutout */}
+			<div aria-hidden className="visa-photo-camera-overlay">
+				<div className="visa-photo-camera-cutout" />
+			</div>
+
+			{/* Corner markers */}
+			<div aria-hidden className="visa-photo-camera-corners">
+				<i className="tl" /><i className="tr" /><i className="bl" /><i className="br" />
+			</div>
+
+			{/* Back button */}
+			<button aria-label="Back" className="visa-photo-camera-back" onClick={onBack} type="button">
+				<svg fill="none" height="24" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24">
+					<polyline points="15 18 9 12 15 6" />
+				</svg>
+			</button>
+
+			{/* Hint text */}
+			<p className="visa-photo-camera-hint">{copy.cameraHint}</p>
+
+			{/* Camera controls */}
+			{error ? (
+				<p className="visa-photo-camera-error">{error}</p>
+			) : (
+				<div className="visa-photo-camera-controls">
+					<span />
+					<button aria-label="Capture" className="visa-photo-camera-shutter" disabled={!isReady} onClick={capture} type="button">
+						<span />
+					</button>
+					<span />
+				</div>
+			)}
+		</section>
+	)
+}
+
+// Render photo verification screen from Figma node 527:16358.
+function VisaPhotoCheckScreen ({ photoDataUrl, onBack, onHome, onDone }: { photoDataUrl: string, onBack: () => void, onHome: () => void, onDone: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_PHOTO_TEXT[locale]
+
+	useEffect(() => {
+		// Simulate check duration then auto-advance.
+		const timer = window.setTimeout(() => onDone(), 2500)
+		return () => window.clearTimeout(timer)
+	}, [onDone])
+
+	return (
+		<section aria-label="Photo check" className="visa-screen">
+			<div className="visa-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress visa-progress-trip" role="presentation">
+						<i className="is-done" />
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{copy.checkTitle}</h1>
+						<p>{copy.checkSubtitle}</p>
+					</div>
+				</header>
+
+				<div className="visa-photo-preview">
+					{photoDataUrl ? <img alt="Uploaded photo" src={photoDataUrl} /> : null}
+				</div>
+
+				<div className="visa-photo-loader">
+					<p>{copy.checking}</p>
+					<span className="visa-photo-spinner" />
+				</div>
+			</div>
+		</section>
+	)
+}
+
+// Shared progress bar for Step 8.x review screens — 3 complete dots/bars, current bar filling.
+function ReviewProgress ({ subStep }: { subStep: 1 | 2 | 3 | 4 }) {
+	// Bar represents step 3 (review) divided into 4 sub-steps.
+	const filled = ((subStep - 1) / 4) * 48
+	return (
+		<div className="visa-progress visa-progress-review" role="presentation">
+			<i className="is-done" />
+			<i className="is-done is-bar" />
+			<span style={{ '--review-filled': `${filled}px` } as CSSProperties} />
+			<span />
+			<span />
+			<i />
+		</div>
+	)
+}
+
+// One editable text field row for review screens.
+function ReviewField ({ label, value, icon, onChange }: { label: string, value: string, icon?: 'search' | 'chevron' | 'calendar', onChange: (v: string) => void }) {
+	const iconSrc = icon === 'search' ? '/assets/icon-search.svg' : icon === 'calendar' ? '/assets/icon-calendar.svg' : '/assets/icon-chevron-down.svg'
+	return (
+		<div className="visa-personal-field">
+			<label>{label}</label>
+			<div className={`profile-data-input${icon ? ' with-right-icon' : ''}`}>
+				<input onChange={(e) => onChange(e.target.value)} type="text" value={value} />
+				{icon ? <Image alt="" height={24} src={iconSrc} unoptimized width={24} /> : null}
+			</div>
+		</div>
+	)
+}
+
+// One file attachment row for review trip/photo screens.
+function ReviewFileField ({ label, filename, viewLabel, replaceLabel }: { label: string, filename: string, viewLabel: string, replaceLabel: string }) {
+	return (
+		<div className="visa-personal-field">
+			<label>{label}</label>
+			<div className="review-file-field">
+				<div className="review-file-row">
+					<svg aria-hidden fill="none" height="24" stroke="rgb(0 29 71 / 0.52)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24">
+						<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+						<polyline points="14 2 14 8 20 8" />
+					</svg>
+					<span className="review-file-name">{filename}</span>
+					<button className="review-file-link" type="button">{viewLabel}</button>
+				</div>
+				<button className="review-file-replace" type="button">{replaceLabel}</button>
+			</div>
+		</div>
+	)
+}
+
+// Render Step 8.1 — passport data review from Figma node 592:8395.
+function VisaReviewPassportScreen ({ passport, onBack, onHome, onContinue, onChange }: { passport: PassportEntry, onBack: () => void, onHome: () => void, onContinue: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
+	const { t } = useI18n()
+	return (
+		<section aria-label="Review passport" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<ReviewProgress subStep={1} />
+					<div className="visa-copy">
+						<h1><span className="review-title-sub">{'Проверьте заявку'}</span>{'\nПаспортные данные'}</h1>
+						<p>{'Проверьте данные и при необходимости внесите изменения в соответствующие поля.'}</p>
+					</div>
+				</header>
+				<div className="visa-personal-form">
+					<ReviewField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} value={passport.citizenship} />
+					<ReviewField label={t('profileDataFirstName')} onChange={(v) => onChange('firstName', v)} value={passport.firstName} />
+					<ReviewField label={t('profileDataLastName')} onChange={(v) => onChange('lastName', v)} value={passport.lastName} />
+					<ReviewField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={passport.birthDate} />
+					<ReviewField icon="chevron" label={t('passportGender')} onChange={(v) => onChange('gender', v)} value={passport.gender} />
+					<ReviewField label={t('passportNumber')} onChange={(v) => onChange('passportNumber', v)} value={passport.passportNumber} />
+					<ReviewField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={passport.issueDate} />
+					<ReviewField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={passport.expiryDate} />
+					<ReviewField icon="chevron" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} value={passport.issuedBy} />
+				</div>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render Step 8.2 — personal data review from Figma node 592:8429.
+function VisaReviewPersonalScreen ({ personal, onBack, onHome, onContinue, onChange }: { personal: typeof VISA_PERSONAL_TEXT[LocaleCode], onBack: () => void, onHome: () => void, onContinue: () => void, onChange: (field: keyof typeof VISA_PERSONAL_TEXT[LocaleCode], value: string) => void }) {
+	const { t } = useI18n()
+	return (
+		<section aria-label="Review personal" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<ReviewProgress subStep={2} />
+					<div className="visa-copy">
+						<h1><span className="review-title-sub">{'Проверьте заявку'}</span>{'\nЛичные данные'}</h1>
+						<p>{'Проверьте данные и при необходимости внесите изменения в соответствующие поля.'}</p>
+					</div>
+				</header>
+				<div className="visa-personal-form">
+					<ReviewField icon="search" label={personal.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} value={personal.birthPlaceValue} />
+					<ReviewField icon="chevron" label={personal.marital} onChange={(v) => onChange('maritalValue', v)} value={personal.maritalValue} />
+					<ReviewField icon="search" label={personal.profession} onChange={(v) => onChange('professionValue', v)} value={personal.professionValue} />
+					<ReviewField label={personal.employer} onChange={(v) => onChange('employerValue', v)} value={personal.employerValue} />
+					<ReviewField icon="search" label={personal.workAddress} onChange={(v) => onChange('workAddressValue', v)} value={personal.workAddressValue} />
+					<ReviewField icon="search" label={personal.residenceAddress} onChange={(v) => onChange('residenceAddressValue', v)} value={personal.residenceAddressValue} />
+					<ReviewField label={personal.phone} onChange={(v) => onChange('phoneValue', v)} value={personal.phoneValue} />
+					<ReviewField label={personal.email} onChange={(v) => onChange('emailValue', v)} value={personal.emailValue} />
+				</div>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render Step 8.3 — trip data review from Figma node 592:8445.
+function VisaReviewTripScreen ({ trip, docs, onBack, onHome, onContinue, onTripChange }: { trip: typeof VISA_TRIP_TEXT[LocaleCode], docs: typeof VISA_DOCS_TEXT[LocaleCode], onBack: () => void, onHome: () => void, onContinue: () => void, onTripChange: (field: keyof typeof VISA_TRIP_TEXT[LocaleCode], value: string) => void }) {
+	const { t } = useI18n()
+	return (
+		<section aria-label="Review trip" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<ReviewProgress subStep={3} />
+					<div className="visa-copy">
+						<h1><span className="review-title-sub">{'Проверьте заявку'}</span>{'\nДанные о поездке'}</h1>
+						<p>{'Проверьте данные и при необходимости внесите изменения в соответствующие поля.'}</p>
+					</div>
+				</header>
+				<div className="visa-personal-form">
+					<ReviewField icon="chevron" label={trip.purpose} onChange={(v) => onTripChange('purposeValue', v)} value={trip.purposeValue} />
+					<ReviewField icon="calendar" label={trip.entryDate} onChange={(v) => onTripChange('dateValue', v)} value={trip.dateValue} />
+					<ReviewField icon="calendar" label={trip.exitDate} onChange={(v) => onTripChange('dateValue', v)} value={trip.dateValue} />
+					<ReviewField icon="search" label={trip.residenceCountry} onChange={(v) => onTripChange('residenceCountryValue', v)} value={trip.residenceCountryValue} />
+					<ReviewField icon="chevron" label={trip.prevVisas} onChange={(v) => onTripChange('prevVisasValue', v)} value={trip.prevVisasValue} />
+					<ReviewFileField filename={docs.hotelFile} label={docs.hotel} replaceLabel={'Заменить бронирование отеля'} viewLabel={'Посмотреть'} />
+					<ReviewFileField filename={docs.flightsFile} label={docs.flights} replaceLabel={'Заменить бронирование авиабилетов'} viewLabel={'Посмотреть'} />
+					<ReviewFileField filename={docs.insuranceFile} label={docs.insurance} replaceLabel={'Заменить медицинскую страховку'} viewLabel={'Посмотреть'} />
+				</div>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render Step 8.4 — photo review from Figma node 520:15771.
+function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onReplace }: { photoDataUrl: string, onBack: () => void, onHome: () => void, onContinue: () => void, onReplace: () => void }) {
+	const { t } = useI18n()
+	const [showPhoto, setShowPhoto] = useState(false)
+	return (
+		<section aria-label="Review photo" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<ReviewProgress subStep={4} />
+					<div className="visa-copy">
+						<h1><span className="review-title-sub">{'Проверьте заявку'}</span>{'\nВаша фотография'}</h1>
+						<p>{'Проверьте данные и при необходимости внесите изменения в соответствующие поля.'}</p>
+					</div>
+				</header>
+				<div className="visa-personal-form">
+					<div className="visa-personal-field">
+						<label>{'Фотография'}</label>
+						<div className="review-file-field">
+							<div className="review-file-row">
+								<svg aria-hidden fill="none" height="24" stroke="rgb(0 29 71 / 0.52)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24">
+									<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+									<polyline points="14 2 14 8 20 8" />
+								</svg>
+								<span className="review-file-name">{'photo.jpeg'}</span>
+								<button className="review-file-link" onClick={() => setShowPhoto((v) => !v)} type="button">{'Посмотреть'}</button>
+							</div>
+						</div>
+						<button className="review-file-replace" onClick={onReplace} type="button">{'Заменить фотографию'}</button>
+					</div>
+					{showPhoto && photoDataUrl ? (
+						<div className="visa-photo-preview">
+							<img alt="Your photo" src={photoDataUrl} />
+						</div>
+					) : null}
+				</div>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render Step 9 — visa applicants list from Figma node 520:15780.
+function VisaApplicantsScreen ({ applicants, visaType, visaDestination, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onContinue }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onContinue: () => void }) {
+	const { t } = useI18n()
+	const visaLabel = `Шенгенская виза в ${visaDestination === 'italy' ? 'Италию' : visaDestination === 'france' ? 'Францию' : visaDestination === 'spain' ? 'Испанию' : visaDestination === 'hungary' ? 'Венгрию' : 'Грецию'} (Тип ${visaType === 'type-c' ? 'C' : 'D'})`
+	return (
+		<section aria-label="Visa applicants" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<div className="visa-progress visa-progress-trip" role="presentation">
+						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
+						<span className="is-active" /><span /><i />
+					</div>
+					<div className="visa-copy">
+						<h1>{'Заявители на визу'}</h1>
+						<p>{'Вы можете добавить несколько заявителей или перейти к следующему этапу.'}</p>
+					</div>
+				</header>
+				<div className="applicants-list">
+					{applicants.map((applicant, index) => (
+						<div className="applicant-card" key={index}>
+							<div className="applicant-badge">{'100% заполнено'}</div>
+							<div className="applicant-info">
+								<span className="applicant-name">{applicant.passport.fullName || `${applicant.passport.firstName} ${applicant.passport.lastName}`.trim() || 'Заявитель'}</span>
+								<span className="applicant-detail">{`Номер загранпаспорта: ${applicant.passport.passportNumber || '—'}`}</span>
+								<span className="applicant-detail">{visaLabel}</span>
+							</div>
+							<div className="applicant-actions">
+								<button className="applicant-btn" onClick={() => onEditApplicant(index)} type="button">{'Изменить'}</button>
+								<button className="applicant-btn applicant-btn-delete" onClick={() => onDeleteApplicant(index)} type="button">{'Удалить'}</button>
+							</div>
+						</div>
+					))}
+					<div className="applicant-card applicant-card-add">
+						<div className="applicant-info">
+							<span className="applicant-name">{'Добавьте заявителя'}</span>
+							<span className="applicant-detail">{visaLabel}</span>
+						</div>
+						<div className="applicant-actions">
+							<button className="applicant-btn applicant-btn-add" onClick={onAddApplicant} type="button">
+								<svg fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="20"><line x1="12" x2="12" y1="5" y2="19" /><line x1="5" x2="19" y1="12" y2="12" /></svg>
+								{'Добавить'}
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render document upload form from Figma node 520:15661.
+function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
+	const { locale, t } = useI18n()
+	const copy = VISA_DOCS_TEXT[locale]
+	const [hotelFile, setHotelFile] = useState(copy.hotelFile)
+	const [flightsFile, setFlightsFile] = useState(copy.flightsFile)
+	const [insuranceFile, setInsuranceFile] = useState(copy.insuranceFile)
+
+	return (
+		<section aria-label="Trip documents" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+
+					<div className="visa-progress visa-progress-trip" role="presentation">
+						<i className="is-done" />
+						<span className="is-active" />
+						<span />
+						<span />
+						<span />
+						<i />
+					</div>
+
+					<div className="visa-copy">
+						<h1>{copy.title}</h1>
+						<p>{copy.subtitle}</p>
+					</div>
+				</header>
+
+				<div className="visa-personal-form">
+					<VisaDocField filename={hotelFile} label={copy.hotel} onClear={() => setHotelFile('')} />
+					<VisaDocField filename={flightsFile} label={copy.flights} onClear={() => setFlightsFile('')} />
+					<VisaDocField filename={insuranceFile} label={copy.insurance} onClear={() => setInsuranceFile('')} />
+				</div>
+
+				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render one document upload field with file name and clear button.
+function VisaDocField ({ label, filename, onClear }: { label: string, filename: string, onClear: () => void }) {
+	return (
+		<div className="visa-personal-field">
+			<label>{label}</label>
+			<div className="profile-data-input with-icon with-right-icon">
+				<svg aria-hidden fill="none" height="24" stroke="rgb(0 29 71 / 0.52)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+					<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+					<polyline points="14 2 14 8 20 8" />
+				</svg>
+				<span>{filename}</span>
+				{filename ? (
+					<button aria-label="Remove file" className="field-clear-btn" onClick={onClear} type="button">
+						<svg aria-hidden fill="none" height="24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+							<line x1="18" x2="6" y1="6" y2="18" />
+							<line x1="6" x2="18" y1="6" y2="18" />
+						</svg>
+					</button>
+				) : null}
 			</div>
 		</div>
 	)
@@ -1908,7 +2566,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -1932,6 +2590,18 @@ function EntryFlow () {
 	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
 	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
 	const [isVisaWarningOpen, setIsVisaWarningOpen] = useState(false)
+	const [visaPhotoDataUrl, setVisaPhotoDataUrl] = useState('')
+	const [afterPhotoCheckTab, setAfterPhotoCheckTab] = useState<'visa-review-passport' | 'visa-review-photo'>('visa-review-passport')
+	const [reviewPassport, setReviewPassport] = useState<PassportEntry>(createPassportDraft)
+	const [reviewPersonal, setReviewPersonal] = useState(() => ({ ...VISA_PERSONAL_TEXT['ru'] }))
+	const [reviewTrip, setReviewTrip] = useState(() => ({ ...VISA_TRIP_TEXT['ru'] }))
+	const [reviewDocs] = useState(() => ({ ...VISA_DOCS_TEXT['ru'] }))
+	const [currentApplicants, setCurrentApplicants] = useState<VisaApplicant[]>([])
+	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
+	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(() => {
+		try { return JSON.parse(localStorage.getItem('visa-drafts') ?? '[]') } catch { return [] }
+	})
+	const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
 	const isPopNavigationRef = useRef(false)
 
 	// Move app to target view and sync browser history state.
@@ -2110,7 +2780,13 @@ function EntryFlow () {
 					: activeTab === 'home'
 						? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onOpenVisaStart={() => navigate('home', 'visa-start')} />
 						: activeTab === 'documents'
-							? <DocumentsScreen onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
+							? <DocumentsScreen drafts={savedDrafts} onContinueDraft={(id) => {
+								const draft = savedDrafts.find((d) => d.id === id)
+								if (!draft) return
+								setActiveDraftId(id)
+								setCurrentApplicants(draft.applicants)
+								navigate('home', 'visa-applicants')
+							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
 								? <VisaStartScreen selectedDestination={selectedVisaDestination} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectDestination={setSelectedVisaDestination} />
 							: activeTab === 'visa-type'
@@ -2126,9 +2802,80 @@ function EntryFlow () {
 								? <PassportRecognitionScreen onBack={() => navigate('home', 'passport-camera')} />
 							: activeTab === 'visa-personal-one'
 								? <VisaPersonalOneScreen onBack={() => navigate('home', 'visa-passport')} onContinue={() => navigate('home', 'visa-personal-two')} onHome={() => navigate('home', 'home')} />
-							: activeTab === 'visa-personal-two'
-								? <VisaPersonalTwoScreen onBack={() => navigate('home', 'visa-personal-one')} onContinue={() => navigate('home', 'home')} onHome={() => navigate('home', 'home')} />
-							: activeTab === 'profile'
+						: activeTab === 'visa-personal-two'
+							? <VisaPersonalTwoScreen onBack={() => navigate('home', 'visa-personal-one')} onContinue={() => navigate('home', 'visa-trip')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-trip'
+							? <VisaTripScreen onBack={() => navigate('home', 'visa-personal-two')} onContinue={() => navigate('home', 'visa-docs')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-docs'
+							? <VisaDocumentsScreen onBack={() => navigate('home', 'visa-trip')} onContinue={() => navigate('home', 'visa-photo')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-photo'
+							? <VisaPhotoScreen onBack={() => navigate('home', 'visa-docs')} onCamera={() => navigate('home', 'visa-photo-camera')} onHome={() => navigate('home', 'home')} onUpload={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
+						: activeTab === 'visa-photo-camera'
+							? <VisaPhotoCameraScreen onBack={() => navigate('home', 'visa-photo')} onCapture={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
+						: activeTab === 'visa-photo-check'
+							? <VisaPhotoCheckScreen photoDataUrl={visaPhotoDataUrl} onBack={() => navigate('home', 'visa-photo')} onDone={() => { if (afterPhotoCheckTab === 'visa-review-passport') setReviewPassport({ ...passportDraft }); navigate('home', afterPhotoCheckTab) }} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-review-passport'
+							? <VisaReviewPassportScreen passport={reviewPassport} onBack={() => navigate('home', 'visa-photo-check')} onContinue={() => navigate('home', 'visa-review-personal')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPassport((p) => ({ ...p, [field]: value }))} />
+						: activeTab === 'visa-review-personal'
+							? <VisaReviewPersonalScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-review-passport')} onContinue={() => navigate('home', 'visa-review-trip')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} />
+						: activeTab === 'visa-review-trip'
+							? <VisaReviewTripScreen docs={reviewDocs} trip={reviewTrip} onBack={() => navigate('home', 'visa-review-personal')} onContinue={() => navigate('home', 'visa-review-photo')} onHome={() => navigate('home', 'home')} onTripChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} />
+						: activeTab === 'visa-review-photo'
+							? <VisaReviewPhotoScreen photoDataUrl={visaPhotoDataUrl} onBack={() => navigate('home', 'visa-review-trip')} onContinue={() => {
+								const applicant: VisaApplicant = { passport: reviewPassport, personal: reviewPersonal, trip: reviewTrip, docs: reviewDocs, photoDataUrl: visaPhotoDataUrl }
+								if (editingApplicantIndex !== null) {
+									setCurrentApplicants((prev) => prev.map((a, i) => i === editingApplicantIndex ? applicant : a))
+									setEditingApplicantIndex(null)
+								} else {
+									setCurrentApplicants((prev) => [...prev, applicant])
+								}
+								navigate('home', 'visa-applicants')
+							}} onHome={() => navigate('home', 'home')} onReplace={() => { setAfterPhotoCheckTab('visa-review-photo'); navigate('home', 'visa-photo') }} />
+						: activeTab === 'visa-applicants'
+							? <VisaApplicantsScreen
+								applicants={currentApplicants}
+								visaType={selectedVisaType}
+								visaDestination={selectedVisaDestination}
+								onBack={() => navigate('home', 'visa-review-photo')}
+								onHome={() => navigate('home', 'home')}
+								onAddApplicant={() => {
+									setReviewPassport(createPassportDraft())
+									setReviewPersonal({ ...VISA_PERSONAL_TEXT['ru'] })
+									setReviewTrip({ ...VISA_TRIP_TEXT['ru'] })
+									setVisaPhotoDataUrl('')
+									setEditingApplicantIndex(null)
+									setAfterPhotoCheckTab('visa-review-passport')
+									navigate('home', 'visa-passport')
+								}}
+								onEditApplicant={(index) => {
+									const a = currentApplicants[index]
+									setReviewPassport({ ...a.passport })
+									setReviewPersonal({ ...a.personal })
+									setReviewTrip({ ...a.trip })
+									setVisaPhotoDataUrl(a.photoDataUrl)
+									setEditingApplicantIndex(index)
+									setAfterPhotoCheckTab('visa-review-passport')
+									navigate('home', 'visa-review-passport')
+								}}
+								onDeleteApplicant={(index) => setCurrentApplicants((prev) => prev.filter((_, i) => i !== index))}
+								onContinue={() => {
+									const draft: VisaDraft = {
+										id: activeDraftId ?? `draft-${Date.now()}`,
+										createdAt: Date.now(),
+										visaType: selectedVisaType,
+										visaDestination: selectedVisaDestination,
+										applicants: currentApplicants,
+									}
+									setSavedDrafts((prev) => {
+										const next = activeDraftId ? prev.map((d) => d.id === activeDraftId ? draft : d) : [...prev, draft]
+										try { localStorage.setItem('visa-drafts', JSON.stringify(next)) } catch {}
+										return next
+									})
+									setActiveDraftId(draft.id)
+									navigate('home', 'home')
+								}}
+							/>
+						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => navigate('home', 'profile')} onAccountDeleted={() => {
