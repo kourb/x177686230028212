@@ -23,6 +23,52 @@ body {
 	overflow-x: hidden;
 }
 
+.not-found-screen {
+	min-height: 100vh;
+	padding: 32px 16px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	text-align: center;
+	background: #fff;
+	color: var(--ink);
+}
+
+.not-found-screen h1 {
+	margin: 0;
+	font-size: 34px;
+	line-height: 1.1;
+	letter-spacing: -0.02em;
+	font-weight: 600;
+}
+
+.not-found-screen p {
+	margin: 0;
+	max-width: 360px;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+}
+
+.not-found-screen a {
+	min-width: 220px;
+	height: 56px;
+	padding: 0 24px;
+	border-radius: 999px;
+	background: #0066f5;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: #fff;
+	text-decoration: none;
+}
+
 .web-root {
 	position: relative;
 	min-height: 100dvh;
