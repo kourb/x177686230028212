@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState } from 'react'
-import { COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS } from '@/data/countries'
+import { COUNTRY_OPTIONS, DESTINATION_COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
 import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n/config'
@@ -126,6 +126,7 @@ type VisaDraft = {
 	createdAt: number
 	visaType: VisaTypeCode
 	visaDestination: VisaDestinationCode
+	visaDestinationLabel?: string
 	applicants: VisaApplicant[]
 }
 
@@ -289,6 +290,11 @@ function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationC
 	if(locale === 'fr') return `Visa Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Type ${type})`
 	if(locale === 'es') return `Visado Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Tipo ${type})`
 	return `Visto Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Tipo ${type})`
+}
+
+// Compose Russian visa title from selected destination database label.
+function resolveVisaTitleRu (destinationLabel: string, type: VisaTypeCode) {
+	return `Шенгенская виза ${VISA_COUNTRY_FORMS[destinationLabel] ?? `в ${destinationLabel}`} (Тип ${type === 'type-c' ? 'C' : 'D'})`
 }
 
 let googleScriptPromise: Promise<void> | null = null
@@ -1021,10 +1027,8 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 }
 
 // Render visa setup first step screen from Figma node 520:15433.
-function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, onBack, onHome, onContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onContinue: () => void, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: VisaDestinationCode) => void }) {
+function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, selectedDestinationLabel, onBack, onHome, onContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, onBack: () => void, onHome: () => void, onContinue: () => void, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: string) => void }) {
 	const { t } = useI18n()
-	const destinationOption = VISA_DESTINATION_OPTIONS.find((item) => item.code === selectedDestination) ?? VISA_DESTINATION_OPTIONS[0]
-	const destinationLabel = t(destinationOption.labelKey)
 
 	return (
 		<section aria-label="Visa setup" className="visa-screen">
@@ -1056,16 +1060,13 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 				<div className="visa-form">
 					<LivingField icon="search" label={t('visaCitizenship')} onChange={onSelectCitizenship} options={COUNTRY_OPTIONS} value={selectedCitizenship} />
 					<LivingField icon="search" label={t('visaResidence')} onChange={onSelectResidence} options={CITY_OPTIONS} value={selectedResidence} />
-					<LivingField icon="search" label={t('visaDestination')} onChange={(value) => {
-						const found = SCHENGEN_DESTINATIONS.find((item) => item.label === value)
-						if(found) onSelectDestination(found.code)
-					}} options={SCHENGEN_DESTINATIONS.map((item) => item.label)} value={destinationLabel} />
+					<LivingField icon="search" label={t('visaDestination')} onChange={onSelectDestination} options={DESTINATION_COUNTRY_OPTIONS} value={selectedDestinationLabel} />
 
 					<div className="visa-popular">
 						<label>{t('visaPopularDestinations')}</label>
 						<div className="visa-chip-row">
 							{VISA_DESTINATION_OPTIONS.map((item) => (
-								<button className={`visa-chip${selectedDestination === item.code ? ' is-active' : ''}`} key={item.code} onClick={() => onSelectDestination(item.code)} type="button">
+								<button className={`visa-chip${selectedDestination === item.code ? ' is-active' : ''}`} key={item.code} onClick={() => onSelectDestination(t(item.labelKey))} type="button">
 									<Image alt={t(item.labelKey)} className="visa-chip-flag" height={24} src={item.flagSrc} unoptimized width={24} />
 									<span>{t(item.labelKey)}</span>
 								</button>
@@ -1083,11 +1084,14 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 }
 
 // Render visa type selection screen from Figma node 520:15444.
-function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, onCloseWarning: () => void, onConfirmWarning: () => void }) {
+function VisaTypeScreen ({ selectedDestination, selectedDestinationLabel, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, onCloseWarning: () => void, onConfirmWarning: () => void }) {
 	const { locale, t } = useI18n()
 	const typeLetter = selectedType === 'type-c' ? 'C' : 'D'
 	const selectedDetail = VISA_TYPE_DETAILS[selectedDestination][selectedType]
 	const warningText = VISA_WARNING_TEXT[locale]
+	const typeCTitle = locale === 'ru' ? resolveVisaTitleRu(selectedDestinationLabel, 'type-c') : resolveVisaTypeTitle(locale, selectedDestination, 'C')
+	const typeDTitle = locale === 'ru' ? resolveVisaTitleRu(selectedDestinationLabel, 'type-d') : resolveVisaTypeTitle(locale, selectedDestination, 'D')
+	const selectedTitle = selectedType === 'type-c' ? typeCTitle : typeDTitle
 
 	return (
 		<section aria-label="Visa type" className="visa-screen">
@@ -1122,7 +1126,7 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 						<button className={`visa-type-card${selectedType === 'type-c' ? ' is-active' : ''}`} onClick={() => onSelectType('type-c')} type="button">
 							<div className="visa-type-card-copy">
 								<span className="visa-type-badge">{t('visaTypePopular')}</span>
-								<h2>{resolveVisaTypeTitle(locale, selectedDestination, 'C')}</h2>
+								<h2>{typeCTitle}</h2>
 								<b>{t('visaLearnMore')}</b>
 							</div>
 							<i className="visa-type-radio" />
@@ -1130,7 +1134,7 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 
 						<button className={`visa-type-card${selectedType === 'type-d' ? ' is-active' : ''}`} onClick={() => onSelectType('type-d')} type="button">
 							<div className="visa-type-card-copy">
-								<h2>{resolveVisaTypeTitle(locale, selectedDestination, 'D')}</h2>
+								<h2>{typeDTitle}</h2>
 								<b>{t('visaLearnMore')}</b>
 							</div>
 							<i className="visa-type-radio" />
@@ -1144,10 +1148,10 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 			</div>
 
 			{isWarningOpen ? <div className="visa-warning-overlay" role="presentation">
-				<section aria-label={resolveVisaTypeTitle(locale, selectedDestination, typeLetter)} className="visa-warning-sheet" role="dialog" aria-modal="true">
+				<section aria-label={selectedTitle} className="visa-warning-sheet" role="dialog" aria-modal="true">
 					<i className="visa-warning-grabber" />
 					<div className="visa-warning-header">
-						<h2>{resolveVisaTypeTitle(locale, selectedDestination, typeLetter)}</h2>
+						<h2>{selectedTitle}</h2>
 						<button aria-label={t('notificationsClose')} className="visa-warning-close" onClick={onCloseWarning} type="button" />
 					</div>
 
@@ -1156,7 +1160,7 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 					<div className="visa-warning-card">
 						<div className="visa-type-card-copy">
 							{selectedType === 'type-c' ? <span className="visa-type-badge">{t('visaTypePopular')}</span> : null}
-							<h2>{resolveVisaTypeTitle(locale, selectedDestination, typeLetter)}</h2>
+							<h2>{selectedTitle}</h2>
 						</div>
 						<i className="visa-type-radio" />
 					</div>
@@ -2110,9 +2114,9 @@ function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onRe
 }
 
 // Render Step 9 — visa applicants list from Figma node 520:15780.
-function VisaApplicantsScreen ({ applicants, visaType, visaDestination, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onContinue }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onContinue: () => void }) {
+function VisaApplicantsScreen ({ applicants, visaType, visaTitle, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onContinue }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaTitle: string, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onContinue: () => void }) {
 	const { t } = useI18n()
-	const visaLabel = `Шенгенская виза в ${visaDestination === 'italy' ? 'Италию' : visaDestination === 'france' ? 'Францию' : visaDestination === 'spain' ? 'Испанию' : visaDestination === 'hungary' ? 'Венгрию' : 'Грецию'} (Тип ${visaType === 'type-c' ? 'C' : 'D'})`
+	const visaLabel = visaTitle
 	return (
 		<section aria-label="Visa applicants" className="visa-screen">
 			<div className="visa-scroll visa-personal-scroll">
@@ -2171,11 +2175,9 @@ function VisaApplicantsScreen ({ applicants, visaType, visaDestination, onBack, 
 }
 
 // Render Step 10 — final application summary and payment selection.
-function VisaPaymentScreen ({ applicants, visaType, visaDestination, selectedPayment, onBack, onHome, onSelectPayment, onPay }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, selectedPayment: PaymentMethodCode, onBack: () => void, onHome: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onPay: () => void }) {
+function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, selectedPayment, onBack, onHome, onSelectPayment, onPay }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, visaTitle: string, selectedPayment: PaymentMethodCode, onBack: () => void, onHome: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onPay: () => void }) {
 	const { t } = useI18n()
 	const detail = VISA_TYPE_DETAILS[visaDestination][visaType]
-	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
-	const visaTitle = `Шенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`
 	const methods: { code: PaymentMethodCode, title: string, subtitle: string, badge?: string }[] = [
 		{ code: 'sbp', title: 'Через СБП', subtitle: 'В приложении банка.', badge: 'Популярное' },
 		{ code: 'card-new', title: 'Новой картой', subtitle: 'Введите данные карты.', badge: 'МИР / Visa / MasterCard' },
@@ -2259,9 +2261,8 @@ function VisaPaymentScreen ({ applicants, visaType, visaDestination, selectedPay
 }
 
 // Render Step 11 — application verification status screen.
-function VisaCheckScreen ({ applicant, visaType, visaDestination, onBack, onHome, onDownload }: { applicant: VisaApplicant | null, visaType: VisaTypeCode, visaDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onDownload: () => void }) {
+function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome, onDownload }: { applicant: VisaApplicant | null, visaTitle: string, onBack: () => void, onHome: () => void, onDownload: () => void }) {
 	const { t } = useI18n()
-	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
 	const passport = applicant?.passport ?? createPassportDraft()
 
 	return (
@@ -2290,7 +2291,7 @@ function VisaCheckScreen ({ applicant, visaType, visaDestination, onBack, onHome
 					<span className="visa-check-badge">{'На проверке'}</span>
 					<div className="visa-check-card-copy">
 						<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
-						<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\nШенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`}</p>
+						<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
 					</div>
 				</section>
 
@@ -2309,9 +2310,8 @@ function VisaCheckScreen ({ applicant, visaType, visaDestination, onBack, onHome
 }
 
 // Render final verification outcome screen after application checks complete.
-function VisaCheckResultScreen ({ applicant, visaType, visaDestination, isSuccess, onBack, onHome, onDownload, onEdit }: { applicant: VisaApplicant | null, visaType: VisaTypeCode, visaDestination: VisaDestinationCode, isSuccess: boolean, onBack: () => void, onHome: () => void, onDownload: () => void, onEdit: () => void }) {
+function VisaCheckResultScreen ({ applicant, visaTitle, isSuccess, onBack, onHome, onDownload, onEdit }: { applicant: VisaApplicant | null, visaTitle: string, isSuccess: boolean, onBack: () => void, onHome: () => void, onDownload: () => void, onEdit: () => void }) {
 	const { t } = useI18n()
-	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
 	const passport = applicant?.passport ?? createPassportDraft()
 
 	return (
@@ -2341,7 +2341,7 @@ function VisaCheckResultScreen ({ applicant, visaType, visaDestination, isSucces
 						<span className={`visa-check-badge${isSuccess ? ' is-success' : ' is-error'}`}>{isSuccess ? 'Проверка успешно пройдена' : 'Требуются правки'}</span>
 						<div className="visa-check-card-copy">
 							<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
-							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\nШенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`}</p>
+							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
 						</div>
 					</div>
 					{isSuccess ? null : (
@@ -2363,9 +2363,8 @@ function VisaCheckResultScreen ({ applicant, visaType, visaDestination, isSucces
 }
 
 // Render Step 12 — ready documents and appointment selection screen.
-function VisaDocumentsReadyScreen ({ applicant, visaType, visaDestination, onBack, onHome, onContinue }: { applicant: VisaApplicant | null, visaType: VisaTypeCode, visaDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onContinue: () => void }) {
+function VisaDocumentsReadyScreen ({ applicant, visaTitle, onBack, onHome, onContinue }: { applicant: VisaApplicant | null, visaTitle: string, onBack: () => void, onHome: () => void, onContinue: () => void }) {
 	const { t } = useI18n()
-	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
 	const passport = applicant?.passport ?? createPassportDraft()
 	const [center, setCenter] = useState('Москва')
 	const [appointmentDate, setAppointmentDate] = useState('16.05.2026')
@@ -2398,7 +2397,7 @@ function VisaDocumentsReadyScreen ({ applicant, visaType, visaDestination, onBac
 						<span className="visa-check-badge is-success">{'Готовая виза'}</span>
 						<div className="visa-check-card-copy">
 							<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
-							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\nШенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`}</p>
+							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
 						</div>
 					</div>
 					<div className="visa-ready-actions">
@@ -3019,6 +3018,7 @@ function EntryFlow () {
 	const [passportsError, setPassportsError] = useState('')
 	const [selectedVisaCitizenship, setSelectedVisaCitizenship] = useState('Российская Федерация')
 	const [selectedVisaResidence, setSelectedVisaResidence] = useState('Москва')
+	const [selectedVisaDestinationLabel, setSelectedVisaDestinationLabel] = useState('Италия')
 	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
 	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
 	const [isVisaWarningOpen, setIsVisaWarningOpen] = useState(false)
@@ -3039,6 +3039,7 @@ function EntryFlow () {
 	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(resolveSavedDrafts)
 	const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
 	const isPopNavigationRef = useRef(false)
+	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -3149,6 +3150,13 @@ function EntryFlow () {
 		setSelectedVisaType(type)
 	}
 
+	// Select destination label and sync supported Schengen flow country when available.
+	const selectVisaDestinationLabel = (value: string) => {
+		setSelectedVisaDestinationLabel(value)
+		const found = SCHENGEN_DESTINATIONS.find((item) => item.label === value)
+		if(found) setSelectedVisaDestination(found.code)
+	}
+
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'passports-list') return
 		loadPassports()
@@ -3245,12 +3253,13 @@ function EntryFlow () {
 								setCurrentApplicants(draft.applicants)
 								setSelectedVisaType(draft.visaType)
 								setSelectedVisaDestination(draft.visaDestination)
+								setSelectedVisaDestinationLabel(draft.visaDestinationLabel ?? SCHENGEN_DESTINATIONS.find((item) => item.code === draft.visaDestination)?.label ?? 'Италия')
 								navigate('home', 'visa-applicants')
 							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
-								? <VisaStartScreen selectedCitizenship={selectedVisaCitizenship} selectedDestination={selectedVisaDestination} selectedResidence={selectedVisaResidence} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectCitizenship={setSelectedVisaCitizenship} onSelectDestination={setSelectedVisaDestination} onSelectResidence={setSelectedVisaResidence} />
+								? <VisaStartScreen selectedCitizenship={selectedVisaCitizenship} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedResidence={selectedVisaResidence} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectCitizenship={setSelectedVisaCitizenship} onSelectDestination={selectVisaDestinationLabel} onSelectResidence={setSelectedVisaResidence} />
 							: activeTab === 'visa-type'
-								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onConfirmWarning={() => {
+								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onConfirmWarning={() => {
 									setIsVisaWarningOpen(false)
 									navigate('home', 'visa-passport')
 								}} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
@@ -3295,7 +3304,7 @@ function EntryFlow () {
 							? <VisaApplicantsScreen
 								applicants={currentApplicants}
 								visaType={selectedVisaType}
-								visaDestination={selectedVisaDestination}
+								visaTitle={currentVisaTitle}
 								onBack={() => navigate('home', 'visa-review-photo')}
 								onHome={() => navigate('home', 'home')}
 								onAddApplicant={() => {
@@ -3324,6 +3333,7 @@ function EntryFlow () {
 										createdAt: Date.now(),
 										visaType: selectedVisaType,
 										visaDestination: selectedVisaDestination,
+										visaDestinationLabel: selectedVisaDestinationLabel,
 										applicants: currentApplicants,
 									}
 									setSavedDrafts((prev) => {
@@ -3336,15 +3346,15 @@ function EntryFlow () {
 								}}
 							/>
 						: activeTab === 'visa-payment'
-							? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-applicants')} onHome={() => navigate('home', 'home')} onPay={() => navigate('home', 'visa-check')} onSelectPayment={setSelectedPayment} />
+							? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-applicants')} onHome={() => navigate('home', 'home')} onPay={() => navigate('home', 'visa-check')} onSelectPayment={setSelectedPayment} />
 						: activeTab === 'visa-check'
-							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'visa-documents-ready')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'visa-documents-ready')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-rejected'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-documents-ready'
-							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-verified')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
+							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-verified')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
