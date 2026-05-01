@@ -1114,10 +1114,27 @@ body {
 	position: relative;
 	height: 100%;
 	overflow: hidden;
-	background:
-		linear-gradient(rgb(0 8 20 / 0.72), rgb(0 8 20 / 0.72)),
-		radial-gradient(circle at 28% 22%, rgb(255 255 255 / 0.18), transparent 18%),
-		linear-gradient(145deg, #16365a 0%, #0b1324 46%, #364b38 100%);
+	background: #000;
+}
+
+.passport-camera-video {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.passport-camera-canvas {
+	display: none;
+}
+
+.passport-camera-screen::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: rgb(0 8 20 / 0.48);
+	pointer-events: none;
 }
 
 .passport-camera-back {
@@ -1125,7 +1142,7 @@ body {
 	position: absolute;
 	top: 62px;
 	left: 8px;
-	z-index: 2;
+	z-index: 3;
 	width: 40px;
 	height: 40px;
 	display: grid;
@@ -1136,12 +1153,13 @@ body {
 
 .passport-camera-frame {
 	position: absolute;
-	top: 126px;
+	top: 112px;
 	left: 28px;
 	right: 28px;
-	height: 491px;
+	height: min(491px, calc(100% - 318px));
 	border: 4px dashed #fff;
 	border-radius: 12px;
+	z-index: 2;
 }
 
 .passport-camera-frame span {
@@ -1190,7 +1208,7 @@ body {
 
 .passport-camera-screen p {
 	position: absolute;
-	top: 665px;
+	bottom: 142px;
 	left: 16px;
 	right: 16px;
 	margin: 0;
@@ -1200,6 +1218,23 @@ body {
 	letter-spacing: -0.02em;
 	text-align: center;
 	color: #fff;
+	z-index: 3;
+}
+
+.passport-camera-error {
+	position: absolute;
+	left: 16px;
+	right: 16px;
+	bottom: 112px;
+	z-index: 3;
+	padding: 8px 12px;
+	border-radius: 12px;
+	background: rgb(0 0 0 / 0.56);
+	font-size: 14px;
+	line-height: 1.35;
+	font-weight: 500;
+	text-align: center;
+	color: #ffb4b4;
 }
 
 .passport-camera-controls {
@@ -1207,6 +1242,7 @@ body {
 	left: 61px;
 	right: 61px;
 	bottom: 58px;
+	z-index: 3;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -1251,6 +1287,10 @@ body {
 	height: 72px;
 	border-radius: 50%;
 	box-shadow: inset 0 0 0 8px #fff;
+}
+
+.passport-camera-shutter:disabled {
+	opacity: 0.45;
 }
 
 .passport-camera-shutter::after {
@@ -1640,7 +1680,21 @@ body {
 }
 
 .field-file-input {
-	display: none;
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	border: 0 !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	clip-path: inset(50%) !important;
+}
+
+.profile-data-input input.field-file-input {
+	display: block;
+	flex: 0 0 1px;
+	min-width: 0;
 }
 
 .field-sheet-backdrop {
@@ -2422,13 +2476,21 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 .visa-photo-file-input {
-	display: none;
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	padding: 0 !important;
+	margin: -1px !important;
+	border: 0 !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+	clip-path: inset(50%) !important;
 }
 
 /* ─── Visa Photo camera screen (520:15990) ─── */
 
 .visa-photo-camera-screen {
-	position: fixed;
+	position: absolute;
 	inset: 0;
 	background: #000;
 	overflow: hidden;
@@ -2457,8 +2519,8 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 .visa-photo-camera-cutout {
-	width: 86%;
-	aspect-ratio: 346 / 445;
+	width: min(346px, 86%);
+	height: min(445px, calc(100% - 260px));
 	border-radius: 12px;
 	background: transparent;
 	box-shadow: 0 0 0 9999px rgb(0 8 20 / 0.8);
@@ -2466,10 +2528,11 @@ html:not(.motion-disabled) .calendar-sheet {
 
 .visa-photo-camera-corners {
 	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	top: 50%;
+	left: 50%;
+	width: min(346px, 86%);
+	height: min(445px, calc(100% - 260px));
+	transform: translate(-50%, -50%);
 	pointer-events: none;
 }
 
@@ -2483,32 +2546,32 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 .visa-photo-camera-corners .tl {
-	top: calc(50% - 445px * 0.86 / 2 - 10px);
-	left: calc(50% - 86% / 2 - 10px);
+	top: -10px;
+	left: -10px;
 	border-top-width: 4px;
 	border-left-width: 4px;
 	border-radius: 12px 0 0 0;
 }
 
 .visa-photo-camera-corners .tr {
-	top: calc(50% - 445px * 0.86 / 2 - 10px);
-	right: calc(50% - 86% / 2 - 10px);
+	top: -10px;
+	right: -10px;
 	border-top-width: 4px;
 	border-right-width: 4px;
 	border-radius: 0 12px 0 0;
 }
 
 .visa-photo-camera-corners .bl {
-	bottom: calc(50% - 445px * 0.86 / 2 - 10px);
-	left: calc(50% - 86% / 2 - 10px);
+	bottom: -10px;
+	left: -10px;
 	border-bottom-width: 4px;
 	border-left-width: 4px;
 	border-radius: 0 0 0 12px;
 }
 
 .visa-photo-camera-corners .br {
-	bottom: calc(50% - 445px * 0.86 / 2 - 10px);
-	right: calc(50% - 86% / 2 - 10px);
+	bottom: -10px;
+	right: -10px;
 	border-bottom-width: 4px;
 	border-right-width: 4px;
 	border-radius: 0 0 12px 0;

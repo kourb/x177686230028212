@@ -1386,9 +1386,50 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 // Render passport camera scanner step from Figma node 520:15963.
 function PassportCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCapture: () => void }) {
 	const { locale, t } = useI18n()
+	const videoRef = useRef<HTMLVideoElement | null>(null)
+	const canvasRef = useRef<HTMLCanvasElement | null>(null)
+	const streamRef = useRef<MediaStream | null>(null)
+	const [isReady, setIsReady] = useState(false)
+	const [error, setError] = useState('')
+
+	useEffect(() => {
+		let active = true
+
+		// Start rear camera stream for passport scanning.
+		navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+			.then((stream) => {
+				if(!active) { stream.getTracks().forEach((track) => track.stop()); return }
+				streamRef.current = stream
+				if(videoRef.current) {
+					videoRef.current.srcObject = stream
+					videoRef.current.play().then(() => { if(active) setIsReady(true) })
+				}
+			})
+			.catch((err) => { if(active) setError(err instanceof Error ? err.message : 'Camera unavailable') })
+
+		return () => {
+			active = false
+			streamRef.current?.getTracks().forEach((track) => track.stop())
+			streamRef.current = null
+		}
+	}, [])
+
+	// Capture current frame before moving into recognition state.
+	const capture = () => {
+		const video = videoRef.current
+		const canvas = canvasRef.current
+		if(video && canvas) {
+			canvas.width = video.videoWidth
+			canvas.height = video.videoHeight
+			canvas.getContext('2d')?.drawImage(video, 0, 0)
+		}
+		onCapture()
+	}
 
 	return (
 		<section aria-label="Passport camera" className="passport-camera-screen">
+			<video autoPlay className="passport-camera-video" muted playsInline ref={videoRef} />
+			<canvas className="passport-camera-canvas" ref={canvasRef} />
 			<button aria-label={t('profileDataBack')} className="passport-camera-back" onClick={onBack} type="button">
 				<Image alt="Back" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 			</button>
@@ -1402,10 +1443,11 @@ function PassportCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCa
 			</div>
 
 			<p>{PASSPORT_SCAN_TEXT[locale].cameraHint}</p>
+			{error ? <strong className="passport-camera-error">{error}</strong> : null}
 
 			<div className="passport-camera-controls">
 				<button aria-label={t('notificationsClose')} className="passport-camera-close" onClick={onBack} type="button" />
-				<button aria-label="Capture" className="passport-camera-shutter" onClick={onCapture} type="button" />
+				<button aria-label="Capture" className="passport-camera-shutter" disabled={!isReady} onClick={capture} type="button" />
 				<button aria-label="Flash" className="passport-camera-flash" type="button" />
 			</div>
 		</section>
@@ -3214,7 +3256,7 @@ function EntryFlow () {
 						: activeTab === 'visa-photo-check'
 							? <VisaPhotoCheckScreen photoDataUrl={visaPhotoDataUrl} onBack={() => navigate('home', 'visa-photo')} onDone={() => { if (afterPhotoCheckTab === 'visa-review-passport') setReviewPassport({ ...passportDraft }); navigate('home', afterPhotoCheckTab) }} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-review-passport'
-							? <VisaReviewPassportScreen passport={reviewPassport} onBack={() => navigate('home', 'visa-photo-check')} onContinue={() => navigate('home', 'visa-review-personal')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPassport((p) => ({ ...p, [field]: value }))} />
+							? <VisaReviewPassportScreen passport={reviewPassport} onBack={() => navigate('home', 'visa-photo')} onContinue={() => navigate('home', 'visa-review-personal')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPassport((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-personal'
 							? <VisaReviewPersonalScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-review-passport')} onContinue={() => navigate('home', 'visa-review-trip')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-trip'
@@ -3279,9 +3321,9 @@ function EntryFlow () {
 						: activeTab === 'visa-check'
 							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'visa-documents-ready')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'visa-documents-ready')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-rejected'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-documents-ready'
 							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-verified')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
@@ -3295,7 +3337,7 @@ function EntryFlow () {
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'
-											? <PassportStepOneScreen draft={passportDraft} onBack={() => navigate('home', passportFlowMode === 'visa-create' ? 'passport-recognition' : 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
+										? <PassportStepOneScreen draft={passportDraft} onBack={() => navigate('home', passportFlowMode === 'visa-create' ? 'passport-camera' : 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
 										: activeTab === 'passports-step-two'
 											? <PassportStepTwoScreen draft={passportDraft} onBack={() => navigate('home', 'passports-step-one')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
 											: activeTab === 'passports-review'
