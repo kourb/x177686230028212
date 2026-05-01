@@ -611,7 +611,7 @@ function mapApplicationDtoToDraft (dto: ApplicationDto, local?: VisaDraft): Visa
 		visaType: local?.visaType ?? (String(dto.visaTypeCode).toLowerCase().includes('d') ? 'type-d' : 'type-c'),
 		visaDestination: local?.visaDestination ?? (SCHENGEN_DESTINATIONS.find((item) => dto.countryName.toLowerCase().includes(item.label.toLowerCase()))?.code ?? 'italy'),
 		visaDestinationLabel: local?.visaDestinationLabel ?? dto.countryName,
-		status: local?.status === 'checking' && backendStatus === 'draft' ? 'checking' : backendStatus,
+		status: backendStatus,
 		applicantCount: Number(dto.applicantCount) || local?.applicants.length || 0,
 		applicants: local?.applicants ?? [],
 	}
@@ -3338,14 +3338,23 @@ function EntryFlow () {
 		} catch {}
 	}
 
-	// Persist status changes for the active visa draft.
+	// Persist visible status from backend response into local UI cache.
 	const updateActiveDraftStatus = (status: NonNullable<VisaDraft['status']>) => {
 		if(!activeDraftId) return
-		persistLocalDrafts(resolveSavedDrafts().map((draft) => draft.id === activeDraftId ? { ...draft, status } : draft))
 		setSavedDrafts((prev) => {
 			const next = prev.map((draft) => draft.id === activeDraftId ? { ...draft, status } : draft)
 			return persistLocalDrafts(next)
 		})
+	}
+
+	// Submit application to backend self-check before showing waiting UI.
+	const sendApplicationToBackendCheck = async () => {
+		if(activeDraftId) {
+			const application = await runBackendSelfCheck(activeDraftId)
+			updateActiveDraftStatus(mapApplicationStatus(application.status))
+		}
+		visaCheckRequestRef.current = null
+		navigate('home', 'visa-check')
 	}
 
 	// Remove draft from backend when possible and always clear local cache.
@@ -3526,11 +3535,10 @@ function EntryFlow () {
 		let active = true
 
 		const check = async () => {
-			const draft = savedDrafts.find((item) => item.id === activeDraftId)
-			const application = draft?.status === 'draft' || draft?.status === 'error' ? await runBackendSelfCheck(activeDraftId) : await loadBackendApplication(activeDraftId)
+			const application = await loadBackendApplication(activeDraftId)
 			if(!active) return
 			const status = mapApplicationStatus(application.status)
-			updateActiveDraftStatus(status === 'error' ? 'error' : 'checking')
+			updateActiveDraftStatus(status)
 			navigate('home', status === 'error' ? 'visa-rejected' : 'visa-verified')
 		}
 
@@ -3540,7 +3548,7 @@ function EntryFlow () {
 		return () => {
 			active = false
 		}
-	}, [step, activeTab, activeDraftId, savedDrafts])
+	}, [step, activeTab, activeDraftId])
 
 	// Persist developer-selected animation preference.
 	const toggleAnimationsDisabled = (value: boolean) => {
@@ -3780,7 +3788,7 @@ function EntryFlow () {
 									onContinue={() => { if(isActiveDraftEditable) saveCurrentApplication(); else navigate('home', 'documents') }}
 								/>
 							: activeTab === 'visa-payment'
-								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={() => { updateActiveDraftStatus('checking'); visaCheckRequestRef.current = null; navigate('home', 'visa-check') }} onSelectPayment={setSelectedPayment} />
+								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={sendApplicationToBackendCheck} onSelectPayment={setSelectedPayment} />
 						: activeTab === 'visa-check'
 							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
