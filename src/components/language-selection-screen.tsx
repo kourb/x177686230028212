@@ -26,8 +26,6 @@ type AuthDeletePath = '/v1/app/auth/account'
 
 type AuthDeleteDynamicPath = `/v1/app/passports/${string}` | `/v1/app/applications/${string}`
 
-type AuthGetPath = '/v1/app/auth/sessions' | '/v1/app/dashboard' | '/v1/app/passports'
-
 type GoogleCredentialResponse = {
 	credential?: string
 }
@@ -584,11 +582,6 @@ function createDocsDraft (fillTestValues = false) {
 	return { ...VISA_DOCS_TEXT['ru'], hotelFile: '', flightsFile: '', insuranceFile: '' }
 }
 
-// Resolve backend country code for the selected Schengen destination.
-function resolveBackendCountryCode (destination: VisaDestinationCode) {
-	return ({ italy: 'IT', france: 'FR', spain: 'ES', hungary: 'HU', greece: 'GR' } as Record<VisaDestinationCode, string>)[destination]
-}
-
 // Resolve known backend country aliases across ISO and localized names.
 function resolveBackendCountryAliases (destination: VisaDestinationCode, label: string) {
 	return ({
@@ -611,13 +604,14 @@ function mapApplicationStatus (status: number | string): NonNullable<VisaDraft['
 
 // Preserve local UI data while taking backend status/list identity as source of truth.
 function mapApplicationDtoToDraft (dto: ApplicationDto, local?: VisaDraft): VisaDraft {
+	const backendStatus = mapApplicationStatus(dto.status)
 	return {
 		id: dto.publicId,
 		createdAt: Number(dto.createdAt) || Date.now(),
 		visaType: local?.visaType ?? (String(dto.visaTypeCode).toLowerCase().includes('d') ? 'type-d' : 'type-c'),
 		visaDestination: local?.visaDestination ?? (SCHENGEN_DESTINATIONS.find((item) => dto.countryName.toLowerCase().includes(item.label.toLowerCase()))?.code ?? 'italy'),
 		visaDestinationLabel: local?.visaDestinationLabel ?? dto.countryName,
-		status: mapApplicationStatus(dto.status),
+		status: local?.status === 'checking' && backendStatus === 'draft' ? 'checking' : backendStatus,
 		applicantCount: Number(dto.applicantCount) || local?.applicants.length || 0,
 		applicants: local?.applicants ?? [],
 	}
@@ -844,45 +838,6 @@ async function authPostAuthorized<T> (path: string, payload: Record<string, unkn
 	return body.data
 }
 
-// Send authorized PATCH request and refresh access token before retry.
-async function authPatchAuthorized<T> (path: string, payload: Record<string, unknown>) {
-	const authPayload = resolveAuthPayload()
-	if(!authPayload?.accessToken) throw new Error('Authorization token is missing')
-
-	const requestPatch = async (token: string) => {
-		const response = await fetch(resolveAuthUrl(path), {
-			method: 'PATCH',
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(payload),
-		})
-		const body = await readApiResponse<T>(response)
-		return { response, body }
-	}
-
-	let { response, body } = await requestPatch(authPayload.accessToken)
-	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
-		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
-			refreshToken: authPayload.refreshToken,
-			device: resolveDeviceInfo(),
-		})
-
-		if(refreshed) {
-			setAuthPayload(refreshed)
-			;({ response, body } = await requestPatch(refreshed.accessToken))
-		}
-	}
-
-	if(response.status === 401) {
-		clearPersistedSession()
-		throw new Error('Session expired. Sign in again')
-	}
-	if(!response.ok || !body.data) throw new Error(body.error?.message ?? 'Request failed')
-	return body.data
-}
-
 // Send authorized DELETE request to auth API.
 async function authDelete (path: AuthDeletePath) {
 	return authDeletePath(path)
@@ -991,6 +946,16 @@ async function createBackendDraft (destination: VisaDestinationCode, label: stri
 // Move application to backend self-check state.
 async function runBackendSelfCheck (id: string) {
 	return authPostAuthorized<ApplicationDto>(`/v1/app/applications/${id}/self-check`)
+}
+
+// Load backend application status by public ID.
+async function loadBackendApplication (id: string) {
+	return authGet<ApplicationDto>(`/v1/app/applications/${id}`)
+}
+
+// Move editable application back to backend draft state before autosave.
+async function returnBackendApplicationToDraft (id: string) {
+	return authPostAuthorized<ApplicationDto>(`/v1/app/applications/${id}/return-to-draft`)
 }
 
 // Submit application to backend review state.
@@ -1518,9 +1483,16 @@ function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, 
 }
 
 // Render documents and insurance screen from Figma node 521:20268.
-function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft }: { onOpenHome: () => void, onOpenProfile: () => void, drafts: VisaDraft[], onContinueDraft: (id: string) => void }) {
+function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, onDeleteDraft }: { onOpenHome: () => void, onOpenProfile: () => void, drafts: VisaDraft[], onContinueDraft: (id: string) => void, onDeleteDraft: (id: string) => void }) {
 	const { t } = useI18n()
+	const [activeTab, setActiveTab] = useState<'visa' | 'insurance'>('visa')
+	const [deleteDraftId, setDeleteDraftId] = useState<string | null>(null)
 	const hasDrafts = drafts.length > 0
+	const confirmDeleteDraft = () => {
+		if(!deleteDraftId) return
+		onDeleteDraft(deleteDraftId)
+		setDeleteDraftId(null)
+	}
 
 	return (
 		<section aria-label="Documents and insurances" className="documents-screen">
@@ -1532,16 +1504,32 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft }
 
 				{hasDrafts ? (
 					<section className="documents-drafts" aria-label="Visa applications">
-						{drafts.map((draft, i) => (
-							<div className="draft-card" key={draft.id}>
-								<div className="draft-card-info">
-									<span className="draft-card-title">{`Заявление #${i + 1}`}</span>
-									<span className="draft-card-meta">{`${draft.applicantCount ?? draft.applicants.length} заявител${(draft.applicantCount ?? draft.applicants.length) === 1 ? 'ь' : (draft.applicantCount ?? draft.applicants.length) < 5 ? 'я' : 'ей'} · Тип ${draft.visaType === 'type-c' ? 'C' : 'D'}`}</span>
-									<span className={`draft-card-status is-${draft.status ?? 'draft'}`}>{resolveDraftStatusLabel(draft.status)}</span>
-								</div>
-								<button className="draft-card-btn" onClick={() => onContinueDraft(draft.id)} type="button">{'Продолжить'}</button>
-							</div>
-						))}
+						<div className="documents-tabs" role="tablist" aria-label="Documents tabs">
+							<button aria-selected={activeTab === 'visa'} className={`documents-tab${activeTab === 'visa' ? ' is-active' : ''}`} onClick={() => setActiveTab('visa')} role="tab" type="button">{'Заявки на визу'}</button>
+							<button aria-selected={activeTab === 'insurance'} className={`documents-tab${activeTab === 'insurance' ? ' is-active' : ''}`} onClick={() => setActiveTab('insurance')} role="tab" type="button">{'Страховки'}</button>
+						</div>
+
+						{activeTab === 'visa' ? <div className="documents-cards-group">
+							{drafts.map((draft, i) => {
+								const applicant = draft.applicants[0]
+								const title = applicant?.passport.fullName || draft.reviewPassport?.fullName || `Заявление #${i + 1}`
+								const passport = applicant?.passport.passportNumber || draft.reviewPassport?.passportNumber || 'Не указан'
+								return <article className="draft-card" key={draft.id}>
+									<div className="draft-card-info">
+										<span className={`draft-card-status is-${draft.status ?? 'draft'}`}>{resolveDraftStatusLabel(draft.status)}</span>
+										<div className="draft-card-copy">
+											<h2>{title}</h2>
+											<p>{`Номер загранпаспорта: ${passport}\n${resolveVisaTitleRu(draft.visaDestinationLabel ?? 'Италия', draft.visaType)}`}</p>
+										</div>
+									</div>
+
+									<div className="draft-card-actions">
+										<button className="draft-card-primary" onClick={() => onContinueDraft(draft.id)} type="button">{'К заявке'}</button>
+										<button className="draft-card-secondary" onClick={() => draft.status === 'ready' ? onContinueDraft(draft.id) : setDeleteDraftId(draft.id)} type="button">{draft.status === 'ready' ? 'Скачать PDF' : 'Удалить'}</button>
+									</div>
+								</article>
+							})}
+						</div> : <div className="documents-cards-group"><article className="documents-insurance-empty"><h2>{'Страховки'}</h2><p>{'Здесь появятся оформленные страховки.'}</p></article></div>}
 					</section>
 				) : (
 					<section className="documents-empty" aria-label="No documents">
@@ -1557,6 +1545,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft }
 			</div>
 
 			<HomeTabbar active="documents" onOpenDocuments={() => {}} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+			{deleteDraftId ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить заявку?" subtitle="Черновик заявки и добавленные заявители будут удалены." onCancel={() => setDeleteDraftId(null)} onConfirm={confirmDeleteDraft} /> : null}
 		</section>
 	)
 }
@@ -2346,7 +2335,7 @@ function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onRe
 }
 
 // Render Step 9 — visa applicants list from Figma node 520:15780.
-function VisaApplicantsScreen ({ applicants, visaTitle, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onCancelApplication, onContinue }: { applicants: VisaApplicant[], visaTitle: string, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onCancelApplication: () => void, onContinue: () => void }) {
+function VisaApplicantsScreen ({ applicants, visaTitle, isEditable, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onCancelApplication, onContinue }: { applicants: VisaApplicant[], visaTitle: string, isEditable: boolean, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onCancelApplication: () => void, onContinue: () => void }) {
 	const { t } = useI18n()
 	const visaLabel = visaTitle
 	const [deleteIndex, setDeleteIndex] = useState<number | null>(null)
@@ -2372,7 +2361,7 @@ function VisaApplicantsScreen ({ applicants, visaTitle, onBack, onHome, onAddApp
 					<VisaProgressTrip value={88} />
 					<div className="visa-copy">
 						<h1>{'Заявители на визу'}</h1>
-						<p>{'Вы можете добавить несколько заявителей или перейти к следующему этапу.'}</p>
+						<p>{isEditable ? 'Вы можете добавить несколько заявителей или перейти к следующему этапу.' : 'Заявка уже отправлена на проверку. Изменение заявителей недоступно.'}</p>
 					</div>
 				</header>
 				<div className="applicants-list">
@@ -2384,13 +2373,13 @@ function VisaApplicantsScreen ({ applicants, visaTitle, onBack, onHome, onAddApp
 								<span className="applicant-detail">{`Номер загранпаспорта: ${applicant.passport.passportNumber || '—'}`}</span>
 								<span className="applicant-detail">{visaLabel}</span>
 							</div>
-							<div className="applicant-actions">
+							{isEditable ? <div className="applicant-actions">
 								<button className="applicant-btn" onClick={() => onEditApplicant(index)} type="button">{'Изменить'}</button>
 								<button className="applicant-btn applicant-btn-delete" onClick={() => setDeleteIndex(index)} type="button">{'Удалить'}</button>
-							</div>
+							</div> : null}
 						</div>
 					))}
-					<div className="applicant-card applicant-card-add">
+					{isEditable ? <div className="applicant-card applicant-card-add">
 						<div className="applicant-info">
 							<span className="applicant-name">{'Добавьте заявителя'}</span>
 							<span className="applicant-detail">{visaLabel}</span>
@@ -2401,12 +2390,12 @@ function VisaApplicantsScreen ({ applicants, visaTitle, onBack, onHome, onAddApp
 								{'Добавить'}
 							</button>
 						</div>
-					</div>
-					<button className="application-cancel-btn" onClick={() => setIsCancelOpen(true)} type="button">{'Отменить заявление'}</button>
+					</div> : null}
+					{isEditable ? <button className="application-cancel-btn" onClick={() => setIsCancelOpen(true)} type="button">{'Отменить заявление'}</button> : null}
 				</div>
 			</div>
 			<div className="visa-bottom">
-				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+			<button className="passport-primary" onClick={onContinue} type="button">{isEditable ? 'Сохранить и продолжить' : 'Продолжить'}</button>
 			</div>
 			{deleteIndex !== null ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить заявителя?" subtitle="Данные заявителя будут удалены из этого заявления." onCancel={() => setDeleteIndex(null)} onConfirm={deleteApplicant} /> : null}
 			{isCancelOpen ? <ConfirmDrawer confirmLabel="Отменить заявление" title="Отменить заявление?" subtitle="Черновик заявления и добавленные заявители будут удалены." onCancel={() => setIsCancelOpen(false)} onConfirm={onCancelApplication} /> : null}
@@ -2521,7 +2510,7 @@ function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, 
 }
 
 // Render Step 11 — application verification status screen.
-function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome, onDownload }: { applicant: VisaApplicant | null, visaTitle: string, onBack: () => void, onHome: () => void, onDownload: () => void }) {
+function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome }: { applicant: VisaApplicant | null, visaTitle: string, onBack: () => void, onHome: () => void }) {
 	const { t } = useI18n()
 	const passport = applicant?.passport ?? createPassportDraft()
 
@@ -2552,15 +2541,14 @@ function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome, onDownload }: 
 					</div>
 				</section>
 
-				<div className="visa-check-actions">
-					<button className="visa-check-primary" onClick={onDownload} type="button">{'Получить готовую анкету'}</button>
-					<button className="visa-check-secondary" onClick={onHome} type="button">{'Вернуться на главную страницу'}</button>
-				</div>
-
 				<section aria-label="Checking progress" className="visa-check-loader-block">
 					<p>{'Проверяем на ошибки...'}</p>
 					<div className="visa-check-loader" />
 				</section>
+
+				<div className="visa-check-actions">
+					<button className="visa-check-secondary" onClick={onHome} type="button">{'Вернуться на главную страницу'}</button>
+				</div>
 			</div>
 		</section>
 	)
@@ -2957,7 +2945,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onSave }: { draft: 
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ isVisaCheckSuccess, animationsDisabled, fillTestValues, onBack, onToggleAnimationsDisabled, onToggleFillTestValues, onToggleVisaCheckSuccess }: { isVisaCheckSuccess: boolean, animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onToggleVisaCheckSuccess: (value: boolean) => void }) {
+function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onToggleAnimationsDisabled, onToggleFillTestValues }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void }) {
 	const { t } = useI18n()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
@@ -3021,16 +3009,6 @@ function DeveloperModeScreen ({ isVisaCheckSuccess, animationsDisabled, fillTest
 						<p>{animationsDisabled ? 'Disabled' : 'Enabled'}</p>
 					</div>
 					<button aria-pressed={!animationsDisabled} className={`dev-switch${!animationsDisabled ? ' is-on' : ''}`} onClick={() => onToggleAnimationsDisabled(!animationsDisabled)} type="button">
-						<span />
-					</button>
-				</div>
-
-				<div className="dev-card dev-switch-card">
-					<div>
-						<b>{'Visa check result'}</b>
-						<p>{isVisaCheckSuccess ? 'Success enabled' : 'Failure enabled'}</p>
-					</div>
-					<button aria-pressed={isVisaCheckSuccess} className={`dev-switch${isVisaCheckSuccess ? ' is-on' : ''}`} onClick={() => onToggleVisaCheckSuccess(!isVisaCheckSuccess)} type="button">
 						<span />
 					</button>
 				</div>
@@ -3285,15 +3263,14 @@ function EntryFlow () {
 	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
 	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
 	const [animationsDisabled, setAnimationsDisabled] = useState(resolveAnimationsDisabled)
-	const [isVisaCheckSuccess, setIsVisaCheckSuccess] = useState(() => {
-		if(typeof window === 'undefined') return true
-		return localStorage.getItem('visa-check-success') !== 'false'
-	})
 	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(resolveSavedDrafts)
 	const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
 	const [isDraftOpenedFromDocuments, setIsDraftOpenedFromDocuments] = useState(false)
 	const isPopNavigationRef = useRef(false)
+	const visaCheckRequestRef = useRef<string | null>(null)
 	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
+	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
+	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -3364,10 +3341,19 @@ function EntryFlow () {
 	// Persist status changes for the active visa draft.
 	const updateActiveDraftStatus = (status: NonNullable<VisaDraft['status']>) => {
 		if(!activeDraftId) return
+		persistLocalDrafts(resolveSavedDrafts().map((draft) => draft.id === activeDraftId ? { ...draft, status } : draft))
 		setSavedDrafts((prev) => {
 			const next = prev.map((draft) => draft.id === activeDraftId ? { ...draft, status } : draft)
 			return persistLocalDrafts(next)
 		})
+	}
+
+	// Remove draft from backend when possible and always clear local cache.
+	const deleteSavedDraft = async (id: string) => {
+		if(!id.startsWith('local-') && !id.startsWith('draft-')) {
+			try { await authDeletePath(`/v1/app/applications/${id}`) } catch {}
+		}
+		setSavedDrafts((prev) => persistLocalDrafts(prev.filter((draft) => draft.id !== id)))
 	}
 
 	// Save current application to backend and local UI cache before payment.
@@ -3376,6 +3362,7 @@ function EntryFlow () {
 		const shouldCreateBackend = localId.startsWith('local-') || localId.startsWith('draft-')
 		const backendDraft = shouldCreateBackend ? await createBackendDraft(selectedVisaDestination, selectedVisaDestinationLabel, selectedVisaType) : null
 		const id = backendDraft?.publicId ?? localId
+		if(!shouldCreateBackend && savedDrafts.find((draft) => draft.id === id)?.status === 'checking') await returnBackendApplicationToDraft(id)
 		const normalizedApplicants = currentApplicants.map((applicant) => {
 			if(applicant.passport.backendId) return applicant
 			const found = passports.find((item) => item.id === applicant.passport.id || item.passportNumber === applicant.passport.passportNumber) ?? (selectedVisaPassport?.backendId ? selectedVisaPassport : null)
@@ -3521,8 +3508,8 @@ function EntryFlow () {
 	useEffect(() => {
 		if(step !== 'home' || !activeTab.startsWith('visa-') || !activeDraftId) return
 		setSavedDrafts((prev) => {
-			const createdAt = prev.find((draft) => draft.id === activeDraftId)?.createdAt ?? Date.now()
-			const draft = { ...buildCurrentDraftCache(activeDraftId), createdAt }
+			const existing = prev.find((draft) => draft.id === activeDraftId)
+			const draft = { ...buildCurrentDraftCache(activeDraftId), createdAt: existing?.createdAt ?? Date.now(), status: existing?.status ?? 'draft' }
 			return persistLocalDrafts(prev.some((item) => item.id === activeDraftId) ? prev.map((item) => item.id === activeDraftId ? draft : item) : [...prev, draft])
 		})
 	}, [step, activeTab, activeDraftId, selectedVisaPassport, selectedVisaType, selectedVisaDestination, selectedVisaDestinationLabel, currentApplicants, reviewPassport, reviewPersonal, reviewTrip, reviewDocs, visaPhotoDataUrl])
@@ -3534,19 +3521,26 @@ function EntryFlow () {
 	}, [step, activeTab])
 
 	useEffect(() => {
-		if(step !== 'home' || activeTab !== 'visa-check') return
-		const timer = window.setTimeout(() => {
-			if(!isVisaCheckSuccess) updateActiveDraftStatus('error')
-			navigate('home', isVisaCheckSuccess ? 'visa-verified' : 'visa-rejected')
-		}, 1800)
-		return () => window.clearTimeout(timer)
-	}, [step, activeTab, isVisaCheckSuccess])
+		if(step !== 'home' || activeTab !== 'visa-check' || !activeDraftId || visaCheckRequestRef.current === activeDraftId) return
+		visaCheckRequestRef.current = activeDraftId
+		let active = true
 
-	// Persist developer-selected application verification result.
-	const toggleVisaCheckSuccess = (value: boolean) => {
-		setIsVisaCheckSuccess(value)
-		localStorage.setItem('visa-check-success', String(value))
-	}
+		const check = async () => {
+			const draft = savedDrafts.find((item) => item.id === activeDraftId)
+			const application = draft?.status === 'draft' || draft?.status === 'error' ? await runBackendSelfCheck(activeDraftId) : await loadBackendApplication(activeDraftId)
+			if(!active) return
+			const status = mapApplicationStatus(application.status)
+			updateActiveDraftStatus(status === 'error' ? 'error' : 'checking')
+			navigate('home', status === 'error' ? 'visa-rejected' : 'visa-verified')
+		}
+
+		check().catch(() => {
+			if(active) navigate('home', 'visa-rejected')
+		})
+		return () => {
+			active = false
+		}
+	}, [step, activeTab, activeDraftId, savedDrafts])
 
 	// Persist developer-selected animation preference.
 	const toggleAnimationsDisabled = (value: boolean) => {
@@ -3680,7 +3674,7 @@ function EntryFlow () {
 					: activeTab === 'home'
 							? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onOpenVisaStart={startVisaFlow} />
 						: activeTab === 'documents'
-							? <DocumentsScreen drafts={savedDrafts} onContinueDraft={(id) => {
+						? <DocumentsScreen drafts={savedDrafts} onDeleteDraft={deleteSavedDraft} onContinueDraft={(id) => {
 								const draft = savedDrafts.find((d) => d.id === id)
 								if (!draft) return
 								setActiveDraftId(id)
@@ -3701,6 +3695,10 @@ function EntryFlow () {
 								}
 								if(draft.status === 'error') {
 									navigate('home', 'visa-rejected')
+									return
+								}
+								if(draft.status === 'checking') {
+									navigate('home', 'visa-check')
 									return
 								}
 								navigate('home', draft.applicants.length ? 'visa-applicants' : 'visa-start')
@@ -3752,6 +3750,7 @@ function EntryFlow () {
 						: activeTab === 'visa-applicants'
 							? <VisaApplicantsScreen
 								applicants={currentApplicants}
+								isEditable={isActiveDraftEditable}
 								visaTitle={currentVisaTitle}
 								onBack={() => goBack(isDraftOpenedFromDocuments ? 'documents' : 'visa-review-photo')}
 								onCancelApplication={cancelCurrentApplication}
@@ -3778,12 +3777,12 @@ function EntryFlow () {
 									navigate('home', 'visa-review-passport')
 								}}
 									onDeleteApplicant={(index) => setCurrentApplicants((prev) => prev.filter((_, i) => i !== index))}
-									onContinue={() => { saveCurrentApplication() }}
+									onContinue={() => { if(isActiveDraftEditable) saveCurrentApplication(); else navigate('home', 'documents') }}
 								/>
 							: activeTab === 'visa-payment'
-								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={async () => { if(activeDraftId) await runBackendSelfCheck(activeDraftId); updateActiveDraftStatus('checking'); navigate('home', 'visa-check') }} onSelectPayment={setSelectedPayment} />
+								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={() => { updateActiveDraftStatus('checking'); visaCheckRequestRef.current = null; navigate('home', 'visa-check') }} onSelectPayment={setSelectedPayment} />
 						: activeTab === 'visa-check'
-							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
 								? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onDownload={async () => { if(activeDraftId) await submitBackendApplication(activeDraftId); updateActiveDraftStatus('ready'); navigate('home', 'visa-documents-ready') }} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-rejected'
@@ -3797,7 +3796,7 @@ function EntryFlow () {
 									navigate('onboarding', 'home')
 								}} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => goBack('profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
+									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'
