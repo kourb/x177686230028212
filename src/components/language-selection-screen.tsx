@@ -1602,6 +1602,7 @@ function OptionSheet ({ options, value, onSelect, onClose }: { options: string[]
 function SearchSheet ({ label, options, value, onSelect, onClose }: { label: string, options: string[], value: string, onSelect: (v: string) => void, onClose: () => void }) {
 	const [query, setQuery] = useState('')
 	const normalized = query.trim().toLocaleLowerCase('ru')
+	const customValue = query.trim()
 	const filtered = normalized ? options.filter((option) => option.toLocaleLowerCase('ru').includes(normalized)) : options
 
 	return (
@@ -1616,8 +1617,9 @@ function SearchSheet ({ label, options, value, onSelect, onClose }: { label: str
 					<input autoFocus onChange={(event) => setQuery(event.target.value)} placeholder="Поиск" type="text" value={query} />
 				</div>
 				<div className="search-sheet-results">
+					{customValue ? <button className="search-sheet-custom" onClick={() => onSelect(customValue)} type="button">{customValue}</button> : null}
 					{filtered.map((option) => <button className={option === value ? 'is-active' : ''} key={option} onClick={() => onSelect(option)} type="button">{option}</button>)}
-					{filtered.length === 0 ? <p>Ничего не найдено</p> : null}
+					{filtered.length === 0 ? <p className="search-sheet-empty">Ничего не найдено</p> : null}
 				</div>
 			</div>
 		</div>

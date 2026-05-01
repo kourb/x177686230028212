@@ -1821,8 +1821,14 @@ html:not(.motion-disabled) .calendar-sheet {
 	min-height: 0;
 }
 
-.search-sheet-results p {
-	margin: 12px 0 0;
+.search-sheet-custom {
+	border-color: rgb(0 102 245 / 0.32) !important;
+	background: rgb(0 102 245 / 0.08);
+	color: var(--fill-blue) !important;
+}
+
+.search-sheet-empty {
+	margin: 8px 0 0;
 	font-size: 15px;
 	line-height: 1.4;
 	color: rgb(0 29 71 / 0.58);
