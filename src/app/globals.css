@@ -1644,6 +1644,40 @@ body {
 	background: #fff;
 }
 
+.dev-switch-card {
+	grid-template-columns: 1fr auto;
+	align-items: center;
+}
+
+.dev-switch {
+	all: unset;
+	width: 52px;
+	height: 32px;
+	border-radius: 999px;
+	background: rgb(0 29 71 / 0.16);
+	position: relative;
+	cursor: pointer;
+}
+
+.dev-switch span {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform 160ms ease;
+}
+
+.dev-switch.is-on {
+	background: #0066f5;
+}
+
+.dev-switch.is-on span {
+	transform: translateX(20px);
+}
+
 .dev-card b,
 .dev-json-block b {
 	font-size: 13px;
@@ -2563,6 +2597,387 @@ body {
 	color: #0066f5;
 	cursor: pointer;
 	white-space: nowrap;
+}
+
+/* ─── Visa Payment screen (Step 10) ─── */
+
+.visa-payment-scroll {
+	gap: 24px;
+	padding-bottom: 24px;
+}
+
+.payment-summary-card,
+.payment-composition-card {
+	margin: 0 16px;
+	padding: 24px;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	border-radius: 12px;
+	background: #fff;
+}
+
+.payment-summary-card {
+	display: flex;
+	flex-direction: column;
+	gap: 32px;
+}
+
+.payment-summary-section {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.payment-summary-section h2,
+.payment-methods h2,
+.payment-composition-card h2 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.3;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: var(--ink);
+}
+
+.payment-detail-grid {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	row-gap: 16px;
+	column-gap: 16px;
+}
+
+.payment-detail-grid span,
+.payment-applicant b,
+.payment-method-copy span,
+.payment-row span {
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: rgb(0 29 71 / 0.52);
+}
+
+.payment-detail-grid b,
+.payment-applicant span,
+.payment-row b {
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: var(--ink);
+	text-align: right;
+}
+
+.payment-applicant {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 16px;
+	align-items: start;
+}
+
+.payment-applicant span {
+	text-align: left;
+}
+
+.payment-methods {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 0 16px;
+}
+
+.payment-method-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.payment-method-card {
+	all: unset;
+	box-sizing: border-box;
+	min-height: 109px;
+	padding: 24px;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	border-radius: 12px;
+	background: #fff;
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 16px;
+	align-items: center;
+	cursor: pointer;
+}
+
+.payment-method-card:has(.payment-method-badge) {
+	min-height: 143px;
+}
+
+.payment-method-card.is-active {
+	border: 2px solid #0066f5;
+	padding: 23px;
+}
+
+.payment-method-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.payment-method-copy strong {
+	font-size: 22px;
+	line-height: 1.3;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: var(--ink);
+}
+
+.payment-method-badge {
+	display: inline-flex;
+	width: fit-content;
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: #0066f5;
+	font-size: 15px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: #fff;
+}
+
+.payment-radio {
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	position: relative;
+}
+
+.payment-method-card.is-active .payment-radio {
+	border-color: #0066f5;
+	background: #0066f5;
+}
+
+.payment-method-card.is-active .payment-radio::after {
+	content: '';
+	position: absolute;
+	inset: 5px;
+	border-radius: 50%;
+	background: #fff;
+}
+
+.payment-composition-card {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.payment-row {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 16px;
+	align-items: center;
+}
+
+/* ─── Visa Check screen (Step 11) ─── */
+
+.visa-check-scroll {
+	gap: 24px;
+	padding-bottom: 34px;
+}
+
+.visa-check-card {
+	margin: 0 16px;
+	padding: 24px;
+	border: 1px solid var(--ink);
+	border-radius: 12px;
+	background: #fff;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.visa-check-card.is-success {
+	border: 2px solid #0066f5;
+}
+
+.visa-check-card.is-error {
+	padding: 0;
+	border: 2px solid var(--ink);
+	overflow: hidden;
+}
+
+.visa-check-main {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.visa-check-card.is-error .visa-check-main {
+	padding: 24px 24px 0;
+}
+
+.visa-check-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: fit-content;
+	height: 22px;
+	padding: 0 12px;
+	border-radius: 999px;
+	background: #ff9811;
+	font-size: 15px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: #fff;
+}
+
+.visa-check-badge.is-success {
+	background: #0066f5;
+}
+
+.visa-check-badge.is-error {
+	background: #f50d00;
+}
+
+.visa-check-card-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.visa-check-card-copy h2 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.3;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: var(--ink);
+}
+
+.visa-check-card-copy p {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	white-space: pre-line;
+	color: var(--ink);
+}
+
+.visa-check-errors {
+	margin-top: 16px;
+	padding: 24px;
+	border-top: 1px solid rgb(0 29 71 / 0.16);
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.visa-check-errors h3 {
+	margin: 0;
+	font-size: 22px;
+	line-height: 1.3;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: var(--ink);
+}
+
+.visa-check-errors p {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	white-space: pre-line;
+	color: var(--ink);
+}
+
+.visa-check-errors button {
+	all: unset;
+	height: 48px;
+	border-radius: 999px;
+	background: #0066f5;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: #fff;
+	cursor: pointer;
+}
+
+.visa-check-actions {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 0 16px;
+}
+
+.visa-check-primary,
+.visa-check-secondary {
+	all: unset;
+	box-sizing: border-box;
+	height: 56px;
+	border-radius: 999px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.visa-check-primary {
+	background: var(--ink);
+	color: #fff;
+}
+
+.visa-check-primary.is-success {
+	background: #0066f5;
+}
+
+.visa-check-primary.is-disabled {
+	opacity: 0.32;
+	cursor: default;
+}
+
+.visa-check-secondary {
+	border: 1px solid var(--ink);
+	color: var(--ink);
+}
+
+.visa-check-loader-block {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: 0 16px;
+}
+
+.visa-check-loader-block p {
+	margin: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	text-align: center;
+	color: var(--ink);
+}
+
+.visa-check-loader {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	border: 4px solid rgb(0 29 71 / 0.16);
+	border-top-color: var(--ink);
+	animation: visa-check-spin 1s linear infinite;
+}
+
+@keyframes visa-check-spin {
+	to { transform: rotate(360deg); }
 }
 
 /* ─── Review title: first line gray ─── */

@@ -94,11 +94,13 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
 type VisaTypeCode = 'type-c' | 'type-d'
+
+type PaymentMethodCode = 'sbp' | 'card-new' | 'card-saved' | 'yoomoney' | 'sberpay'
 
 type VisaApplicant = {
 	passport: PassportEntry
@@ -2013,6 +2015,198 @@ function VisaApplicantsScreen ({ applicants, visaType, visaDestination, onBack, 
 	)
 }
 
+// Render Step 10 — final application summary and payment selection.
+function VisaPaymentScreen ({ applicants, visaType, visaDestination, selectedPayment, onBack, onHome, onSelectPayment, onPay }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, selectedPayment: PaymentMethodCode, onBack: () => void, onHome: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onPay: () => void }) {
+	const { t } = useI18n()
+	const detail = VISA_TYPE_DETAILS[visaDestination][visaType]
+	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
+	const visaTitle = `Шенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`
+	const methods: { code: PaymentMethodCode, title: string, subtitle: string, badge?: string }[] = [
+		{ code: 'sbp', title: 'Через СБП', subtitle: 'В приложении банка.', badge: 'Популярное' },
+		{ code: 'card-new', title: 'Новой картой', subtitle: 'Введите данные карты.', badge: 'МИР / Visa / MasterCard' },
+		{ code: 'card-saved', title: 'Сохраненной картой', subtitle: 'Оплатите ранее добавленной картой.' },
+		{ code: 'yoomoney', title: 'ЮMoney', subtitle: 'Через кошелек ЮMoney.' },
+		{ code: 'sberpay', title: 'SberPay', subtitle: 'В приложении СберБанк Онлайн.' },
+	]
+
+	return (
+		<section aria-label="Visa payment" className="visa-screen">
+			<div className="visa-scroll visa-payment-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<div className="visa-progress visa-progress-trip is-full" role="presentation">
+						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
+						<span className="is-active" /><span /><i />
+					</div>
+					<div className="visa-copy">
+						<h1>{'Отправка на проверку'}</h1>
+						<p>{'Ещё раз проверьте детали и отправьте данные на проверку.'}</p>
+					</div>
+				</header>
+
+				<section aria-label="Visa application summary" className="payment-summary-card">
+					<div className="payment-summary-section">
+						<h2>{visaTitle}</h2>
+						<div className="payment-detail-grid">
+							<span>{'Срок действия визы'}</span><b>{`${detail.durationDays} дней`}</b>
+							<span>{'Срок пребывания'}</span><b>{`${Math.min(detail.durationDays, 90)} дней`}</b>
+							<span>{'Въезд'}</span><b>{detail.entryKey === 'multiple' ? 'Многократный' : 'Однократный'}</b>
+							<span>{'Консульский сбор'}</span><b>{detail.consularFee}</b>
+						</div>
+					</div>
+					<div className="payment-summary-section">
+						<h2>{'Заявители'}</h2>
+						{applicants.map((applicant, index) => (
+							<div className="payment-applicant" key={index}>
+								<span>{applicant.passport.fullName || `${applicant.passport.firstName} ${applicant.passport.lastName}`.trim() || 'Заявитель'}</span>
+								<b>{applicant.passport.passportNumber || '—'}</b>
+							</div>
+						))}
+					</div>
+				</section>
+
+				<section aria-label="Payment method" className="payment-methods">
+					<h2>{'Способ оплаты'}</h2>
+					<div className="payment-method-list">
+						{methods.map((method) => (
+							<button className={`payment-method-card${selectedPayment === method.code ? ' is-active' : ''}`} key={method.code} onClick={() => onSelectPayment(method.code)} type="button">
+								<div className="payment-method-copy">
+									{method.badge ? <span className="payment-method-badge">{method.badge}</span> : null}
+									<strong>{method.title}</strong>
+									<span>{method.subtitle}</span>
+								</div>
+								<i className="payment-radio" />
+							</button>
+						))}
+					</div>
+				</section>
+
+				<section aria-label="Payment composition" className="payment-composition-card">
+					<h2>{'Состав платежа'}</h2>
+					<div className="payment-row">
+						<span>{`Сервисный сбор × ${Math.max(applicants.length, 1)}`}</span>
+						<b>{'1358.28₽'}</b>
+					</div>
+				</section>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onPay} type="button">{'Отправить и оплатить 1358.28₽'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render Step 11 — application verification status screen.
+function VisaCheckScreen ({ applicant, visaType, visaDestination, onBack, onHome, onDownload }: { applicant: VisaApplicant | null, visaType: VisaTypeCode, visaDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onDownload: () => void }) {
+	const { t } = useI18n()
+	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
+	const passport = applicant?.passport ?? createPassportDraft()
+
+	return (
+		<section aria-label="Visa application check" className="visa-screen visa-check-screen">
+			<div className="visa-scroll visa-check-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<div className="visa-progress visa-progress-trip is-full" role="presentation">
+						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
+						<span className="is-active" /><span /><i />
+					</div>
+					<div className="visa-copy">
+						<h1>{'Проверка заявки'}</h1>
+						<p>{'Проверка на соответствие требованиям визы. После успешной проверки будет доступно скачивание заполненной анкеты.'}</p>
+					</div>
+				</header>
+
+				<section aria-label="Application status" className="visa-check-card">
+					<span className="visa-check-badge">{'На проверке'}</span>
+					<div className="visa-check-card-copy">
+						<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
+						<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\nШенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`}</p>
+					</div>
+				</section>
+
+				<div className="visa-check-actions">
+					<button className="visa-check-primary" onClick={onDownload} type="button">{'Получить готовую анкету'}</button>
+					<button className="visa-check-secondary" onClick={onHome} type="button">{'Вернуться на главную страницу'}</button>
+				</div>
+
+				<section aria-label="Checking progress" className="visa-check-loader-block">
+					<p>{'Проверяем на ошибки...'}</p>
+					<div className="visa-check-loader" />
+				</section>
+			</div>
+		</section>
+	)
+}
+
+// Render final verification outcome screen after application checks complete.
+function VisaCheckResultScreen ({ applicant, visaType, visaDestination, isSuccess, onBack, onHome, onDownload, onEdit }: { applicant: VisaApplicant | null, visaType: VisaTypeCode, visaDestination: VisaDestinationCode, isSuccess: boolean, onBack: () => void, onHome: () => void, onDownload: () => void, onEdit: () => void }) {
+	const { t } = useI18n()
+	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
+	const passport = applicant?.passport ?? createPassportDraft()
+
+	return (
+		<section aria-label="Visa check result" className="visa-screen visa-check-screen">
+			<div className="visa-scroll visa-check-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<div className="visa-progress visa-progress-trip is-full" role="presentation">
+						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
+						<span className="is-active" /><span /><i />
+					</div>
+					<div className="visa-copy">
+						<h1>{'Проверка заявки'}</h1>
+						<p>{'Проверка на соответствие требованиям визы. После успешной проверки будет доступно скачивание заполненной анкеты.'}</p>
+					</div>
+				</header>
+
+				<section aria-label="Application result" className={`visa-check-card${isSuccess ? ' is-success' : ' is-error'}`}>
+					<div className="visa-check-main">
+						<span className={`visa-check-badge${isSuccess ? ' is-success' : ' is-error'}`}>{isSuccess ? 'Проверка успешно пройдена' : 'Требуются правки'}</span>
+						<div className="visa-check-card-copy">
+							<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
+							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\nШенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`}</p>
+						</div>
+					</div>
+					{isSuccess ? null : (
+						<div className="visa-check-errors">
+							<h3>{'Найденные ошибки'}</h3>
+							<p>{'Неверно заполненные поля\nв паспорте.\nСтраховка некорректно отображается.'}</p>
+							<button onClick={onEdit} type="button">{'Внести изменения'}</button>
+						</div>
+					)}
+				</section>
+
+				<div className="visa-check-actions">
+					<button className={`visa-check-primary${isSuccess ? ' is-success' : ' is-disabled'}`} disabled={!isSuccess} onClick={onDownload} type="button">{'Получить готовую анкету'}</button>
+					<button className="visa-check-secondary" onClick={onHome} type="button">{isSuccess ? 'Вернуться на главную' : 'Вернуться на главную страницу'}</button>
+				</div>
+			</div>
+		</section>
+	)
+}
+
 // Render document upload form from Figma node 520:15661.
 function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
 	const { locale, t } = useI18n()
@@ -2306,7 +2500,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onSave }: { draft: 
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
+function DeveloperModeScreen ({ isVisaCheckSuccess, onBack, onToggleVisaCheckSuccess }: { isVisaCheckSuccess: boolean, onBack: () => void, onToggleVisaCheckSuccess: (value: boolean) => void }) {
 	const { t } = useI18n()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
@@ -2354,6 +2548,16 @@ function DeveloperModeScreen ({ onBack }: { onBack: () => void }) {
 			</header>
 
 			<div className="dev-content">
+				<div className="dev-card dev-switch-card">
+					<div>
+						<b>{'Visa check result'}</b>
+						<p>{isVisaCheckSuccess ? 'Success enabled' : 'Failure enabled'}</p>
+					</div>
+					<button aria-pressed={isVisaCheckSuccess} className={`dev-switch${isVisaCheckSuccess ? ' is-on' : ''}`} onClick={() => onToggleVisaCheckSuccess(!isVisaCheckSuccess)} type="button">
+						<span />
+					</button>
+				</div>
+
 				<div className="dev-card">
 					<b>{t('devAccountId')}</b>
 					<p>{auth?.user?.userId ?? 'n/a'}</p>
@@ -2566,7 +2770,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -2598,6 +2802,11 @@ function EntryFlow () {
 	const [reviewDocs] = useState(() => ({ ...VISA_DOCS_TEXT['ru'] }))
 	const [currentApplicants, setCurrentApplicants] = useState<VisaApplicant[]>([])
 	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
+	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
+	const [isVisaCheckSuccess, setIsVisaCheckSuccess] = useState(() => {
+		if(typeof window === 'undefined') return true
+		return localStorage.getItem('visa-check-success') !== 'false'
+	})
 	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(() => {
 		try { return JSON.parse(localStorage.getItem('visa-drafts') ?? '[]') } catch { return [] }
 	})
@@ -2720,6 +2929,18 @@ function EntryFlow () {
 		return () => window.clearTimeout(timer)
 	}, [step, activeTab])
 
+	useEffect(() => {
+		if(step !== 'home' || activeTab !== 'visa-check') return
+		const timer = window.setTimeout(() => navigate('home', isVisaCheckSuccess ? 'visa-verified' : 'visa-rejected'), 1800)
+		return () => window.clearTimeout(timer)
+	}, [step, activeTab, isVisaCheckSuccess])
+
+	// Persist developer-selected application verification result.
+	const toggleVisaCheckSuccess = (value: boolean) => {
+		setIsVisaCheckSuccess(value)
+		localStorage.setItem('visa-check-success', String(value))
+	}
+
 	// Update passport draft field and recompute derived full name.
 	const updatePassportDraftField = (field: keyof PassportEntry, value: string) => {
 		setPassportDraft((current) => {
@@ -2785,6 +3006,8 @@ function EntryFlow () {
 								if (!draft) return
 								setActiveDraftId(id)
 								setCurrentApplicants(draft.applicants)
+								setSelectedVisaType(draft.visaType)
+								setSelectedVisaDestination(draft.visaDestination)
 								navigate('home', 'visa-applicants')
 							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
@@ -2872,9 +3095,17 @@ function EntryFlow () {
 										return next
 									})
 									setActiveDraftId(draft.id)
-									navigate('home', 'home')
+									navigate('home', 'visa-payment')
 								}}
 							/>
+						: activeTab === 'visa-payment'
+							? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-applicants')} onHome={() => navigate('home', 'home')} onPay={() => navigate('home', 'visa-check')} onSelectPayment={setSelectedPayment} />
+						: activeTab === 'visa-check'
+							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-verified'
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-rejected'
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
@@ -2882,7 +3113,7 @@ function EntryFlow () {
 									navigate('onboarding', 'home')
 								}} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen onBack={() => navigate('home', 'profile')} />
+									? <DeveloperModeScreen isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => navigate('home', 'profile')} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'
