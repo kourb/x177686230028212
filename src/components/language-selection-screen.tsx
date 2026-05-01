@@ -3129,6 +3129,7 @@ function EntryFlow () {
 	})
 	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(resolveSavedDrafts)
 	const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
+	const [isDraftOpenedFromDocuments, setIsDraftOpenedFromDocuments] = useState(false)
 	const isPopNavigationRef = useRef(false)
 	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
 
@@ -3297,6 +3298,7 @@ function EntryFlow () {
 		setReviewTrip(createTripDraft(fillTestValues))
 		setCurrentApplicants([])
 		setActiveDraftId(null)
+		setIsDraftOpenedFromDocuments(false)
 		navigate('home', 'visa-start')
 	}
 
@@ -3363,6 +3365,7 @@ function EntryFlow () {
 		setCurrentApplicants([])
 		setEditingApplicantIndex(null)
 		setActiveDraftId(null)
+		setIsDraftOpenedFromDocuments(false)
 		navigate('home', 'documents')
 	}
 
@@ -3384,6 +3387,7 @@ function EntryFlow () {
 								setSelectedVisaType(draft.visaType)
 								setSelectedVisaDestination(draft.visaDestination)
 								setSelectedVisaDestinationLabel(draft.visaDestinationLabel ?? SCHENGEN_DESTINATIONS.find((item) => item.code === draft.visaDestination)?.label ?? 'Италия')
+								setIsDraftOpenedFromDocuments(true)
 								navigate('home', 'visa-applicants')
 							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
@@ -3434,7 +3438,7 @@ function EntryFlow () {
 							? <VisaApplicantsScreen
 								applicants={currentApplicants}
 								visaTitle={currentVisaTitle}
-								onBack={() => navigate('home', 'visa-review-photo')}
+								onBack={() => navigate('home', isDraftOpenedFromDocuments ? 'documents' : 'visa-review-photo')}
 								onCancelApplication={cancelCurrentApplication}
 								onHome={() => navigate('home', 'home')}
 								onAddApplicant={() => {
@@ -3457,7 +3461,8 @@ function EntryFlow () {
 									navigate('home', 'visa-review-passport')
 								}}
 								onDeleteApplicant={(index) => setCurrentApplicants((prev) => prev.filter((_, i) => i !== index))}
-								onContinue={() => {
+									onContinue={() => {
+									setIsDraftOpenedFromDocuments(false)
 									const draft: VisaDraft = {
 										id: activeDraftId ?? `draft-${Date.now()}`,
 										createdAt: Date.now(),
