@@ -9,6 +9,8 @@ const HERO_IMAGE = '/assets/hero-travel.svg'
 const DEVICE_ID_STORAGE_KEY = 'visa-assistent-device-id'
 const AUTH_STORAGE_KEY = 'visa-assistent-auth'
 const USER_PROFILE_STORAGE_KEY = 'visa-assistent-user-profile'
+const VISA_DRAFTS_STORAGE_KEY = 'visa-drafts'
+const ANIMATIONS_DISABLED_STORAGE_KEY = 'visa-animations-disabled'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
@@ -96,11 +98,17 @@ type EntryStep = 'onboarding' | 'auth' | 'home'
 
 type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
+const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
 type VisaTypeCode = 'type-c' | 'type-d'
 
 type PaymentMethodCode = 'sbp' | 'card-new' | 'card-saved' | 'yoomoney' | 'sberpay'
+
+type FieldIcon = 'search' | 'chevron' | 'calendar'
+
+type TripData = (typeof VISA_TRIP_TEXT)['ru']
 
 type VisaApplicant = {
 	passport: PassportEntry
@@ -254,14 +262,21 @@ const VISA_PHOTO_TEXT: Record<LocaleCode, { title: string, subtitle: string, req
 	it: { title: 'Caricamento foto', subtitle: 'Carica la foto appropriata — la useremo per elaborare la tua domanda.', reqTitle: 'Requisiti foto:', req1: 'Ogni nuovo visto richiede una foto non utilizzata in precedenza.', req2: 'Dimensione foto 35×45 mm, sfondo bianco.', req3: 'Formato foto: JPEG, min. 600 DPI.', req4: 'Il viso deve occupare il 70–80% dell\'area della foto.', req5: 'Senza occhiali o copricapo — il viso deve essere completamente visibile.', upload: 'Carica dal dispositivo', camera: 'Scattare una foto', checkTitle: 'Verifica foto', checkSubtitle: 'Verifichiamo la conformita ai requisiti del visto. Ci vorranno solo pochi secondi.', checking: 'Controllo errori...', cameraHint: 'Tieni il viso al centro del riquadro e guarda direttamente nella fotocamera.' },
 }
 
-const VISA_TRIP_TEXT: Record<LocaleCode, { title: string, subtitle: string, purpose: string, purposeValue: string, entryDate: string, exitDate: string, dateValue: string, residenceCountry: string, residenceCountryValue: string, prevVisas: string, prevVisasValue: string }> = {
-	ru: { title: 'Данные о поездке', subtitle: 'Заполните информацию о поездке для дальнейшего оформления визы', purpose: 'Цель поездки', purposeValue: 'Туризм', entryDate: 'Предполагаемая дата въезда', exitDate: 'Предполагаемая дата выезда', dateValue: '01.10.2020', residenceCountry: 'Страна пребывания за последние 3 года', residenceCountryValue: 'Российская Федерация', prevVisas: 'Наличие предыдущих шенгенских виз', prevVisasValue: 'Нет' },
-	en: { title: 'Trip data', subtitle: 'Fill in trip details for further visa processing', purpose: 'Purpose of travel', purposeValue: 'Tourism', entryDate: 'Expected entry date', exitDate: 'Expected exit date', dateValue: '01.10.2020', residenceCountry: 'Country of residence in the last 3 years', residenceCountryValue: 'Russian Federation', prevVisas: 'Previous Schengen visas', prevVisasValue: 'No' },
-	de: { title: 'Reisedaten', subtitle: 'Geben Sie die Reisedaten fur die weitere Visumbearbeitung an', purpose: 'Reisezweck', purposeValue: 'Tourismus', entryDate: 'Voraussichtliches Einreisedatum', exitDate: 'Voraussichtliches Ausreisedatum', dateValue: '01.10.2020', residenceCountry: 'Wohnsitzland in den letzten 3 Jahren', residenceCountryValue: 'Russische Foderation', prevVisas: 'Fruhere Schengen-Visa', prevVisasValue: 'Nein' },
-	fr: { title: 'Donnees de voyage', subtitle: 'Remplissez les informations de voyage pour la demande de visa', purpose: 'Objet du voyage', purposeValue: 'Tourisme', entryDate: 'Date d entree prevue', exitDate: 'Date de sortie prevue', dateValue: '01.10.2020', residenceCountry: 'Pays de residence au cours des 3 dernieres annees', residenceCountryValue: 'Federation de Russie', prevVisas: 'Visas Schengen anterieurs', prevVisasValue: 'Non' },
-	es: { title: 'Datos del viaje', subtitle: 'Completa los datos del viaje para continuar con el visado', purpose: 'Proposito del viaje', purposeValue: 'Turismo', entryDate: 'Fecha de entrada prevista', exitDate: 'Fecha de salida prevista', dateValue: '01.10.2020', residenceCountry: 'Pais de residencia en los ultimos 3 anos', residenceCountryValue: 'Federacion de Rusia', prevVisas: 'Visados Schengen anteriores', prevVisasValue: 'No' },
-	it: { title: 'Dati del viaggio', subtitle: 'Compila le informazioni del viaggio per proseguire con il visto', purpose: 'Scopo del viaggio', purposeValue: 'Turismo', entryDate: 'Data di ingresso prevista', exitDate: 'Data di uscita prevista', dateValue: '01.10.2020', residenceCountry: 'Paese di residenza negli ultimi 3 anni', residenceCountryValue: 'Federazione Russa', prevVisas: 'Precedenti visti Schengen', prevVisasValue: 'No' },
+const VISA_TRIP_TEXT: Record<LocaleCode, { title: string, subtitle: string, purpose: string, purposeValue: string, entryDate: string, exitDate: string, dateValue: string, exitDateValue: string, residenceCountry: string, residenceCountryValue: string, prevVisas: string, prevVisasValue: string }> = {
+	ru: { title: 'Данные о поездке', subtitle: 'Заполните информацию о поездке для дальнейшего оформления визы', purpose: 'Цель поездки', purposeValue: 'Туризм', entryDate: 'Предполагаемая дата въезда', exitDate: 'Предполагаемая дата выезда', dateValue: '01.10.2020', exitDateValue: '14.10.2020', residenceCountry: 'Страна пребывания за последние 3 года', residenceCountryValue: 'Российская Федерация', prevVisas: 'Наличие предыдущих шенгенских виз', prevVisasValue: 'Нет' },
+	en: { title: 'Trip data', subtitle: 'Fill in trip details for further visa processing', purpose: 'Purpose of travel', purposeValue: 'Tourism', entryDate: 'Expected entry date', exitDate: 'Expected exit date', dateValue: '01.10.2020', exitDateValue: '14.10.2020', residenceCountry: 'Country of residence in the last 3 years', residenceCountryValue: 'Russian Federation', prevVisas: 'Previous Schengen visas', prevVisasValue: 'No' },
+	de: { title: 'Reisedaten', subtitle: 'Geben Sie die Reisedaten fur die weitere Visumbearbeitung an', purpose: 'Reisezweck', purposeValue: 'Tourismus', entryDate: 'Voraussichtliches Einreisedatum', exitDate: 'Voraussichtliches Ausreisedatum', dateValue: '01.10.2020', exitDateValue: '14.10.2020', residenceCountry: 'Wohnsitzland in den letzten 3 Jahren', residenceCountryValue: 'Russische Foderation', prevVisas: 'Fruhere Schengen-Visa', prevVisasValue: 'Nein' },
+	fr: { title: 'Donnees de voyage', subtitle: 'Remplissez les informations de voyage pour la demande de visa', purpose: 'Objet du voyage', purposeValue: 'Tourisme', entryDate: 'Date d entree prevue', exitDate: 'Date de sortie prevue', dateValue: '01.10.2020', exitDateValue: '14.10.2020', residenceCountry: 'Pays de residence au cours des 3 dernieres annees', residenceCountryValue: 'Federation de Russie', prevVisas: 'Visas Schengen anterieurs', prevVisasValue: 'Non' },
+	es: { title: 'Datos del viaje', subtitle: 'Completa los datos del viaje para continuar con el visado', purpose: 'Proposito del viaje', purposeValue: 'Turismo', entryDate: 'Fecha de entrada prevista', exitDate: 'Fecha de salida prevista', dateValue: '01.10.2020', exitDateValue: '14.10.2020', residenceCountry: 'Pais de residencia en los ultimos 3 anos', residenceCountryValue: 'Federacion de Rusia', prevVisas: 'Visados Schengen anteriores', prevVisasValue: 'No' },
+	it: { title: 'Dati del viaggio', subtitle: 'Compila le informazioni del viaggio per proseguire con il visto', purpose: 'Scopo del viaggio', purposeValue: 'Turismo', entryDate: 'Data di ingresso prevista', exitDate: 'Data di uscita prevista', dateValue: '01.10.2020', exitDateValue: '14.10.2020', residenceCountry: 'Paese di residenza negli ultimi 3 anni', residenceCountryValue: 'Federazione Russa', prevVisas: 'Precedenti visti Schengen', prevVisasValue: 'No' },
 }
+
+const PURPOSE_OPTIONS = ['Туризм', 'Бизнес', 'Учеба', 'Лечение', 'Посещение родственников']
+const YES_NO_OPTIONS = ['Нет', 'Да']
+const MARITAL_OPTIONS = ['Не женат / Не замужем', 'Женат / Замужем', 'Разведен / Разведена', 'Вдовец / Вдова']
+const GENDER_OPTIONS = ['Мужской', 'Женский']
+const TIME_OPTIONS = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00']
+const CENTER_OPTIONS = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск']
 
 // Compose visa type title for the selected destination country.
 function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationCode, type: 'C' | 'D') {
@@ -390,6 +405,28 @@ function toApiPassportDate (value: string) {
 	return `${match[3]}-${match[2]}-${match[1]}`
 }
 
+// Parse UI date string into a local Date for calendar positioning.
+function parseUiDate (value: string) {
+	const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+	if(!match) return new Date()
+	return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]))
+}
+
+// Format Date object back into dd.mm.yyyy UI date.
+function formatUiDate (date: Date) {
+	return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`
+}
+
+// Return month grid cells including leading blanks for Monday-first layout.
+function resolveCalendarDays (month: Date) {
+	const days: (number | null)[] = []
+	const first = new Date(month.getFullYear(), month.getMonth(), 1)
+	const offset = (first.getDay() + 6) % 7
+	for(let i = 0; i < offset; i += 1) days.push(null)
+	for(let day = 1; day <= new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate(); day += 1) days.push(day)
+	return days
+}
+
 // Map API passport dto into UI passport entry model.
 function mapPassportDto (dto: PassportDto): PassportEntry {
 	const gender = Number(dto.gender) === 2 ? 'Женский' : 'Мужской'
@@ -460,6 +497,23 @@ function resolveAuthPayload () {
 // Persist refreshed auth payload when API issues new token pair.
 function setAuthPayload (payload: AuthTokenResponse) {
 	window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
+}
+
+// Resolve persisted visa drafts without touching storage during SSR.
+function resolveSavedDrafts () {
+	if(typeof window === 'undefined') return []
+
+	try {
+		return JSON.parse(window.localStorage.getItem(VISA_DRAFTS_STORAGE_KEY) ?? '[]') as VisaDraft[]
+	} catch {
+		return []
+	}
+}
+
+// Resolve developer-selected reduced motion preference.
+function resolveAnimationsDisabled () {
+	if(typeof window === 'undefined') return false
+	return window.localStorage.getItem(ANIMATIONS_DISABLED_STORAGE_KEY) === 'true'
 }
 
 // Resolve request URL for auth endpoint in proxy or direct mode.
@@ -677,15 +731,19 @@ function useSplashReady () {
 
 	useEffect(() => {
 		let isActive = true
+		let loadHandler: (() => void) | null = null
+		let settleTimer = 0
 		const waitForLoad = new Promise<void>((resolve) => {
 			if(document.readyState === 'complete') {
 				resolve()
 				return
 			}
-			window.addEventListener('load', () => resolve(), { once: true })
+
+			loadHandler = () => resolve()
+			window.addEventListener('load', loadHandler, { once: true })
 		})
 		const waitForSettle = new Promise<void>((resolve) => {
-			window.setTimeout(() => resolve(), 850)
+			settleTimer = window.setTimeout(() => resolve(), 850)
 		})
 
 		Promise.all([waitForLoad, waitForSettle]).then(() => {
@@ -694,6 +752,8 @@ function useSplashReady () {
 
 		return () => {
 			isActive = false
+			if(loadHandler) window.removeEventListener('load', loadHandler)
+			window.clearTimeout(settleTimer)
 		}
 	}, [])
 
@@ -1397,20 +1457,20 @@ function PassportRecognitionScreen ({ onBack }: { onBack: () => void }) {
 }
 
 // Render first personal-data visa form from Figma node 520:15627.
-function VisaPersonalOneScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
-	const { locale, t } = useI18n()
-	const copy = VISA_PERSONAL_TEXT[locale]
+function VisaPersonalOneScreen ({ personal, onBack, onHome, onContinue, onChange }: { personal: typeof VISA_PERSONAL_TEXT[LocaleCode], onBack: () => void, onHome: () => void, onContinue: () => void, onChange: (field: keyof typeof VISA_PERSONAL_TEXT[LocaleCode], value: string) => void }) {
+	const { t } = useI18n()
+	const copy = personal
 
 	return (
 		<section aria-label="Personal data" className="visa-screen">
 			<div className="visa-scroll visa-personal-scroll">
 				<VisaPersonalHeader copy={copy} onBack={onBack} onHome={onHome} progressClass="is-half" />
 				<div className="visa-personal-form">
-					<VisaPersonalField icon="search" label={copy.birthPlace} value={copy.birthPlaceValue} />
-					<VisaPersonalField icon="chevron" label={copy.marital} value={copy.maritalValue} />
-					<VisaPersonalField icon="search" label={copy.profession} value={copy.professionValue} />
-					<VisaPersonalField label={copy.employer} value={copy.employerValue} />
-					<VisaPersonalField icon="search" label={copy.workAddress} value={copy.workAddressValue} />
+					<LivingField icon="search" label={copy.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} value={copy.birthPlaceValue} />
+					<LivingField icon="chevron" label={copy.marital} onChange={(v) => onChange('maritalValue', v)} options={MARITAL_OPTIONS} value={copy.maritalValue} />
+					<LivingField icon="search" label={copy.profession} onChange={(v) => onChange('professionValue', v)} value={copy.professionValue} />
+					<LivingField label={copy.employer} onChange={(v) => onChange('employerValue', v)} value={copy.employerValue} />
+					<LivingField icon="search" label={copy.workAddress} onChange={(v) => onChange('workAddressValue', v)} value={copy.workAddressValue} />
 				</div>
 			</div>
 
@@ -1422,18 +1482,18 @@ function VisaPersonalOneScreen ({ onBack, onHome, onContinue }: { onBack: () => 
 }
 
 // Render second personal-data visa form from Figma node 520:15639.
-function VisaPersonalTwoScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
-	const { locale, t } = useI18n()
-	const copy = VISA_PERSONAL_TEXT[locale]
+function VisaPersonalTwoScreen ({ personal, onBack, onHome, onContinue, onChange }: { personal: typeof VISA_PERSONAL_TEXT[LocaleCode], onBack: () => void, onHome: () => void, onContinue: () => void, onChange: (field: keyof typeof VISA_PERSONAL_TEXT[LocaleCode], value: string) => void }) {
+	const { t } = useI18n()
+	const copy = personal
 
 	return (
 		<section aria-label="Personal data" className="visa-screen">
 			<div className="visa-scroll visa-personal-scroll">
 				<VisaPersonalHeader copy={copy} onBack={onBack} onHome={onHome} progressClass="is-full" />
 				<div className="visa-personal-form">
-					<VisaPersonalField icon="search" label={copy.residenceAddress} value={copy.residenceAddressValue} />
-					<VisaPersonalField label={copy.phone} value={copy.phoneValue} />
-					<VisaPersonalField label={copy.email} value={copy.emailValue} />
+					<LivingField icon="search" label={copy.residenceAddress} onChange={(v) => onChange('residenceAddressValue', v)} value={copy.residenceAddressValue} />
+					<LivingField label={copy.phone} onChange={(v) => onChange('phoneValue', v)} value={copy.phoneValue} />
+					<LivingField label={copy.email} onChange={(v) => onChange('emailValue', v)} value={copy.emailValue} />
 				</div>
 
 				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
@@ -1474,24 +1534,69 @@ function VisaPersonalHeader ({ copy, progressClass, onBack, onHome }: { copy: (t
 	)
 }
 
-// Render one read-only personal-data field row.
-function VisaPersonalField ({ icon, label, value }: { icon?: 'search' | 'chevron' | 'calendar', label: string, value: string }) {
+// Render one live field row with optional calendar or dropdown sheet.
+function LivingField ({ icon, label, value, options, onChange }: { icon?: FieldIcon, label: string, value: string, options?: string[], onChange: (v: string) => void }) {
 	const iconSrc = icon === 'search' ? '/assets/icon-search.svg' : icon === 'calendar' ? '/assets/icon-calendar.svg' : '/assets/icon-chevron-down.svg'
+	const [sheet, setSheet] = useState<'calendar' | 'options' | null>(null)
+	const openSheet = () => {
+		if(icon === 'calendar') setSheet('calendar')
+		if(icon === 'chevron') setSheet('options')
+	}
+
 	return (
 		<div className="visa-personal-field">
 			<label>{label}</label>
-			<div className="profile-data-input with-right-icon">
-				<span>{value}</span>
-				{icon ? <Image alt="Field icon" height={24} src={iconSrc} unoptimized width={24} /> : null}
+			<div className={`profile-data-input${icon ? ' with-right-icon' : ''}`}>
+				<input onChange={(event) => onChange(event.target.value)} onFocus={openSheet} type="text" value={value} />
+				{icon ? <button aria-label={label} className="field-icon-btn" onClick={openSheet} type="button"><Image alt="Field icon" height={24} src={iconSrc} unoptimized width={24} /></button> : null}
+			</div>
+			{sheet === 'calendar' ? <CalendarSheet onClose={() => setSheet(null)} onSelect={(next) => { onChange(next); setSheet(null) }} value={value} /> : null}
+			{sheet === 'options' ? <OptionSheet onClose={() => setSheet(null)} onSelect={(next) => { onChange(next); setSheet(null) }} options={options ?? [value]} value={value} /> : null}
+		</div>
+	)
+}
+
+// Render selectable option list as an app-local bottom sheet.
+function OptionSheet ({ options, value, onSelect, onClose }: { options: string[], value: string, onSelect: (v: string) => void, onClose: () => void }) {
+	return (
+		<div className="field-sheet-backdrop" onClick={onClose}>
+			<div className="field-sheet" onClick={(event) => event.stopPropagation()}>
+				{options.map((option) => <button className={option === value ? 'is-active' : ''} key={option} onClick={() => onSelect(option)} type="button">{option}</button>)}
+			</div>
+		</div>
+	)
+}
+
+// Render calendar widget for dd.mm.yyyy date fields.
+function CalendarSheet ({ value, onSelect, onClose }: { value: string, onSelect: (v: string) => void, onClose: () => void }) {
+	const { locale } = useI18n()
+	const selected = parseUiDate(value)
+	const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1))
+	const monthTitle = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(month)
+
+	return (
+		<div className="field-sheet-backdrop" onClick={onClose}>
+			<div className="calendar-sheet" onClick={(event) => event.stopPropagation()}>
+				<header>
+					<button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} type="button">‹</button>
+					<strong>{monthTitle}</strong>
+					<button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} type="button">›</button>
+				</header>
+				<div className="calendar-weekdays"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+				<div className="calendar-grid">
+					{resolveCalendarDays(month).map((day, index) => day ? (
+						<button className={formatUiDate(new Date(month.getFullYear(), month.getMonth(), day)) === value ? 'is-active' : ''} key={`${month.getMonth()}-${day}`} onClick={() => onSelect(formatUiDate(new Date(month.getFullYear(), month.getMonth(), day)))} type="button">{day}</button>
+					) : <span key={`blank-${index}`} />)}
+				</div>
 			</div>
 		</div>
 	)
 }
 
 // Render trip data form from Figma node 520:15649.
-function VisaTripScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
-	const { locale, t } = useI18n()
-	const copy = VISA_TRIP_TEXT[locale]
+function VisaTripScreen ({ trip, onBack, onHome, onContinue, onChange }: { trip: TripData, onBack: () => void, onHome: () => void, onContinue: () => void, onChange: (field: keyof TripData, value: string) => void }) {
+	const { t } = useI18n()
+	const copy = trip
 
 	return (
 		<section aria-label="Trip data" className="visa-screen">
@@ -1522,11 +1627,11 @@ function VisaTripScreen ({ onBack, onHome, onContinue }: { onBack: () => void, o
 				</header>
 
 				<div className="visa-personal-form">
-					<VisaPersonalField icon="chevron" label={copy.purpose} value={copy.purposeValue} />
-					<VisaPersonalField icon="calendar" label={copy.entryDate} value={copy.dateValue} />
-					<VisaPersonalField icon="calendar" label={copy.exitDate} value={copy.dateValue} />
-					<VisaPersonalField icon="search" label={copy.residenceCountry} value={copy.residenceCountryValue} />
-					<VisaPersonalField icon="chevron" label={copy.prevVisas} value={copy.prevVisasValue} />
+					<LivingField icon="chevron" label={copy.purpose} onChange={(v) => onChange('purposeValue', v)} options={PURPOSE_OPTIONS} value={copy.purposeValue} />
+					<LivingField icon="calendar" label={copy.entryDate} onChange={(v) => onChange('dateValue', v)} value={copy.dateValue} />
+					<LivingField icon="calendar" label={copy.exitDate} onChange={(v) => onChange('exitDateValue', v)} value={copy.exitDateValue} />
+					<LivingField icon="search" label={copy.residenceCountry} onChange={(v) => onChange('residenceCountryValue', v)} value={copy.residenceCountryValue} />
+					<LivingField icon="chevron" label={copy.prevVisas} onChange={(v) => onChange('prevVisasValue', v)} options={YES_NO_OPTIONS} value={copy.prevVisasValue} />
 				</div>
 
 				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
@@ -1723,7 +1828,7 @@ function VisaPhotoCheckScreen ({ photoDataUrl, onBack, onHome, onDone }: { photo
 				</header>
 
 				<div className="visa-photo-preview">
-					{photoDataUrl ? <img alt="Uploaded photo" src={photoDataUrl} /> : null}
+					{photoDataUrl ? <Image alt="Uploaded photo" height={406} src={photoDataUrl} unoptimized width={370} /> : null}
 				</div>
 
 				<div className="visa-photo-loader">
@@ -1752,17 +1857,8 @@ function ReviewProgress ({ subStep }: { subStep: 1 | 2 | 3 | 4 }) {
 }
 
 // One editable text field row for review screens.
-function ReviewField ({ label, value, icon, onChange }: { label: string, value: string, icon?: 'search' | 'chevron' | 'calendar', onChange: (v: string) => void }) {
-	const iconSrc = icon === 'search' ? '/assets/icon-search.svg' : icon === 'calendar' ? '/assets/icon-calendar.svg' : '/assets/icon-chevron-down.svg'
-	return (
-		<div className="visa-personal-field">
-			<label>{label}</label>
-			<div className={`profile-data-input${icon ? ' with-right-icon' : ''}`}>
-				<input onChange={(e) => onChange(e.target.value)} type="text" value={value} />
-				{icon ? <Image alt="" height={24} src={iconSrc} unoptimized width={24} /> : null}
-			</div>
-		</div>
-	)
+function ReviewField ({ label, value, icon, options, onChange }: { label: string, value: string, icon?: FieldIcon, options?: string[], onChange: (v: string) => void }) {
+	return <LivingField icon={icon} label={label} onChange={onChange} options={options} value={value} />
 }
 
 // One file attachment row for review trip/photo screens.
@@ -1811,7 +1907,7 @@ function VisaReviewPassportScreen ({ passport, onBack, onHome, onContinue, onCha
 					<ReviewField label={t('profileDataFirstName')} onChange={(v) => onChange('firstName', v)} value={passport.firstName} />
 					<ReviewField label={t('profileDataLastName')} onChange={(v) => onChange('lastName', v)} value={passport.lastName} />
 					<ReviewField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={passport.birthDate} />
-					<ReviewField icon="chevron" label={t('passportGender')} onChange={(v) => onChange('gender', v)} value={passport.gender} />
+					<ReviewField icon="chevron" label={t('passportGender')} onChange={(v) => onChange('gender', v)} options={GENDER_OPTIONS} value={passport.gender} />
 					<ReviewField label={t('passportNumber')} onChange={(v) => onChange('passportNumber', v)} value={passport.passportNumber} />
 					<ReviewField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={passport.issueDate} />
 					<ReviewField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={passport.expiryDate} />
@@ -1848,7 +1944,7 @@ function VisaReviewPersonalScreen ({ personal, onBack, onHome, onContinue, onCha
 				</header>
 				<div className="visa-personal-form">
 					<ReviewField icon="search" label={personal.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} value={personal.birthPlaceValue} />
-					<ReviewField icon="chevron" label={personal.marital} onChange={(v) => onChange('maritalValue', v)} value={personal.maritalValue} />
+					<ReviewField icon="chevron" label={personal.marital} onChange={(v) => onChange('maritalValue', v)} options={MARITAL_OPTIONS} value={personal.maritalValue} />
 					<ReviewField icon="search" label={personal.profession} onChange={(v) => onChange('professionValue', v)} value={personal.professionValue} />
 					<ReviewField label={personal.employer} onChange={(v) => onChange('employerValue', v)} value={personal.employerValue} />
 					<ReviewField icon="search" label={personal.workAddress} onChange={(v) => onChange('workAddressValue', v)} value={personal.workAddressValue} />
@@ -1886,11 +1982,11 @@ function VisaReviewTripScreen ({ trip, docs, onBack, onHome, onContinue, onTripC
 					</div>
 				</header>
 				<div className="visa-personal-form">
-					<ReviewField icon="chevron" label={trip.purpose} onChange={(v) => onTripChange('purposeValue', v)} value={trip.purposeValue} />
+					<ReviewField icon="chevron" label={trip.purpose} onChange={(v) => onTripChange('purposeValue', v)} options={PURPOSE_OPTIONS} value={trip.purposeValue} />
 					<ReviewField icon="calendar" label={trip.entryDate} onChange={(v) => onTripChange('dateValue', v)} value={trip.dateValue} />
-					<ReviewField icon="calendar" label={trip.exitDate} onChange={(v) => onTripChange('dateValue', v)} value={trip.dateValue} />
+					<ReviewField icon="calendar" label={trip.exitDate} onChange={(v) => onTripChange('exitDateValue', v)} value={trip.exitDateValue} />
 					<ReviewField icon="search" label={trip.residenceCountry} onChange={(v) => onTripChange('residenceCountryValue', v)} value={trip.residenceCountryValue} />
-					<ReviewField icon="chevron" label={trip.prevVisas} onChange={(v) => onTripChange('prevVisasValue', v)} value={trip.prevVisasValue} />
+					<ReviewField icon="chevron" label={trip.prevVisas} onChange={(v) => onTripChange('prevVisasValue', v)} options={YES_NO_OPTIONS} value={trip.prevVisasValue} />
 					<ReviewFileField filename={docs.hotelFile} label={docs.hotel} replaceLabel={'Заменить бронирование отеля'} viewLabel={'Посмотреть'} />
 					<ReviewFileField filename={docs.flightsFile} label={docs.flights} replaceLabel={'Заменить бронирование авиабилетов'} viewLabel={'Посмотреть'} />
 					<ReviewFileField filename={docs.insuranceFile} label={docs.insurance} replaceLabel={'Заменить медицинскую страховку'} viewLabel={'Посмотреть'} />
@@ -1942,7 +2038,7 @@ function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onRe
 					</div>
 					{showPhoto && photoDataUrl ? (
 						<div className="visa-photo-preview">
-							<img alt="Your photo" src={photoDataUrl} />
+							<Image alt="Your photo" height={406} src={photoDataUrl} unoptimized width={370} />
 						</div>
 					) : null}
 				</div>
@@ -2212,6 +2308,9 @@ function VisaDocumentsReadyScreen ({ applicant, visaType, visaDestination, onBac
 	const { t } = useI18n()
 	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
 	const passport = applicant?.passport ?? createPassportDraft()
+	const [center, setCenter] = useState('Москва')
+	const [appointmentDate, setAppointmentDate] = useState('16.05.2026')
+	const [appointmentTime, setAppointmentTime] = useState('14:00')
 
 	return (
 		<section aria-label="Ready visa documents" className="visa-screen">
@@ -2250,9 +2349,9 @@ function VisaDocumentsReadyScreen ({ applicant, visaType, visaDestination, onBac
 				</section>
 
 				<div className="visa-ready-form">
-					<VisaReadyField icon="search" label="Визовый центр" value="Москва" />
-					<VisaReadyField icon="calendar" label="Дата подачи" value="16.05.2026" />
-					<VisaReadyField icon="chevron" label="Время подачи" value="14:00" />
+					<VisaReadyField icon="chevron" label="Визовый центр" onChange={setCenter} options={CENTER_OPTIONS} value={center} />
+					<VisaReadyField icon="calendar" label="Дата подачи" onChange={setAppointmentDate} value={appointmentDate} />
+					<VisaReadyField icon="chevron" label="Время подачи" onChange={setAppointmentTime} options={TIME_OPTIONS} value={appointmentTime} />
 				</div>
 			</div>
 			<div className="visa-bottom visa-ready-bottom">
@@ -2263,18 +2362,8 @@ function VisaDocumentsReadyScreen ({ applicant, visaType, visaDestination, onBac
 }
 
 // Render appointment field row with the matching trailing icon.
-function VisaReadyField ({ label, value, icon }: { label: string, value: string, icon: 'search' | 'calendar' | 'chevron' }) {
-	return (
-		<div className="visa-ready-field">
-			<label>{label}</label>
-			<div className="visa-ready-input">
-				<span>{value}</span>
-				{icon === 'search' ? <Image alt="Search" height={24} src="/assets/icon-search.svg" unoptimized width={24} /> : null}
-				{icon === 'calendar' ? <Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /> : null}
-				{icon === 'chevron' ? <Image alt="Chevron" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /> : null}
-			</div>
-		</div>
-	)
+function VisaReadyField ({ label, value, icon, options, onChange }: { label: string, value: string, icon: FieldIcon, options?: string[], onChange: (v: string) => void }) {
+	return <LivingField icon={icon} label={label} onChange={onChange} options={options} value={value} />
 }
 
 // Render document upload form from Figma node 520:15661.
@@ -2314,9 +2403,9 @@ function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => vo
 				</header>
 
 				<div className="visa-personal-form">
-					<VisaDocField filename={hotelFile} label={copy.hotel} onClear={() => setHotelFile('')} />
-					<VisaDocField filename={flightsFile} label={copy.flights} onClear={() => setFlightsFile('')} />
-					<VisaDocField filename={insuranceFile} label={copy.insurance} onClear={() => setInsuranceFile('')} />
+					<VisaDocField filename={hotelFile} label={copy.hotel} onChange={setHotelFile} onClear={() => setHotelFile('')} />
+					<VisaDocField filename={flightsFile} label={copy.flights} onChange={setFlightsFile} onClear={() => setFlightsFile('')} />
+					<VisaDocField filename={insuranceFile} label={copy.insurance} onChange={setInsuranceFile} onClear={() => setInsuranceFile('')} />
 				</div>
 
 				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
@@ -2326,18 +2415,25 @@ function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => vo
 }
 
 // Render one document upload field with file name and clear button.
-function VisaDocField ({ label, filename, onClear }: { label: string, filename: string, onClear: () => void }) {
+function VisaDocField ({ label, filename, onChange, onClear }: { label: string, filename: string, onChange: (v: string) => void, onClear: () => void }) {
+	const inputRef = useRef<HTMLInputElement | null>(null)
+	const selectFile = (event: ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0]
+		if(file) onChange(file.name)
+	}
+
 	return (
 		<div className="visa-personal-field">
 			<label>{label}</label>
-			<div className="profile-data-input with-icon with-right-icon">
+			<div className="profile-data-input with-icon with-right-icon" onClick={() => inputRef.current?.click()} role="button" tabIndex={0}>
+				<input className="field-file-input" onChange={selectFile} ref={inputRef} type="file" />
 				<svg aria-hidden fill="none" height="24" stroke="rgb(0 29 71 / 0.52)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 					<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
 					<polyline points="14 2 14 8 20 8" />
 				</svg>
-				<span>{filename}</span>
+				<span>{filename || 'Выбрать файл'}</span>
 				{filename ? (
-					<button aria-label="Remove file" className="field-clear-btn" onClick={onClear} type="button">
+					<button aria-label="Remove file" className="field-clear-btn" onClick={(event) => { event.stopPropagation(); onClear() }} type="button">
 						<svg aria-hidden fill="none" height="24" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 							<line x1="18" x2="6" y1="6" y2="18" />
 							<line x1="6" x2="18" y1="6" y2="18" />
@@ -2434,15 +2530,11 @@ function PassportStepOneScreen ({ draft, onBack, onNext, onChange }: { draft: Pa
 				</div>
 
 				<div className="passport-fields">
-					<div className="passport-field-row">
-						<label>{t('passportCitizenship')}</label>
-						<div className="profile-data-input with-icon with-right-icon"><Image alt="Search" height={24} src="/assets/icon-search.svg" unoptimized width={24} /><input onChange={(event) => onChange('citizenship', event.target.value)} type="text" value={draft.citizenship} /><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div>
-					</div>
-
+					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} value={draft.citizenship} />
 					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
 					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
-					<div className="passport-field-row"><label>{t('passportBirthDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('birthDate', event.target.value)} type="text" value={draft.birthDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
-					<div className="passport-field-row"><label>{t('passportGender')}</label><div className="profile-data-input with-right-icon"><select onChange={(event) => onChange('gender', event.target.value)} value={draft.gender}><option value="Мужской">Мужской</option><option value="Женский">Женский</option></select><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div></div>
+					<LivingField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={draft.birthDate} />
+					<LivingField icon="chevron" label={t('passportGender')} onChange={(v) => onChange('gender', v)} options={GENDER_OPTIONS} value={draft.gender} />
 				</div>
 
 				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
@@ -2474,9 +2566,9 @@ function PassportStepTwoScreen ({ draft, onBack, onNext, onChange }: { draft: Pa
 
 				<div className="passport-fields">
 					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
-					<div className="passport-field-row"><label>{t('passportIssueDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('issueDate', event.target.value)} type="text" value={draft.issueDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
-					<div className="passport-field-row"><label>{t('passportExpiryDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('expiryDate', event.target.value)} type="text" value={draft.expiryDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
-					<div className="passport-field-row"><label>{t('passportIssuedBy')}</label><div className="profile-data-input"><input onChange={(event) => onChange('issuedBy', event.target.value)} type="text" value={draft.issuedBy} /></div></div>
+					<LivingField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={draft.issueDate} />
+					<LivingField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={draft.expiryDate} />
+					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} value={draft.issuedBy} />
 				</div>
 
 				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
@@ -2507,19 +2599,15 @@ function PassportEditScreen ({ draft, onBack, onChange, onSave }: { draft: Passp
 				</div>
 
 				<div className="passport-fields">
-					<div className="passport-field-row">
-						<label>{t('passportCitizenship')}</label>
-						<div className="profile-data-input with-icon with-right-icon"><Image alt="Search" height={24} src="/assets/icon-search.svg" unoptimized width={24} /><input onChange={(event) => onChange('citizenship', event.target.value)} type="text" value={draft.citizenship} /><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div>
-					</div>
-
+					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} value={draft.citizenship} />
 					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
 					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
-					<div className="passport-field-row"><label>{t('passportBirthDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('birthDate', event.target.value)} type="text" value={draft.birthDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
-					<div className="passport-field-row"><label>{t('passportGender')}</label><div className="profile-data-input with-right-icon"><select onChange={(event) => onChange('gender', event.target.value)} value={draft.gender}><option value="Мужской">Мужской</option><option value="Женский">Женский</option></select><Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /></div></div>
+					<LivingField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={draft.birthDate} />
+					<LivingField icon="chevron" label={t('passportGender')} onChange={(v) => onChange('gender', v)} options={GENDER_OPTIONS} value={draft.gender} />
 					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
-					<div className="passport-field-row"><label>{t('passportIssueDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('issueDate', event.target.value)} type="text" value={draft.issueDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
-					<div className="passport-field-row"><label>{t('passportExpiryDate')}</label><div className="profile-data-input with-right-icon"><input onChange={(event) => onChange('expiryDate', event.target.value)} type="text" value={draft.expiryDate} /><Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /></div></div>
-					<div className="passport-field-row"><label>{t('passportIssuedBy')}</label><div className="profile-data-input"><input onChange={(event) => onChange('issuedBy', event.target.value)} type="text" value={draft.issuedBy} /></div></div>
+					<LivingField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={draft.issueDate} />
+					<LivingField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={draft.expiryDate} />
+					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} value={draft.issuedBy} />
 				</div>
 
 				<button className="passport-primary" onClick={onSave} type="button">{t('passportSaveButton')}</button>
@@ -2570,7 +2658,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onSave }: { draft: 
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ isVisaCheckSuccess, onBack, onToggleVisaCheckSuccess }: { isVisaCheckSuccess: boolean, onBack: () => void, onToggleVisaCheckSuccess: (value: boolean) => void }) {
+function DeveloperModeScreen ({ isVisaCheckSuccess, animationsDisabled, onBack, onToggleAnimationsDisabled, onToggleVisaCheckSuccess }: { isVisaCheckSuccess: boolean, animationsDisabled: boolean, onBack: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleVisaCheckSuccess: (value: boolean) => void }) {
 	const { t } = useI18n()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
@@ -2618,6 +2706,16 @@ function DeveloperModeScreen ({ isVisaCheckSuccess, onBack, onToggleVisaCheckSuc
 			</header>
 
 			<div className="dev-content">
+				<div className="dev-card dev-switch-card">
+					<div>
+						<b>{'Animations'}</b>
+						<p>{animationsDisabled ? 'Disabled' : 'Enabled'}</p>
+					</div>
+					<button aria-pressed={!animationsDisabled} className={`dev-switch${!animationsDisabled ? ' is-on' : ''}`} onClick={() => onToggleAnimationsDisabled(!animationsDisabled)} type="button">
+						<span />
+					</button>
+				</div>
+
 				<div className="dev-card dev-switch-card">
 					<div>
 						<b>{'Visa check result'}</b>
@@ -2840,8 +2938,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
-	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
+	if(!HOME_TABS.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
 
@@ -2873,13 +2970,12 @@ function EntryFlow () {
 	const [currentApplicants, setCurrentApplicants] = useState<VisaApplicant[]>([])
 	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
 	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
+	const [animationsDisabled, setAnimationsDisabled] = useState(resolveAnimationsDisabled)
 	const [isVisaCheckSuccess, setIsVisaCheckSuccess] = useState(() => {
 		if(typeof window === 'undefined') return true
 		return localStorage.getItem('visa-check-success') !== 'false'
 	})
-	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(() => {
-		try { return JSON.parse(localStorage.getItem('visa-drafts') ?? '[]') } catch { return [] }
-	})
+	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(resolveSavedDrafts)
 	const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
 	const isPopNavigationRef = useRef(false)
 
@@ -2928,6 +3024,10 @@ function EntryFlow () {
 		const route = buildEntryRoute(step, activeTab)
 		if(window.location.hash !== route) window.history.replaceState({ step, tab: activeTab }, '', route)
 	}, [step, activeTab])
+
+	useEffect(() => {
+		document.documentElement.classList.toggle('motion-disabled', animationsDisabled)
+	}, [animationsDisabled])
 
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
@@ -3009,6 +3109,12 @@ function EntryFlow () {
 	const toggleVisaCheckSuccess = (value: boolean) => {
 		setIsVisaCheckSuccess(value)
 		localStorage.setItem('visa-check-success', String(value))
+	}
+
+	// Persist developer-selected animation preference.
+	const toggleAnimationsDisabled = (value: boolean) => {
+		setAnimationsDisabled(value)
+		localStorage.setItem(ANIMATIONS_DISABLED_STORAGE_KEY, String(value))
 	}
 
 	// Update passport draft field and recompute derived full name.
@@ -3094,11 +3200,11 @@ function EntryFlow () {
 							: activeTab === 'passport-recognition'
 								? <PassportRecognitionScreen onBack={() => navigate('home', 'passport-camera')} />
 							: activeTab === 'visa-personal-one'
-								? <VisaPersonalOneScreen onBack={() => navigate('home', 'visa-passport')} onContinue={() => navigate('home', 'visa-personal-two')} onHome={() => navigate('home', 'home')} />
+								? <VisaPersonalOneScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-passport')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-personal-two')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-personal-two'
-							? <VisaPersonalTwoScreen onBack={() => navigate('home', 'visa-personal-one')} onContinue={() => navigate('home', 'visa-trip')} onHome={() => navigate('home', 'home')} />
+							? <VisaPersonalTwoScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-personal-one')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-trip')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-trip'
-							? <VisaTripScreen onBack={() => navigate('home', 'visa-personal-two')} onContinue={() => navigate('home', 'visa-docs')} onHome={() => navigate('home', 'home')} />
+							? <VisaTripScreen trip={reviewTrip} onBack={() => navigate('home', 'visa-personal-two')} onChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-docs')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-docs'
 							? <VisaDocumentsScreen onBack={() => navigate('home', 'visa-trip')} onContinue={() => navigate('home', 'visa-photo')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-photo'
@@ -3161,7 +3267,7 @@ function EntryFlow () {
 									}
 									setSavedDrafts((prev) => {
 										const next = activeDraftId ? prev.map((d) => d.id === activeDraftId ? draft : d) : [...prev, draft]
-										try { localStorage.setItem('visa-drafts', JSON.stringify(next)) } catch {}
+										try { localStorage.setItem(VISA_DRAFTS_STORAGE_KEY, JSON.stringify(next)) } catch {}
 										return next
 									})
 									setActiveDraftId(draft.id)
@@ -3185,7 +3291,7 @@ function EntryFlow () {
 									navigate('onboarding', 'home')
 								}} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => navigate('home', 'profile')} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
+									? <DeveloperModeScreen animationsDisabled={animationsDisabled} isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'

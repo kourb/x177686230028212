@@ -13,6 +13,45 @@
 	box-sizing: border-box;
 }
 
+button,
+[role='button'] {
+	-webkit-tap-highlight-color: transparent;
+	touch-action: manipulation;
+}
+
+button:focus,
+button:focus-visible,
+[role='button']:focus,
+[role='button']:focus-visible {
+	outline: none;
+}
+
+html:not(.motion-disabled) button,
+html:not(.motion-disabled) [role='button'],
+html:not(.motion-disabled) .profile-data-input,
+html:not(.motion-disabled) .visa-type-card,
+html:not(.motion-disabled) .payment-method-card,
+html:not(.motion-disabled) .passport-card,
+html:not(.motion-disabled) .draft-card,
+html:not(.motion-disabled) .profile-row,
+html:not(.motion-disabled) .visa-check-card,
+html:not(.motion-disabled) .visa-ready-card {
+	transition: transform 140ms ease, background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+html:not(.motion-disabled) button:active,
+html:not(.motion-disabled) [role='button']:active {
+	transform: scale(0.97);
+}
+
+html.motion-disabled *,
+html.motion-disabled *::before,
+html.motion-disabled *::after {
+	animation: none !important;
+	transition: none !important;
+	scroll-behavior: auto !important;
+}
+
 html,
 body {
 	margin: 0;
@@ -21,6 +60,16 @@ body {
 	font-family: 'Geist', 'Manrope', 'Segoe UI', sans-serif;
 	background: #fff;
 	overflow-x: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation: none !important;
+		transition: none !important;
+		scroll-behavior: auto !important;
+	}
 }
 
 .not-found-screen {
@@ -1292,6 +1341,28 @@ body {
 	}
 }
 
+@keyframes sheet-backdrop-enter {
+	from {
+		background: rgb(0 29 71 / 0);
+	}
+
+	to {
+		background: rgb(0 29 71 / 0.24);
+	}
+}
+
+@keyframes sheet-enter {
+	from {
+		opacity: 0;
+		transform: translateY(28px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
 .visa-personal-scroll {
 	gap: 24px;
 }
@@ -1517,6 +1588,8 @@ body {
 
 .profile-data-input {
 	height: 56px;
+	width: 100%;
+	min-width: 0;
 	border-radius: 12px;
 	border: 1px solid rgb(0 29 71 / 0.16);
 	display: flex;
@@ -1527,6 +1600,13 @@ body {
 	letter-spacing: -0.02em;
 	font-weight: 400;
 	color: var(--ink);
+	background: #fff;
+	overflow: hidden;
+}
+
+.profile-data-input:focus-within {
+	border-color: rgb(0 102 245 / 0.48);
+	box-shadow: 0 0 0 4px rgb(0 102 245 / 0.09);
 }
 
 .profile-data-input input,
@@ -1547,6 +1627,158 @@ body {
 
 .profile-data-input input::placeholder {
 	color: rgb(0 29 71 / 0.48);
+}
+
+.field-icon-btn {
+	all: unset;
+	width: 24px;
+	height: 24px;
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	cursor: pointer;
+}
+
+.field-file-input {
+	display: none;
+}
+
+.field-sheet-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 40;
+	background: rgb(0 29 71 / 0.24);
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	overflow: hidden;
+}
+
+html:not(.motion-disabled) .field-sheet-backdrop {
+	animation: sheet-backdrop-enter 180ms ease both;
+}
+
+.field-sheet,
+.calendar-sheet {
+	width: min(402px, 100%);
+	max-height: min(620px, 86dvh);
+	padding: 16px 16px 34px;
+	border-radius: 28px 28px 0 0;
+	background: #fff;
+	box-shadow: 0 -18px 56px rgb(0 29 71 / 0.18);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+html:not(.motion-disabled) .field-sheet,
+html:not(.motion-disabled) .calendar-sheet {
+	animation: sheet-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.field-sheet {
+	display: grid;
+	gap: 8px;
+}
+
+.field-sheet button {
+	all: unset;
+	height: 52px;
+	min-width: 0;
+	padding: 0 16px;
+	border: 1px solid rgb(0 29 71 / 0.12);
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	cursor: pointer;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.field-sheet button.is-active {
+	border-color: var(--fill-blue);
+	background: rgb(0 102 245 / 0.1);
+	color: var(--fill-blue);
+}
+
+.calendar-sheet {
+	display: grid;
+	gap: 16px;
+}
+
+.calendar-sheet header {
+	display: grid;
+	grid-template-columns: 44px 1fr 44px;
+	align-items: center;
+	gap: 8px;
+}
+
+.calendar-sheet header button,
+.calendar-grid button {
+	all: unset;
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+}
+
+.calendar-sheet header button {
+	height: 44px;
+	border-radius: 999px;
+	background: rgb(0 29 71 / 0.06);
+	font-size: 28px;
+	line-height: 1;
+	color: var(--ink);
+}
+
+.calendar-sheet header strong {
+	min-width: 0;
+	text-align: center;
+	font-size: 20px;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	font-weight: 600;
+	color: var(--ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 6px;
+}
+
+.calendar-weekdays span {
+	height: 28px;
+	display: grid;
+	place-items: center;
+	font-size: 13px;
+	font-weight: 600;
+	color: rgb(0 29 71 / 0.48);
+}
+
+.calendar-grid button,
+.calendar-grid span {
+	height: 42px;
+	border-radius: 12px;
+	font-size: 17px;
+	line-height: 1;
+	color: var(--ink);
+}
+
+.calendar-grid button:hover {
+	background: rgb(0 29 71 / 0.06);
+}
+
+.calendar-grid button.is-active {
+	background: var(--fill-blue);
+	color: #fff;
 }
 
 .profile-drawer-backdrop {
@@ -1703,6 +1935,7 @@ body {
 	background: rgb(0 29 71 / 0.16);
 	position: relative;
 	cursor: pointer;
+	transition: background-color 160ms ease, transform 140ms ease;
 }
 
 .dev-switch span {
@@ -3116,16 +3349,12 @@ body {
 	border-top: 1px solid var(--ink);
 }
 
-/* ─── Review title: first line gray ─── */
-
 .review-title-sub {
 	display: block;
 	color: rgb(0 29 71 / 0.4);
 	font-size: inherit;
 	font-weight: inherit;
 }
-
-/* ─── Review photo: replace button below file box ─── */
 
 .visa-personal-field > .review-file-replace {
 	all: unset;
@@ -3135,12 +3364,4 @@ body {
 	font-weight: 500;
 	color: #0066f5;
 	cursor: pointer;
-}
-
-/* ─── Review disabled button state ─── */
-
-.review-btn-disabled {
-	background: rgb(0 29 71 / 0.16);
-	color: rgb(0 29 71 / 0.4);
-	pointer-events: none;
 }
