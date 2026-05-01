@@ -286,6 +286,7 @@ const TIME_OPTIONS = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00']
 const CENTER_OPTIONS = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск']
 
 let lastHomeRootTabIndex = 0
+let lastVisaTripProgress = 0
 
 // Compose visa type title for the selected destination country.
 function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationCode, type: 'C' | 'D') {
@@ -1613,6 +1614,21 @@ function VisaPersonalHeader ({ copy, progressClass, onBack, onHome }: { copy: (t
 	)
 }
 
+// Render animated trip-flow progress with continuity across screen remounts.
+function VisaProgressTrip ({ value }: { value: number }) {
+	const [progress, setProgress] = useState(lastVisaTripProgress)
+
+	useEffect(() => {
+		const frame = requestAnimationFrame(() => {
+			setProgress(value)
+			lastVisaTripProgress = value
+		})
+		return () => cancelAnimationFrame(frame)
+	}, [value])
+
+	return <div className="visa-progress visa-progress-trip" role="presentation" style={{ '--visa-progress': `${progress}%` } as CSSProperties} />
+}
+
 // Render one live field row with optional calendar or dropdown sheet.
 function LivingField ({ icon, label, value, options, onChange }: { icon?: FieldIcon, label: string, value: string, options?: string[], onChange: (v: string) => void }) {
 	const iconSrc = icon === 'search' ? '/assets/icon-search.svg' : icon === 'calendar' ? '/assets/icon-calendar.svg' : '/assets/icon-chevron-down.svg'
@@ -1720,14 +1736,7 @@ function VisaTripScreen ({ trip, onBack, onHome, onContinue, onChange }: { trip:
 						</button>
 					</div>
 
-					<div className="visa-progress visa-progress-trip" role="presentation">
-						<i className="is-done" />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={55} />
 
 					<div className="visa-copy">
 						<h1>{copy.title}</h1>
@@ -1777,14 +1786,7 @@ function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () =
 						</button>
 					</div>
 
-					<div className="visa-progress visa-progress-trip" role="presentation">
-						<i className="is-done" />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={66} />
 
 					<div className="visa-copy">
 						<h1>{copy.title}</h1>
@@ -1921,14 +1923,7 @@ function VisaPhotoCheckScreen ({ photoDataUrl, onBack, onHome, onDone }: { photo
 						</button>
 					</div>
 
-					<div className="visa-progress visa-progress-trip" role="presentation">
-						<i className="is-done" />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={78} />
 
 					<div className="visa-copy">
 						<h1>{copy.checkTitle}</h1>
@@ -1951,18 +1946,7 @@ function VisaPhotoCheckScreen ({ photoDataUrl, onBack, onHome, onDone }: { photo
 
 // Shared progress bar for Step 8.x review screens — 3 complete dots/bars, current bar filling.
 function ReviewProgress ({ subStep }: { subStep: 1 | 2 | 3 | 4 }) {
-	// Bar represents step 3 (review) divided into 4 sub-steps.
-	const filled = ((subStep - 1) / 4) * 48
-	return (
-		<div className="visa-progress visa-progress-review" role="presentation">
-			<i className="is-done" />
-			<i className="is-done is-bar" />
-			<span style={{ '--review-filled': `${filled}px` } as CSSProperties} />
-			<span />
-			<span />
-			<i />
-		</div>
-	)
+	return <VisaProgressTrip value={78 + subStep * 4} />
 }
 
 // One editable text field row for review screens.
@@ -2183,10 +2167,7 @@ function VisaApplicantsScreen ({ applicants, visaTitle, onBack, onHome, onAddApp
 							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 						</button>
 					</div>
-					<div className="visa-progress visa-progress-trip" role="presentation">
-						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
-						<span className="is-active" /><span /><i />
-					</div>
+					<VisaProgressTrip value={88} />
 					<div className="visa-copy">
 						<h1>{'Заявители на визу'}</h1>
 						<p>{'Вы можете добавить несколько заявителей или перейти к следующему этапу.'}</p>
@@ -2278,10 +2259,7 @@ function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, 
 							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 						</button>
 					</div>
-					<div className="visa-progress visa-progress-trip is-full" role="presentation">
-						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
-						<span className="is-active" /><span /><i />
-					</div>
+					<VisaProgressTrip value={94} />
 					<div className="visa-copy">
 						<h1>{'Отправка на проверку'}</h1>
 						<p>{'Ещё раз проверьте детали и отправьте данные на проверку.'}</p>
@@ -2357,10 +2335,7 @@ function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome, onDownload }: 
 							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 						</button>
 					</div>
-					<div className="visa-progress visa-progress-trip is-full" role="presentation">
-						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
-						<span className="is-active" /><span /><i />
-					</div>
+					<VisaProgressTrip value={100} />
 					<div className="visa-copy">
 						<h1>{'Проверка заявки'}</h1>
 						<p>{'Проверка на соответствие требованиям визы. После успешной проверки будет доступно скачивание заполненной анкеты.'}</p>
@@ -2406,10 +2381,7 @@ function VisaCheckResultScreen ({ applicant, visaTitle, isSuccess, onBack, onHom
 							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 						</button>
 					</div>
-					<div className="visa-progress visa-progress-trip is-full" role="presentation">
-						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
-						<span className="is-active" /><span /><i />
-					</div>
+					<VisaProgressTrip value={100} />
 					<div className="visa-copy">
 						<h1>{'Проверка заявки'}</h1>
 						<p>{'Проверка на соответствие требованиям визы. После успешной проверки будет доступно скачивание заполненной анкеты.'}</p>
@@ -2462,10 +2434,7 @@ function VisaDocumentsReadyScreen ({ applicant, visaTitle, onBack, onHome, onCon
 							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 						</button>
 					</div>
-					<div className="visa-progress visa-progress-trip is-full" role="presentation">
-						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
-						<span className="is-active" /><span /><i />
-					</div>
+					<VisaProgressTrip value={100} />
 					<div className="visa-copy">
 						<h1>{'Документы готовы'}</h1>
 						<p>{'Мы подготовили вашу анкету — скачайте её и выберите удобное место и время подачи.'}</p>
@@ -2525,14 +2494,7 @@ function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => vo
 						</button>
 					</div>
 
-					<div className="visa-progress visa-progress-trip" role="presentation">
-						<i className="is-done" />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={66} />
 
 					<div className="visa-copy">
 						<h1>{copy.title}</h1>

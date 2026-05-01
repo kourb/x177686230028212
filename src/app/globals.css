@@ -798,12 +798,32 @@ html:not(.motion-disabled) .home-tabbar::before {
 	background: linear-gradient(90deg, var(--fill-blue) 0 50%, rgb(0 29 71 / 0.16) 50% 100%);
 }
 
-.visa-progress.visa-progress-trip i.is-done {
+.visa-progress-trip {
+	position: relative;
+	height: 4px;
+	margin: 0 16px;
+	padding: 0;
+	border-radius: 999px;
+	background: rgb(0 29 71 / 0.16);
+	overflow: hidden;
+}
+
+.visa-progress-trip::after {
+	content: '';
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: var(--visa-progress, 0%);
+	border-radius: inherit;
 	background: var(--fill-blue);
 }
 
-.visa-progress.visa-progress-trip span.is-active {
-	background: linear-gradient(90deg, var(--fill-blue) 0 50%, rgb(0 29 71 / 0.16) 50% 100%);
+html:not(.motion-disabled) .visa-progress-trip::after {
+	transition: width 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.visa-progress-trip span,
+.visa-progress-trip i {
+	display: none;
 }
 
 .visa-progress.is-full span.is-active {
@@ -2804,42 +2824,6 @@ html:not(.motion-disabled) .calendar-sheet {
 
 @keyframes spin {
 	to { transform: rotate(360deg); }
-}
-
-/* ─── Review screens progress bar (Steps 8.1–8.4) ─── */
-
-.visa-progress-review {
-	/* same base as visa-progress-trip */
-}
-
-/* Completed dot */
-.visa-progress-review i.is-done {
-	background: var(--fill-blue);
-}
-
-/* Completed full bar (step 2 done) */
-.visa-progress-review i.is-bar {
-	width: 48px;
-	background: var(--ink);
-}
-
-/* Current review bar: partial fill via CSS var */
-.visa-progress-review span.is-active-review,
-.visa-progress-review span:first-of-type {
-	position: relative;
-	background: rgb(0 29 71 / 0.16);
-	overflow: hidden;
-}
-
-.visa-progress-review span:first-of-type::after {
-	content: '';
-	position: absolute;
-	left: 0;
-	top: 0;
-	height: 100%;
-	width: var(--review-filled, 0px);
-	background: var(--fill-blue);
-	border-radius: 999px;
 }
 
 /* ─── Review editable input override ─── */
