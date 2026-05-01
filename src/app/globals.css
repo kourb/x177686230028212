@@ -794,6 +794,10 @@ body {
 	gap: 16px;
 }
 
+.visa-form > .visa-personal-field {
+	padding: 0 16px;
+}
+
 .visa-field,
 .visa-popular {
 	padding: 0 16px;
@@ -1921,7 +1925,7 @@ html:not(.motion-disabled) .calendar-sheet {
 
 .profile-drawer-sheet {
 	width: 100%;
-	padding: 32px 32px 34px;
+	padding: 32px 16px 34px;
 	background: #fff;
 	border-radius: 32px 32px 0 0;
 	box-shadow: 0 12px 64px rgb(0 29 71 / 0.16);
@@ -1987,6 +1991,7 @@ html:not(.motion-disabled) .calendar-sheet {
 .profile-drawer-delete,
 .profile-drawer-cancel {
 	all: unset;
+	width: 100%;
 	height: 56px;
 	border-radius: 999px;
 	display: grid;
@@ -2962,6 +2967,22 @@ html:not(.motion-disabled) .calendar-sheet {
 	flex: 1;
 	color: #0066f5;
 	border-color: rgb(0 102 245 / 0.3);
+}
+
+.application-cancel-btn {
+	all: unset;
+	height: 52px;
+	border-radius: 14px;
+	border: 1px solid rgb(229 57 53 / 0.22);
+	display: grid;
+	place-items: center;
+	font-size: 16px;
+	line-height: 1.4;
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	color: #e53935;
+	background: rgb(229 57 53 / 0.04);
+	cursor: pointer;
 }
 
 /* ─── Documents screen — draft cards ─── */

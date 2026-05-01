@@ -14,6 +14,7 @@ const AUTH_STORAGE_KEY = 'visa-assistent-auth'
 const USER_PROFILE_STORAGE_KEY = 'visa-assistent-user-profile'
 const VISA_DRAFTS_STORAGE_KEY = 'visa-drafts'
 const ANIMATIONS_DISABLED_STORAGE_KEY = 'visa-animations-disabled'
+const FILL_TEST_VALUES_STORAGE_KEY = 'visa-fill-test-values'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
@@ -294,6 +295,7 @@ function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationC
 
 // Compose Russian visa title from selected destination database label.
 function resolveVisaTitleRu (destinationLabel: string, type: VisaTypeCode) {
+	if(!destinationLabel.trim()) return `Шенгенская виза (Тип ${type === 'type-c' ? 'C' : 'D'})`
 	return `Шенгенская виза ${VISA_COUNTRY_FORMS[destinationLabel] ?? `в ${destinationLabel}`} (Тип ${type === 'type-c' ? 'C' : 'D'})`
 }
 
@@ -455,8 +457,25 @@ function mapPassportDto (dto: PassportDto): PassportEntry {
 	}
 }
 
-// Build new passport draft defaults for add flow.
-function createPassportDraft () {
+// Build new passport draft for add flow.
+function createPassportDraft (fillTestValues = false) {
+	if(!fillTestValues) {
+		return {
+			id: `draft-${Date.now()}`,
+			fullName: '',
+			passportNumber: '',
+			visaLabel: '',
+			citizenship: '',
+			firstName: '',
+			lastName: '',
+			birthDate: '',
+			gender: '',
+			issueDate: '',
+			expiryDate: '',
+			issuedBy: '',
+		} satisfies PassportEntry
+	}
+
 	return {
 		id: `draft-${Date.now()}`,
 		fullName: 'ALEKS GERMAN',
@@ -471,6 +490,24 @@ function createPassportDraft () {
 		expiryDate: '01.10.2030',
 		issuedBy: 'THE RUSSIAN FEDERATION',
 	} satisfies PassportEntry
+}
+
+// Build personal data draft with optional developer test values.
+function createPersonalDraft (fillTestValues = false) {
+	if(fillTestValues) return { ...VISA_PERSONAL_TEXT['ru'] }
+	return { ...VISA_PERSONAL_TEXT['ru'], birthPlaceValue: '', maritalValue: '', professionValue: '', employerValue: '', workAddressValue: '', residenceAddressValue: '', phoneValue: '', emailValue: '' }
+}
+
+// Build trip data draft with optional developer test values.
+function createTripDraft (fillTestValues = false) {
+	if(fillTestValues) return { ...VISA_TRIP_TEXT['ru'] }
+	return { ...VISA_TRIP_TEXT['ru'], purposeValue: '', dateValue: '', exitDateValue: '', residenceCountryValue: '', prevVisasValue: '' }
+}
+
+// Build document names draft with optional developer test values.
+function createDocsDraft (fillTestValues = false) {
+	if(fillTestValues) return { ...VISA_DOCS_TEXT['ru'] }
+	return { ...VISA_DOCS_TEXT['ru'], hotelFile: '', flightsFile: '', insuranceFile: '' }
 }
 
 // Build create-passport API payload from UI draft data.
@@ -523,6 +560,12 @@ function resolveSavedDrafts () {
 function resolveAnimationsDisabled () {
 	if(typeof window === 'undefined') return false
 	return window.localStorage.getItem(ANIMATIONS_DISABLED_STORAGE_KEY) === 'true'
+}
+
+// Resolve developer-selected form test data preference.
+function resolveFillTestValues () {
+	if(typeof window === 'undefined') return false
+	return window.localStorage.getItem(FILL_TEST_VALUES_STORAGE_KEY) === 'true'
 }
 
 // Resolve request URL for auth endpoint in proxy or direct mode.
@@ -1062,17 +1105,19 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 					<LivingField icon="search" label={t('visaResidence')} onChange={onSelectResidence} options={CITY_OPTIONS} value={selectedResidence} />
 					<LivingField icon="search" label={t('visaDestination')} onChange={onSelectDestination} options={DESTINATION_COUNTRY_OPTIONS} value={selectedDestinationLabel} />
 
-					<div className="visa-popular">
-						<label>{t('visaPopularDestinations')}</label>
-						<div className="visa-chip-row">
-							{VISA_DESTINATION_OPTIONS.map((item) => (
-								<button className={`visa-chip${selectedDestination === item.code ? ' is-active' : ''}`} key={item.code} onClick={() => onSelectDestination(t(item.labelKey))} type="button">
-									<Image alt={t(item.labelKey)} className="visa-chip-flag" height={24} src={item.flagSrc} unoptimized width={24} />
-									<span>{t(item.labelKey)}</span>
-								</button>
-							))}
+					{selectedDestinationLabel ? null : (
+						<div className="visa-popular">
+							<label>{t('visaPopularDestinations')}</label>
+							<div className="visa-chip-row">
+								{VISA_DESTINATION_OPTIONS.map((item) => (
+									<button className={`visa-chip${selectedDestination === item.code ? ' is-active' : ''}`} key={item.code} onClick={() => onSelectDestination(t(item.labelKey))} type="button">
+										<Image alt={t(item.labelKey)} className="visa-chip-flag" height={24} src={item.flagSrc} unoptimized width={24} />
+										<span>{t(item.labelKey)}</span>
+									</button>
+								))}
+							</div>
 						</div>
-					</div>
+					)}
 				</div>
 			</div>
 
@@ -1086,7 +1131,6 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 // Render visa type selection screen from Figma node 520:15444.
 function VisaTypeScreen ({ selectedDestination, selectedDestinationLabel, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, onCloseWarning: () => void, onConfirmWarning: () => void }) {
 	const { locale, t } = useI18n()
-	const typeLetter = selectedType === 'type-c' ? 'C' : 'D'
 	const selectedDetail = VISA_TYPE_DETAILS[selectedDestination][selectedType]
 	const warningText = VISA_WARNING_TEXT[locale]
 	const typeCTitle = locale === 'ru' ? resolveVisaTitleRu(selectedDestinationLabel, 'type-c') : resolveVisaTypeTitle(locale, selectedDestination, 'C')
@@ -2114,9 +2158,17 @@ function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onRe
 }
 
 // Render Step 9 — visa applicants list from Figma node 520:15780.
-function VisaApplicantsScreen ({ applicants, visaType, visaTitle, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onContinue }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaTitle: string, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onContinue: () => void }) {
+function VisaApplicantsScreen ({ applicants, visaTitle, onBack, onHome, onAddApplicant, onEditApplicant, onDeleteApplicant, onCancelApplication, onContinue }: { applicants: VisaApplicant[], visaTitle: string, onBack: () => void, onHome: () => void, onAddApplicant: () => void, onEditApplicant: (index: number) => void, onDeleteApplicant: (index: number) => void, onCancelApplication: () => void, onContinue: () => void }) {
 	const { t } = useI18n()
 	const visaLabel = visaTitle
+	const [deleteIndex, setDeleteIndex] = useState<number | null>(null)
+	const [isCancelOpen, setIsCancelOpen] = useState(false)
+	const deleteApplicant = () => {
+		if(deleteIndex === null) return
+		onDeleteApplicant(deleteIndex)
+		setDeleteIndex(null)
+	}
+
 	return (
 		<section aria-label="Visa applicants" className="visa-screen">
 			<div className="visa-scroll visa-personal-scroll">
@@ -2149,7 +2201,7 @@ function VisaApplicantsScreen ({ applicants, visaType, visaTitle, onBack, onHome
 							</div>
 							<div className="applicant-actions">
 								<button className="applicant-btn" onClick={() => onEditApplicant(index)} type="button">{'Изменить'}</button>
-								<button className="applicant-btn applicant-btn-delete" onClick={() => onDeleteApplicant(index)} type="button">{'Удалить'}</button>
+								<button className="applicant-btn applicant-btn-delete" onClick={() => setDeleteIndex(index)} type="button">{'Удалить'}</button>
 							</div>
 						</div>
 					))}
@@ -2165,12 +2217,38 @@ function VisaApplicantsScreen ({ applicants, visaType, visaTitle, onBack, onHome
 							</button>
 						</div>
 					</div>
+					<button className="application-cancel-btn" onClick={() => setIsCancelOpen(true)} type="button">{'Отменить заявление'}</button>
 				</div>
 			</div>
 			<div className="visa-bottom">
 				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
 			</div>
+			{deleteIndex !== null ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить заявителя?" subtitle="Данные заявителя будут удалены из этого заявления." onCancel={() => setDeleteIndex(null)} onConfirm={deleteApplicant} /> : null}
+			{isCancelOpen ? <ConfirmDrawer confirmLabel="Отменить заявление" title="Отменить заявление?" subtitle="Черновик заявления и добавленные заявители будут удалены." onCancel={() => setIsCancelOpen(false)} onConfirm={onCancelApplication} /> : null}
 		</section>
+	)
+}
+
+// Render destructive confirmation drawer inside current app screen.
+function ConfirmDrawer ({ title, subtitle, confirmLabel, onCancel, onConfirm }: { title: string, subtitle: string, confirmLabel: string, onCancel: () => void, onConfirm: () => void }) {
+	return (
+		<div className="profile-drawer-backdrop">
+			<div className="profile-drawer-sheet" role="dialog" aria-modal="true" aria-label={title}>
+				<header className="profile-drawer-header">
+					<h3>{title}</h3>
+					<button className="profile-drawer-close" onClick={onCancel} type="button">
+						<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+							<path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+						</svg>
+					</button>
+				</header>
+				<p className="profile-drawer-subtitle">{subtitle}</p>
+				<div className="profile-drawer-actions">
+					<button className="profile-drawer-delete" onClick={onConfirm} type="button">{confirmLabel}</button>
+					<button className="profile-drawer-cancel" onClick={onCancel} type="button">{'Оставить'}</button>
+				</div>
+			</div>
+		</div>
 	)
 }
 
@@ -2716,7 +2794,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onSave }: { draft: 
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ isVisaCheckSuccess, animationsDisabled, onBack, onToggleAnimationsDisabled, onToggleVisaCheckSuccess }: { isVisaCheckSuccess: boolean, animationsDisabled: boolean, onBack: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleVisaCheckSuccess: (value: boolean) => void }) {
+function DeveloperModeScreen ({ isVisaCheckSuccess, animationsDisabled, fillTestValues, onBack, onToggleAnimationsDisabled, onToggleFillTestValues, onToggleVisaCheckSuccess }: { isVisaCheckSuccess: boolean, animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onToggleVisaCheckSuccess: (value: boolean) => void }) {
 	const { t } = useI18n()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
@@ -2764,6 +2842,16 @@ function DeveloperModeScreen ({ isVisaCheckSuccess, animationsDisabled, onBack, 
 			</header>
 
 			<div className="dev-content">
+				<div className="dev-card dev-switch-card">
+					<div>
+						<b>{'Заполнять тестовые значения'}</b>
+						<p>{fillTestValues ? 'Включено' : 'Выключено'}</p>
+					</div>
+					<button aria-pressed={fillTestValues} className={`dev-switch${fillTestValues ? ' is-on' : ''}`} onClick={() => onToggleFillTestValues(!fillTestValues)} type="button">
+						<span />
+					</button>
+				</div>
+
 				<div className="dev-card dev-switch-card">
 					<div>
 						<b>{'Animations'}</b>
@@ -3011,23 +3099,24 @@ function EntryFlow () {
 	})
 	const [passportFlowMode, setPassportFlowMode] = useState<'create' | 'edit' | 'visa-create'>('create')
 	const [passportListMode, setPassportListMode] = useState<'profile' | 'visa'>('profile')
-	const [passportDraft, setPassportDraft] = useState<PassportEntry>(createPassportDraft)
+	const [fillTestValues, setFillTestValues] = useState(resolveFillTestValues)
+	const [passportDraft, setPassportDraft] = useState<PassportEntry>(() => createPassportDraft(resolveFillTestValues()))
 	const [passports, setPassports] = useState<PassportEntry[]>([])
 	const [selectedVisaPassport, setSelectedVisaPassport] = useState<PassportEntry | null>(null)
 	const [isPassportsLoading, setIsPassportsLoading] = useState(false)
 	const [passportsError, setPassportsError] = useState('')
-	const [selectedVisaCitizenship, setSelectedVisaCitizenship] = useState('Российская Федерация')
-	const [selectedVisaResidence, setSelectedVisaResidence] = useState('Москва')
-	const [selectedVisaDestinationLabel, setSelectedVisaDestinationLabel] = useState('Италия')
+	const [selectedVisaCitizenship, setSelectedVisaCitizenship] = useState('')
+	const [selectedVisaResidence, setSelectedVisaResidence] = useState('')
+	const [selectedVisaDestinationLabel, setSelectedVisaDestinationLabel] = useState('')
 	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
 	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
 	const [isVisaWarningOpen, setIsVisaWarningOpen] = useState(false)
 	const [visaPhotoDataUrl, setVisaPhotoDataUrl] = useState('')
 	const [afterPhotoCheckTab, setAfterPhotoCheckTab] = useState<'visa-review-passport' | 'visa-review-photo'>('visa-review-passport')
-	const [reviewPassport, setReviewPassport] = useState<PassportEntry>(createPassportDraft)
-	const [reviewPersonal, setReviewPersonal] = useState(() => ({ ...VISA_PERSONAL_TEXT['ru'] }))
-	const [reviewTrip, setReviewTrip] = useState(() => ({ ...VISA_TRIP_TEXT['ru'] }))
-	const [reviewDocs] = useState(() => ({ ...VISA_DOCS_TEXT['ru'] }))
+	const [reviewPassport, setReviewPassport] = useState<PassportEntry>(() => createPassportDraft(resolveFillTestValues()))
+	const [reviewPersonal, setReviewPersonal] = useState(() => createPersonalDraft(resolveFillTestValues()))
+	const [reviewTrip, setReviewTrip] = useState(() => createTripDraft(resolveFillTestValues()))
+	const [reviewDocs] = useState(() => createDocsDraft(resolveFillTestValues()))
 	const [currentApplicants, setCurrentApplicants] = useState<VisaApplicant[]>([])
 	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
 	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
@@ -3114,14 +3203,14 @@ function EntryFlow () {
 	// Open passport add flow from saved passports list.
 	const openPassportAdd = () => {
 		setPassportFlowMode('create')
-		setPassportDraft(createPassportDraft())
+		setPassportDraft(createPassportDraft(fillTestValues))
 		navigate('home', 'passports-step-one')
 	}
 
 	// Open passport add flow and select the saved result for visa application.
 	const openVisaPassportAdd = () => {
 		setPassportFlowMode('visa-create')
-		setPassportDraft(createPassportDraft())
+		setPassportDraft(createPassportDraft(fillTestValues))
 		navigate('home', 'passport-camera')
 	}
 
@@ -3186,6 +3275,29 @@ function EntryFlow () {
 		localStorage.setItem(ANIMATIONS_DISABLED_STORAGE_KEY, String(value))
 	}
 
+	// Persist developer-selected test data filling preference.
+	const toggleFillTestValues = (value: boolean) => {
+		setFillTestValues(value)
+		localStorage.setItem(FILL_TEST_VALUES_STORAGE_KEY, String(value))
+	}
+
+	// Start a clean visa flow using developer test data only when enabled.
+	const startVisaFlow = () => {
+		setSelectedVisaCitizenship(fillTestValues ? 'Российская Федерация' : '')
+		setSelectedVisaResidence(fillTestValues ? 'Москва' : '')
+		setSelectedVisaDestinationLabel(fillTestValues ? 'Италия' : '')
+		setSelectedVisaDestination('italy')
+		setSelectedVisaType('type-c')
+		setSelectedVisaPassport(null)
+		setPassportDraft(createPassportDraft(fillTestValues))
+		setReviewPassport(createPassportDraft(fillTestValues))
+		setReviewPersonal(createPersonalDraft(fillTestValues))
+		setReviewTrip(createTripDraft(fillTestValues))
+		setCurrentApplicants([])
+		setActiveDraftId(null)
+		navigate('home', 'visa-start')
+	}
+
 	// Update passport draft field and recompute derived full name.
 	const updatePassportDraftField = (field: keyof PassportEntry, value: string) => {
 		setPassportDraft((current) => {
@@ -3236,6 +3348,22 @@ function EntryFlow () {
 		}
 	}
 
+	// Cancel current visa application and remove its saved draft if present.
+	const cancelCurrentApplication = () => {
+		if(activeDraftId) {
+			setSavedDrafts((prev) => {
+				const next = prev.filter((draft) => draft.id !== activeDraftId)
+				try { localStorage.setItem(VISA_DRAFTS_STORAGE_KEY, JSON.stringify(next)) } catch {}
+				return next
+			})
+		}
+
+		setCurrentApplicants([])
+		setEditingApplicantIndex(null)
+		setActiveDraftId(null)
+		navigate('home', 'documents')
+	}
+
 	return (
 		<>
 			{step === 'home' ? null : <LocaleSwitcher />}
@@ -3244,7 +3372,7 @@ function EntryFlow () {
 				: step === 'auth'
 					? <AuthScreen onAuthenticated={onAuthenticated} />
 					: activeTab === 'home'
-						? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onOpenVisaStart={() => navigate('home', 'visa-start')} />
+							? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onOpenVisaStart={startVisaFlow} />
 						: activeTab === 'documents'
 							? <DocumentsScreen drafts={savedDrafts} onContinueDraft={(id) => {
 								const draft = savedDrafts.find((d) => d.id === id)
@@ -3303,14 +3431,14 @@ function EntryFlow () {
 						: activeTab === 'visa-applicants'
 							? <VisaApplicantsScreen
 								applicants={currentApplicants}
-								visaType={selectedVisaType}
 								visaTitle={currentVisaTitle}
 								onBack={() => navigate('home', 'visa-review-photo')}
+								onCancelApplication={cancelCurrentApplication}
 								onHome={() => navigate('home', 'home')}
 								onAddApplicant={() => {
-									setReviewPassport(createPassportDraft())
-									setReviewPersonal({ ...VISA_PERSONAL_TEXT['ru'] })
-									setReviewTrip({ ...VISA_TRIP_TEXT['ru'] })
+									setReviewPassport(createPassportDraft(fillTestValues))
+									setReviewPersonal(createPersonalDraft(fillTestValues))
+									setReviewTrip(createTripDraft(fillTestValues))
 									setVisaPhotoDataUrl('')
 									setEditingApplicantIndex(null)
 									setAfterPhotoCheckTab('visa-review-passport')
@@ -3362,7 +3490,7 @@ function EntryFlow () {
 									navigate('onboarding', 'home')
 								}} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen animationsDisabled={animationsDisabled} isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
+									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'
