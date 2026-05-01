@@ -94,7 +94,7 @@ type PassportDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
@@ -2207,6 +2207,76 @@ function VisaCheckResultScreen ({ applicant, visaType, visaDestination, isSucces
 	)
 }
 
+// Render Step 12 — ready documents and appointment selection screen.
+function VisaDocumentsReadyScreen ({ applicant, visaType, visaDestination, onBack, onHome, onContinue }: { applicant: VisaApplicant | null, visaType: VisaTypeCode, visaDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onContinue: () => void }) {
+	const { t } = useI18n()
+	const typeLetter = visaType === 'type-c' ? 'C' : 'D'
+	const passport = applicant?.passport ?? createPassportDraft()
+
+	return (
+		<section aria-label="Ready visa documents" className="visa-screen">
+			<div className="visa-scroll visa-ready-scroll">
+				<header className="visa-toolbar">
+					<div className="visa-toolbar-controls">
+						<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+							<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+						</button>
+						<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+							<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+						</button>
+					</div>
+					<div className="visa-progress visa-progress-trip is-full" role="presentation">
+						<i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" /><i className="is-done" /><i className="is-done is-bar" />
+						<span className="is-active" /><span /><i />
+					</div>
+					<div className="visa-copy">
+						<h1>{'Документы готовы'}</h1>
+						<p>{'Мы подготовили вашу анкету — скачайте её и выберите удобное место и время подачи.'}</p>
+					</div>
+				</header>
+
+				<section aria-label="Ready document card" className="visa-ready-card">
+					<div className="visa-check-main">
+						<span className="visa-check-badge is-success">{'Готовая виза'}</span>
+						<div className="visa-check-card-copy">
+							<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
+							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\nШенгенская виза ${VISA_DESTINATION_VISA_TEXT.ru[visaDestination]} (Тип ${typeLetter})`}</p>
+						</div>
+					</div>
+					<div className="visa-ready-actions">
+						<button type="button">{'Скачать PDF'}</button>
+						<button type="button">{'На почту'}</button>
+					</div>
+				</section>
+
+				<div className="visa-ready-form">
+					<VisaReadyField icon="search" label="Визовый центр" value="Москва" />
+					<VisaReadyField icon="calendar" label="Дата подачи" value="16.05.2026" />
+					<VisaReadyField icon="chevron" label="Время подачи" value="14:00" />
+				</div>
+			</div>
+			<div className="visa-bottom visa-ready-bottom">
+				<button className="passport-primary" onClick={onContinue} type="button">{'Продолжить'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Render appointment field row with the matching trailing icon.
+function VisaReadyField ({ label, value, icon }: { label: string, value: string, icon: 'search' | 'calendar' | 'chevron' }) {
+	return (
+		<div className="visa-ready-field">
+			<label>{label}</label>
+			<div className="visa-ready-input">
+				<span>{value}</span>
+				{icon === 'search' ? <Image alt="Search" height={24} src="/assets/icon-search.svg" unoptimized width={24} /> : null}
+				{icon === 'calendar' ? <Image alt="Calendar" height={24} src="/assets/icon-calendar.svg" unoptimized width={24} /> : null}
+				{icon === 'chevron' ? <Image alt="Chevron" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} /> : null}
+			</div>
+		</div>
+	)
+}
+
 // Render document upload form from Figma node 520:15661.
 function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
 	const { locale, t } = useI18n()
@@ -2770,7 +2840,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
-	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+	const tabs: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
 	if(!tabs.includes(tab)) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
 	return { step: 'home' as EntryStep, tab }
 }
@@ -3103,9 +3173,11 @@ function EntryFlow () {
 						: activeTab === 'visa-check'
 							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'visa-documents-ready')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-rejected'
 							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-check')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'visa-documents-ready'
+							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaDestination={selectedVisaDestination} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-verified')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'

@@ -2980,6 +2980,96 @@ body {
 	to { transform: rotate(360deg); }
 }
 
+/* ─── Visa Documents Ready screen (Step 12) ─── */
+
+.visa-ready-scroll {
+	gap: 24px;
+}
+
+.visa-ready-card {
+	margin: 0 16px;
+	padding: 24px;
+	border: 2px solid #0066f5;
+	border-radius: 12px;
+	background: #fff;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.visa-ready-actions {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.visa-ready-actions button {
+	all: unset;
+	height: 48px;
+	border: 1px solid var(--ink);
+	border-radius: 999px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 500;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.visa-ready-form {
+	display: flex;
+	flex-direction: column;
+}
+
+.visa-ready-field {
+	padding: 0 16px 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.visa-ready-field label {
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: var(--ink);
+}
+
+.visa-ready-input {
+	height: 56px;
+	padding: 0 16px;
+	border: 1px solid var(--ink);
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	background: #fff;
+}
+
+.visa-ready-input span {
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: var(--ink);
+}
+
+.visa-ready-input img {
+	width: 24px;
+	height: 24px;
+	flex: 0 0 24px;
+}
+
+.visa-ready-bottom {
+	padding-top: 16px;
+	border-top: 1px solid var(--ink);
+}
+
 /* ─── Review title: first line gray ─── */
 
 .review-title-sub {
