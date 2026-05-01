@@ -577,6 +577,8 @@ body {
 }
 
 .home-tabbar {
+	--tab-index: 0;
+	position: relative;
 	height: 114px;
 	padding: 16px 16px 34px;
 	display: grid;
@@ -586,8 +588,27 @@ body {
 	background: #fff;
 }
 
+.home-tabbar::before {
+	content: '';
+	position: absolute;
+	top: 16px;
+	left: 16px;
+	width: calc((100% - 48px) / 3);
+	height: 64px;
+	border-radius: 12px;
+	background: rgb(0 29 71 / 0.16);
+	transform: translateX(calc(var(--tab-index) * (100% + 8px)));
+	pointer-events: none;
+}
+
+html:not(.motion-disabled) .home-tabbar::before {
+	transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 160ms ease;
+}
+
 .home-tab {
 	all: unset;
+	position: relative;
+	z-index: 1;
 	height: 64px;
 	display: grid;
 	place-items: center;
@@ -596,7 +617,7 @@ body {
 }
 
 .home-tab.is-active {
-	background: rgb(0 29 71 / 0.16);
+	background: transparent;
 }
 
 .home-tab-icon {

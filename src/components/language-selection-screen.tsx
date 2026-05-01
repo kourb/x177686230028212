@@ -112,6 +112,8 @@ type PaymentMethodCode = 'sbp' | 'card-new' | 'card-saved' | 'yoomoney' | 'sberp
 
 type FieldIcon = 'search' | 'chevron' | 'calendar'
 
+type HomeRootTab = 'home' | 'documents' | 'profile'
+
 type TripData = (typeof VISA_TRIP_TEXT)['ru']
 
 type VisaApplicant = {
@@ -282,6 +284,8 @@ const MARITAL_OPTIONS = ['Не женат / Не замужем', 'Женат / 
 const GENDER_OPTIONS = ['Мужской', 'Женский']
 const TIME_OPTIONS = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00']
 const CENTER_OPTIONS = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск']
+
+let lastHomeRootTabIndex = 0
 
 // Compose visa type title for the selected destination country.
 function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationCode, type: 'C' | 'D') {
@@ -1054,18 +1058,36 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 				<button className="home-cta" onClick={onOpenVisaStart} type="button">{t('homeStartVisa')}</button>
 			</div>
 
-			<nav aria-label="Bottom navigation" className="home-tabbar">
-				<button className="home-tab is-active" type="button">
-					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home.svg" unoptimized width={24} />
-				</button>
-				<button className="home-tab" onClick={onOpenDocuments} type="button">
-					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
-				</button>
-				<button className="home-tab" onClick={onOpenProfile} type="button">
-					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
-				</button>
-			</nav>
+			<HomeTabbar active="home" onOpenDocuments={onOpenDocuments} onOpenHome={() => {}} onOpenProfile={onOpenProfile} />
 		</section>
+	)
+}
+
+// Render bottom tabbar with an animated marker that survives screen remounts.
+function HomeTabbar ({ active, onOpenHome, onOpenDocuments, onOpenProfile }: { active: HomeRootTab, onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfile: () => void }) {
+	const index = active === 'home' ? 0 : active === 'documents' ? 1 : 2
+	const [visualIndex, setVisualIndex] = useState(lastHomeRootTabIndex)
+
+	useEffect(() => {
+		const frame = requestAnimationFrame(() => {
+			setVisualIndex(index)
+			lastHomeRootTabIndex = index
+		})
+		return () => cancelAnimationFrame(frame)
+	}, [index])
+
+	return (
+		<nav aria-label="Bottom navigation" className="home-tabbar" style={{ '--tab-index': visualIndex } as CSSProperties}>
+			<button className={`home-tab${active === 'home' ? ' is-active' : ''}`} onClick={active === 'home' ? undefined : onOpenHome} type="button">
+				<Image alt="Home" className="home-tab-icon" height={24} src={active === 'home' ? '/assets/icon-tab-home.svg' : '/assets/icon-tab-home-inactive.svg'} unoptimized width={24} />
+			</button>
+			<button className={`home-tab${active === 'documents' ? ' is-active' : ''}`} onClick={active === 'documents' ? undefined : onOpenDocuments} type="button">
+				<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
+			</button>
+			<button className={`home-tab${active === 'profile' ? ' is-active' : ''}`} onClick={active === 'profile' ? undefined : onOpenProfile} type="button">
+				<Image alt="Profile" className="home-tab-icon" height={24} src={active === 'profile' ? '/assets/icon-tab-profile-active.svg' : '/assets/icon-tab-profile.svg'} unoptimized width={24} />
+			</button>
+		</nav>
 	)
 }
 
@@ -1317,17 +1339,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft }
 				)}
 			</div>
 
-			<nav aria-label="Bottom navigation" className="home-tabbar">
-				<button className="home-tab" onClick={onOpenHome} type="button">
-					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
-				</button>
-				<button className="home-tab is-active" type="button">
-					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
-				</button>
-				<button className="home-tab" onClick={onOpenProfile} type="button">
-					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
-				</button>
-			</nav>
+			<HomeTabbar active="documents" onOpenDocuments={() => {}} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
 		</section>
 	)
 }
@@ -1403,17 +1415,7 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 				</section>
 			</div>
 
-			<nav aria-label="Bottom navigation" className="home-tabbar">
-				<button className="home-tab" onClick={onOpenHome} type="button">
-					<Image alt="Home" className="home-tab-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
-				</button>
-				<button className="home-tab" onClick={onOpenDocuments} type="button">
-					<Image alt="Documents" className="home-tab-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
-				</button>
-				<button className="home-tab is-active" type="button">
-					<Image alt="Profile" className="home-tab-icon" height={24} src="/assets/icon-tab-profile-active.svg" unoptimized width={24} />
-				</button>
-			</nav>
+			<HomeTabbar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={() => {}} />
 		</section>
 	)
 }
