@@ -3,12 +3,12 @@ import { createServer } from 'node:http'
 const UPSTREAM = process.env.AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const PORT = Number(process.env.AUTH_PROXY_PORT ?? 8787)
 const ALLOW_ORIGIN = process.env.AUTH_PROXY_ALLOW_ORIGIN ?? 'http://localhost:3000'
-const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard', '/v1/app/passports'])
+const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard', '/v1/app/passports', '/v1/app/applications', '/v1/app/reference/countries', '/v1/app/reference/visa-types', '/v1/app/payments'])
 
 // Apply CORS headers for local browser access.
 function setCors (response) {
 	response.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN)
-	response.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+	response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
 	response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }
 
@@ -16,6 +16,8 @@ function setCors (response) {
 function isAllowedRoute (path) {
 	if(ROUTES.has(path)) return true
 	if(path.startsWith('/v1/app/passports/')) return true
+	if(path.startsWith('/v1/app/applications/')) return true
+	if(path.startsWith('/v1/app/payments/')) return true
 	return false
 }
 
@@ -31,7 +33,8 @@ function readBody (request) {
 
 // Proxy allowed auth request to upstream API.
 async function handleProxy (request, response) {
-	const rawPath = new URL(request.url ?? '/', `http://${request.headers.host}`).pathname.replace(/\/+$/, '')
+	const url = new URL(request.url ?? '/', `http://${request.headers.host}`)
+	const rawPath = url.pathname.replace(/\/+$/, '')
 	const path = rawPath.startsWith('/auth-proxy/') ? rawPath.slice('/auth-proxy'.length) : rawPath
 	if(!isAllowedRoute(path)) {
 		setCors(response)
@@ -40,13 +43,13 @@ async function handleProxy (request, response) {
 		return
 	}
 
-	const upstreamResponse = await fetch(`${UPSTREAM}${path}`, {
+	const upstreamResponse = await fetch(`${UPSTREAM}${path}${url.search}`, {
 		method: request.method,
 		headers: {
-			...(request.method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+			...(request.method === 'POST' || request.method === 'PATCH' ? { 'Content-Type': 'application/json' } : {}),
 			...(request.headers.authorization ? { Authorization: request.headers.authorization } : {}),
 		},
-		...(request.method === 'POST' ? { body: await readBody(request) } : {}),
+		...(request.method === 'POST' || request.method === 'PATCH' ? { body: await readBody(request) } : {}),
 	})
 	const text = await upstreamResponse.text()
 
@@ -64,7 +67,7 @@ createServer(async (request, response) => {
 		return
 	}
 
-	if(request.method !== 'GET' && request.method !== 'POST' && request.method !== 'DELETE') {
+	if(request.method !== 'GET' && request.method !== 'POST' && request.method !== 'PATCH' && request.method !== 'DELETE') {
 		setCors(response)
 		response.writeHead(405, { 'Content-Type': 'application/json' })
 		response.end(JSON.stringify({ error: { message: 'Method not allowed' }, data: null }))

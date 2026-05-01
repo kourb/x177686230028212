@@ -1,7 +1,6 @@
 // Country options for visa form search fields.
 export const COUNTRY_OPTIONS = [
 	'Российская Федерация',
-	'THE RUSSIAN FEDERATION',
 	'Армения',
 	'Беларусь',
 	'Грузия',

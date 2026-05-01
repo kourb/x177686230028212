@@ -2,12 +2,18 @@
 
 Source: `https://133892.ip-ns.net/openapi/v1.json`
 
+## AdminApplicationBooking
+- `POST /v1/admin/applications/{publicId}/assign-slot` - Manager-initiated booking: books a slot for the application owner and assigns it to the application.
+
 ## AdminApplications
 - `POST /v1/admin/applications/{id}/change-status` - Changes application status (admin transition).
 - `POST /v1/admin/applications/{id}/run-flags` - Runs auto-flag detection for an application.
 - `GET /v1/admin/applications/{id}` - Returns full application detail with applicants, status log, and flags.
 - `POST /v1/admin/applications/flags/{flagId}/resolve` - Resolves a flag by ID.
 - `GET /v1/admin/applications` - Returns a paginated list of all applications with filters.
+
+## AdminBookings
+- `GET /v1/admin/bookings` - Lists bookings with optional filters by visa center, status, slot date range, and user.
 
 ## AdminCustomFields
 - `DELETE /v1/admin/custom-fields/{id}` - Deactivates a custom field.
@@ -18,6 +24,17 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 ## AdminPing
 - `GET /v1/admin/ping` - Returns 200 for authenticated admin/support/manager users.
 
+## AdminSlots
+- `GET /v1/admin/slots` - Lists admin slots without capacity filtering; all sources/statuses available.
+- `PATCH /v1/admin/slots/{publicId}` - Partially updates slot capacity and/or status.
+- `POST /v1/admin/slots/{publicId}/close` - Marks the slot as closed while keeping existing bookings valid.
+- `POST /v1/admin/slots` - Creates a manually defined slot and notifies subscribers for the country/city.
+
+## AdminVisaCenters
+- `DELETE /v1/admin/visa-centers/{id}` - Soft-deactivates a visa center while preserving existing slots and bookings.
+- `PATCH /v1/admin/visa-centers/{id}` - Partially updates a visa center.
+- `POST /v1/admin/visa-centers` - Creates a visa center with localized translations.
+
 ## AdminVisaTypes
 - `DELETE /v1/admin/visa-types/{id}` - Deactivates a visa type.
 - `PATCH /v1/admin/visa-types/{id}` - Updates a visa type.
@@ -27,7 +44,7 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 - `GET /v1/app/applications/{id}/full` - Returns the full aggregate for the specified application.
 
 ## ApplicationDocuments
-- `DELETE /v1/app/applications/{applicationId}/documents/{documentId}` - Removes a document from an application (and deletes the file if unreferenced).
+- `DELETE /v1/app/applications/{applicationId}/documents/{documentId}` - Removes a document from an application and deletes the file if unreferenced.
 - `GET /v1/app/applications/{applicationId}/documents` - Lists all documents for an application.
 - `POST /v1/app/applications/{applicationId}/documents` - Links a previously uploaded file to an application as a document.
 
@@ -36,10 +53,10 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 - `POST /v1/app/applications/{id}/applicants` - Adds a new applicant to an application.
 - `POST /v1/app/applications/{id}/auto-save` - Auto-saves application and applicant draft data in a single call.
 - `POST /v1/app/applications/{id}/clone` - Clones an existing application into a new draft.
-- `POST /v1/app/applications/{id}/return-to-draft` - SelfCheck -> Draft.
-- `POST /v1/app/applications/{id}/self-check` - Draft -> SelfCheck. Requires at least one applicant.
+- `POST /v1/app/applications/{id}/return-to-draft` - Moves SelfCheck back to Draft.
+- `POST /v1/app/applications/{id}/self-check` - Moves Draft to SelfCheck; requires at least one applicant.
 - `GET /v1/app/applications/{id}/status-log` - Returns the status transition history for an application.
-- `POST /v1/app/applications/{id}/submit` - SelfCheck/NeedsEdits -> PendingReview.
+- `POST /v1/app/applications/{id}/submit` - Moves SelfCheck/NeedsEdits to PendingReview.
 - `DELETE /v1/app/applications/{id}` - Soft-deletes an application.
 - `GET /v1/app/applications/{id}` - Returns a single application by public ID.
 - `PATCH /v1/app/applications/{id}` - Partially updates a draft application.
@@ -72,6 +89,11 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 - `DELETE /v1/app/auth/sessions` - Revokes all sessions, optionally keeping the current one.
 - `GET /v1/app/auth/sessions` - Returns all active sessions for the current user.
 
+## Bookings
+- `DELETE /v1/app/bookings/{bookingPublicId}` - Cancels the user's own booking or any booking for manager+ callers and clears the application slot.
+- `GET /v1/app/applications/{publicId}/booking` - Returns the current active booking for the application or 404 when none exists.
+- `POST /v1/app/applications/{publicId}/book-slot` - Books a slot for the application and assigns it with compensation rollback on assignment failure.
+
 ## Checklist
 - `GET /v1/app/applications/{id}/checklist` - Returns the submission-readiness checklist for the specified application.
 
@@ -79,8 +101,8 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 - `GET /v1/app/dashboard` - Returns the aggregated dashboard for the current user.
 
 ## Documents
-- `POST /v1/app/documents/{id}/ocr` - Triggers OCR processing (not yet implemented - returns 501).
-- `POST /v1/app/documents/{id}/photo-check` - Validates a passport photo (not yet implemented - returns 501).
+- `POST /v1/app/documents/{id}/ocr` - Triggers OCR processing (not yet implemented; returns 501).
+- `POST /v1/app/documents/{id}/photo-check` - Validates a passport photo (not yet implemented; returns 501).
 - `GET /v1/app/documents/{publicId}/download` - Returns a presigned download URL for a file.
 - `DELETE /v1/app/documents/{publicId}` - Deletes a file by public ID.
 - `GET /v1/app/documents/{publicId}` - Returns file metadata by public ID.
@@ -94,7 +116,7 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 - `GET /v1/app/insurance/quotes` - Returns available insurance quotes for the specified country and travel dates.
 
 ## Notifications
-- `POST /v1/app/notifications/mark-read` - Marks one or more notifications as read. Pass an empty ids list with markAll=true to mark everything.
+- `POST /v1/app/notifications/mark-read` - Marks one or more notifications as read; use an empty ids list with markAll=true to mark everything.
 - `GET /v1/app/notifications` - Returns a cursor-paginated list of notifications for the current user.
 
 ## Passport
@@ -105,7 +127,7 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 ## Payments
 - `POST /v1/app/payments/{id}/refund` - Refunds a payment.
 - `GET /v1/app/payments/{id}` - Returns a payment by ID.
-- `POST /v1/app/payments/webhook` - Payment-provider webhook callback. Receives confirmation of a payment event. This endpoint is public - the provider cannot send a Bearer token.
+- `POST /v1/app/payments/webhook` - Payment-provider webhook callback. This endpoint is public and cannot receive Bearer tokens from the provider.
 - `GET /v1/app/payments` - Returns all payments for the specified application.
 - `POST /v1/app/payments` - Initiates a new payment for the specified application.
 
@@ -115,7 +137,10 @@ Source: `https://133892.ip-ns.net/openapi/v1.json`
 - `GET /v1/app/reference/visa-types` - Returns visa types, optionally filtered by country.
 
 ## Slots
-- `POST /v1/app/slots/book` - Books a specific appointment slot for the given application.
-- `DELETE /v1/app/slots/subscribe/{country}/{city}` - Unsubscribes the current user from slot notifications for the specified location.
-- `POST /v1/app/slots/subscribe` - Subscribes the current user to slot availability notifications for the specified location.
-- `GET /v1/app/slots` - Returns available appointment slots for the specified country and city.
+- `DELETE /v1/app/slots/subscriptions/{countryId}/{city}` - Removes the current user's slot subscription for a country and city.
+- `POST /v1/app/slots/subscriptions` - Subscribes the current user to slot availability for a country and city.
+- `GET /v1/app/slots/subscriptions` - Returns the current user's slot subscriptions.
+- `GET /v1/app/slots` - Returns slots that are bookable in the given window.
+
+## VisaCenters
+- `GET /v1/app/visa-centers` - Lists active visa centers, optionally filtered by country.

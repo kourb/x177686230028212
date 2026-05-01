@@ -24,7 +24,7 @@ type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' 
 
 type AuthDeletePath = '/v1/app/auth/account'
 
-type AuthDeleteDynamicPath = `/v1/app/passports/${string}`
+type AuthDeleteDynamicPath = `/v1/app/passports/${string}` | `/v1/app/applications/${string}`
 
 type AuthGetPath = '/v1/app/auth/sessions' | '/v1/app/dashboard' | '/v1/app/passports'
 
@@ -50,6 +50,18 @@ type ApiResponse<T> = {
 	} | null
 }
 
+// Parse API response without crashing on empty error bodies.
+async function readApiResponse<T> (response: Response) {
+	const text = await response.text()
+	if(!text) return { data: null, error: null } as ApiResponse<T>
+
+	try {
+		return JSON.parse(text) as ApiResponse<T>
+	} catch {
+		return { data: null, error: { message: text } } as ApiResponse<T>
+	}
+}
+
 type AuthTokenResponse = {
 	accessToken: string
 	refreshToken: string
@@ -72,6 +84,7 @@ type UserProfile = {
 
 type PassportEntry = {
 	id: string
+	backendId?: number | string
 	fullName: string
 	passportNumber: string
 	visaLabel: string
@@ -87,6 +100,7 @@ type PassportEntry = {
 
 type PassportDto = {
 	publicId: string
+	id: number | string
 	firstName: string
 	lastName: string
 	birthDate: string
@@ -96,6 +110,43 @@ type PassportDto = {
 	issueDate: string | null
 	expiryDate: string
 	issuingAuthority: string | null
+}
+
+type CountryDto = {
+	id: number | string
+	code: string
+	name: string
+}
+
+type VisaTypeDto = {
+	id: number | string
+	countryId: number | string | null
+	code: string
+	name: string
+	isSchengenStandard: boolean
+}
+
+type ApplicationDto = {
+	publicId: string
+	countryId?: number | string
+	countryCode?: string
+	countryName: string
+	visaTypeId?: number | string
+	visaTypeCode?: string
+	visaTypeName: string
+	status: number | string
+	entryDate: string | null
+	exitDate: string | null
+	visaCenterCity?: string | null
+	applicantCount: number | string
+	createdAt: number | string
+	updatedAt: number | string
+}
+
+type ApplicationListResponse = {
+	items: ApplicationDto[]
+	nextCursor: string | null
+	hasMore: boolean
 }
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
@@ -117,6 +168,7 @@ type HomeRootTab = 'home' | 'documents' | 'profile'
 type TripData = (typeof VISA_TRIP_TEXT)['ru']
 
 type VisaApplicant = {
+	backendApplicantId?: string
 	passport: PassportEntry
 	personal: typeof VISA_PERSONAL_TEXT['ru']
 	trip: typeof VISA_TRIP_TEXT['ru']
@@ -130,7 +182,15 @@ type VisaDraft = {
 	visaType: VisaTypeCode
 	visaDestination: VisaDestinationCode
 	visaDestinationLabel?: string
+	status?: 'draft' | 'checking' | 'ready' | 'error'
+	applicantCount?: number
 	applicants: VisaApplicant[]
+	selectedPassport?: PassportEntry | null
+	reviewPassport?: PassportEntry
+	reviewPersonal?: typeof VISA_PERSONAL_TEXT['ru']
+	reviewTrip?: typeof VISA_TRIP_TEXT['ru']
+	reviewDocs?: typeof VISA_DOCS_TEXT['ru']
+	photoDataUrl?: string
 }
 
 type VisaTypeDetail = {
@@ -304,6 +364,14 @@ function resolveVisaTitleRu (destinationLabel: string, type: VisaTypeCode) {
 	return `Шенгенская виза ${VISA_COUNTRY_FORMS[destinationLabel] ?? `в ${destinationLabel}`} (Тип ${type === 'type-c' ? 'C' : 'D'})`
 }
 
+// Resolve visible application status label for documents list.
+function resolveDraftStatusLabel (status: VisaDraft['status']) {
+	if(status === 'checking') return 'На проверке'
+	if(status === 'ready') return 'Документы готовы'
+	if(status === 'error') return 'Требуются правки'
+	return 'Черновик'
+}
+
 let googleScriptPromise: Promise<void> | null = null
 
 // Normalize token expiration value into unix milliseconds.
@@ -448,17 +516,18 @@ function mapPassportDto (dto: PassportDto): PassportEntry {
 	const gender = Number(dto.gender) === 2 ? 'Женский' : 'Мужской'
 	return {
 		id: dto.publicId,
+		backendId: dto.id,
 		fullName: `${dto.firstName} ${dto.lastName}`.trim().toUpperCase(),
 		passportNumber: dto.passportNumber,
 		visaLabel: 'Шенгенская виза в Италию (Тип C)',
-		citizenship: dto.citizenship ?? 'THE RUSSIAN FEDERATION',
+		citizenship: dto.citizenship ?? 'Российская Федерация',
 		firstName: dto.firstName,
 		lastName: dto.lastName,
 		birthDate: formatPassportDate(dto.birthDate),
 		gender,
 		issueDate: formatPassportDate(dto.issueDate),
 		expiryDate: formatPassportDate(dto.expiryDate),
-		issuedBy: dto.issuingAuthority ?? 'THE RUSSIAN FEDERATION',
+		issuedBy: dto.issuingAuthority ?? 'Российская Федерация',
 	}
 }
 
@@ -486,14 +555,14 @@ function createPassportDraft (fillTestValues = false) {
 		fullName: 'ALEKS GERMAN',
 		passportNumber: '650000001',
 		visaLabel: 'Шенгенская виза в Италию (Тип C)',
-		citizenship: 'THE RUSSIAN FEDERATION',
+		citizenship: 'Российская Федерация',
 		firstName: 'ALEKS',
 		lastName: 'GERMAN',
 		birthDate: '08.02.1996',
 		gender: 'Мужской',
 		issueDate: '01.10.2020',
 		expiryDate: '01.10.2030',
-		issuedBy: 'THE RUSSIAN FEDERATION',
+		issuedBy: 'Российская Федерация',
 	} satisfies PassportEntry
 }
 
@@ -513,6 +582,76 @@ function createTripDraft (fillTestValues = false) {
 function createDocsDraft (fillTestValues = false) {
 	if(fillTestValues) return { ...VISA_DOCS_TEXT['ru'] }
 	return { ...VISA_DOCS_TEXT['ru'], hotelFile: '', flightsFile: '', insuranceFile: '' }
+}
+
+// Resolve backend country code for the selected Schengen destination.
+function resolveBackendCountryCode (destination: VisaDestinationCode) {
+	return ({ italy: 'IT', france: 'FR', spain: 'ES', hungary: 'HU', greece: 'GR' } as Record<VisaDestinationCode, string>)[destination]
+}
+
+// Resolve known backend country aliases across ISO and localized names.
+function resolveBackendCountryAliases (destination: VisaDestinationCode, label: string) {
+	return ({
+		italy: ['IT', 'ITA', 'Italy', 'Italia', 'Италия'],
+		france: ['FR', 'FRA', 'France', 'Франция'],
+		spain: ['ES', 'ESP', 'Spain', 'España', 'Испания'],
+		hungary: ['HU', 'HUN', 'Hungary', 'Венгрия'],
+		greece: ['GR', 'GRC', 'Greece', 'Греция'],
+	} as Record<VisaDestinationCode, string[]>)[destination].concat(label ? [label] : [])
+}
+
+// Map backend application status into visible draft status.
+function mapApplicationStatus (status: number | string): NonNullable<VisaDraft['status']> {
+	const value = String(status).toLowerCase()
+	if(value.includes('need') || value === '3') return 'error'
+	if(value.includes('ready') || value.includes('approved') || value.includes('complete') || value === '4') return 'ready'
+	if(value.includes('self') || value.includes('pending') || value === '1' || value === '2') return 'checking'
+	return 'draft'
+}
+
+// Preserve local UI data while taking backend status/list identity as source of truth.
+function mapApplicationDtoToDraft (dto: ApplicationDto, local?: VisaDraft): VisaDraft {
+	return {
+		id: dto.publicId,
+		createdAt: Number(dto.createdAt) || Date.now(),
+		visaType: local?.visaType ?? (String(dto.visaTypeCode).toLowerCase().includes('d') ? 'type-d' : 'type-c'),
+		visaDestination: local?.visaDestination ?? (SCHENGEN_DESTINATIONS.find((item) => dto.countryName.toLowerCase().includes(item.label.toLowerCase()))?.code ?? 'italy'),
+		visaDestinationLabel: local?.visaDestinationLabel ?? dto.countryName,
+		status: mapApplicationStatus(dto.status),
+		applicantCount: Number(dto.applicantCount) || local?.applicants.length || 0,
+		applicants: local?.applicants ?? [],
+	}
+}
+
+// Convert UI applicant fields into backend Schengen draft fields.
+function mapApplicantToSchengenFields (applicant: VisaApplicant) {
+	return {
+		birthPlace: applicant.personal.birthPlaceValue || null,
+		maritalStatus: applicant.personal.maritalValue ? 1 : null,
+		occupation: applicant.personal.professionValue || null,
+		employerName: applicant.personal.employerValue || null,
+		employerAddress: applicant.personal.workAddressValue || null,
+		residenceAddress: applicant.personal.residenceAddressValue || null,
+		phone: applicant.personal.phoneValue || null,
+		email: applicant.personal.emailValue || null,
+		travelPurpose: applicant.trip.purposeValue ? 1 : null,
+		previousSchengenVisas: applicant.trip.prevVisasValue || null,
+		countriesLast3Years: applicant.trip.residenceCountryValue || null,
+	}
+}
+
+// Build backend autosave payload from current UI application state.
+function mapDraftToAutoSavePayload (applicants: VisaApplicant[]) {
+	return {
+		entryDate: toApiPassportDate(applicants[0]?.trip.dateValue ?? ''),
+		exitDate: toApiPassportDate(applicants[0]?.trip.exitDateValue ?? ''),
+		visaCenterCity: null,
+		applicants: applicants.filter((item) => item.backendApplicantId).map((item) => ({
+			applicantPublicId: item.backendApplicantId,
+			schengenFields: mapApplicantToSchengenFields(item),
+			customValues: [],
+		})),
+	}
 }
 
 // Build create-passport API payload from UI draft data.
@@ -574,7 +713,7 @@ function resolveFillTestValues () {
 }
 
 // Resolve request URL for auth endpoint in proxy or direct mode.
-function resolveAuthUrl (path: AuthPath | AuthDeletePath | AuthDeleteDynamicPath | AuthGetPath) {
+function resolveAuthUrl (path: string) {
 	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
 
 	return `${AUTH_REMOTE_BASE_URL}${path}`
@@ -657,7 +796,7 @@ async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
 		},
 		body: JSON.stringify(payload),
 	})
-	const body = await response.json() as ApiResponse<T>
+	const body = await readApiResponse<T>(response)
 
 	if(!response.ok || !body.data && path !== '/v1/app/auth/email/send-otp') {
 		throw new Error(body.error?.message ?? 'Authorization request failed')
@@ -667,7 +806,7 @@ async function authPost<T> (path: AuthPath, payload: Record<string, unknown>) {
 }
 
 // Send authorized POST request and refresh access token before retry.
-async function authPostAuthorized<T> (path: '/v1/app/passports', payload: Record<string, unknown>) {
+async function authPostAuthorized<T> (path: string, payload: Record<string, unknown> = {}) {
 	const authPayload = resolveAuthPayload()
 	if(!authPayload?.accessToken) throw new Error('Authorization token is missing')
 
@@ -680,7 +819,7 @@ async function authPostAuthorized<T> (path: '/v1/app/passports', payload: Record
 			},
 			body: JSON.stringify(payload),
 		})
-		const body = await response.json() as ApiResponse<T>
+		const body = await readApiResponse<T>(response)
 		return { response, body }
 	}
 
@@ -701,7 +840,46 @@ async function authPostAuthorized<T> (path: '/v1/app/passports', payload: Record
 		clearPersistedSession()
 		throw new Error('Session expired. Sign in again')
 	}
-	if(!response.ok || !body.data) throw new Error(body.error?.message ?? 'Authorization request failed')
+	if(!response.ok || !body.data) throw new Error(body.error?.message ?? (body.error ? JSON.stringify(body.error) : 'Authorization request failed'))
+	return body.data
+}
+
+// Send authorized PATCH request and refresh access token before retry.
+async function authPatchAuthorized<T> (path: string, payload: Record<string, unknown>) {
+	const authPayload = resolveAuthPayload()
+	if(!authPayload?.accessToken) throw new Error('Authorization token is missing')
+
+	const requestPatch = async (token: string) => {
+		const response = await fetch(resolveAuthUrl(path), {
+			method: 'PATCH',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(payload),
+		})
+		const body = await readApiResponse<T>(response)
+		return { response, body }
+	}
+
+	let { response, body } = await requestPatch(authPayload.accessToken)
+	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
+		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
+			refreshToken: authPayload.refreshToken,
+			device: resolveDeviceInfo(),
+		})
+
+		if(refreshed) {
+			setAuthPayload(refreshed)
+			;({ response, body } = await requestPatch(refreshed.accessToken))
+		}
+	}
+
+	if(response.status === 401) {
+		clearPersistedSession()
+		throw new Error('Session expired. Sign in again')
+	}
+	if(!response.ok || !body.data) throw new Error(body.error?.message ?? 'Request failed')
 	return body.data
 }
 
@@ -722,7 +900,7 @@ async function authDeletePath (path: AuthDeletePath | AuthDeleteDynamicPath) {
 				Authorization: `Bearer ${accessToken}`,
 			},
 		})
-		const body = await response.json() as ApiResponse<unknown>
+		const body = await readApiResponse<unknown>(response)
 		return { response, body }
 	}
 
@@ -747,7 +925,7 @@ async function authDeletePath (path: AuthDeletePath | AuthDeleteDynamicPath) {
 }
 
 // Send authorized GET request and refresh expired access token once.
-async function authGet<T> (path: AuthGetPath) {
+async function authGet<T> (path: string) {
 	const payload = resolveAuthPayload()
 	if(!payload?.accessToken) throw new Error('Authorization token is missing')
 
@@ -758,7 +936,7 @@ async function authGet<T> (path: AuthGetPath) {
 				Authorization: `Bearer ${accessToken}`,
 			},
 		})
-		const body = await response.json() as ApiResponse<T>
+		const body = await readApiResponse<T>(response)
 		return { response, body }
 	}
 
@@ -778,8 +956,67 @@ async function authGet<T> (path: AuthGetPath) {
 		clearPersistedSession()
 		throw new Error('Session expired. Sign in again')
 	}
-	if(!response.ok) throw new Error(body.error?.message ?? 'Request failed')
+	if(!response.ok || !body.data) throw new Error(body.error?.message ?? 'Request failed')
 	return body.data
+}
+
+// Resolve backend country and visa type IDs from public reference data.
+async function resolveApplicationRefs (destination: VisaDestinationCode, label: string, type: VisaTypeCode) {
+	const countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
+	const aliases = resolveBackendCountryAliases(destination, label).map((item) => item.toLowerCase())
+	const country = countries.find((item) => aliases.includes(item.code.toLowerCase()) || aliases.includes(item.name.toLowerCase())) ?? countries.find((item) => aliases.some((alias) => item.name.toLowerCase().includes(alias)))
+	if(!country) throw new Error('Visa country is unavailable in backend reference')
+
+	const visaTypes = await authGet<VisaTypeDto[]>(`/v1/app/reference/visa-types?countryId=${country.id}`)
+	const typeLetter = type === 'type-d' ? 'd' : 'c'
+	const visaType = visaTypes.find((item) => item.code.toLowerCase().includes(typeLetter)) ?? visaTypes.find((item) => item.name.toLowerCase().includes(`type ${typeLetter}`)) ?? visaTypes[0]
+	if(!visaType) throw new Error('Visa type is unavailable in backend reference')
+
+	return { countryId: country.id, visaTypeId: visaType.id }
+}
+
+// Load backend applications and merge local UI-only details.
+async function loadBackendDrafts () {
+	const response = await authGet<ApplicationListResponse>('/v1/app/applications?pageSize=50')
+	const localDrafts = resolveSavedDrafts()
+	const backendDrafts = response.items.map((item) => mapApplicationDtoToDraft(item, localDrafts.find((draft) => draft.id === item.publicId)))
+	return [...backendDrafts, ...localDrafts.filter((draft) => !backendDrafts.some((item) => item.id === draft.id))]
+}
+
+// Create a backend draft application for the selected route state.
+async function createBackendDraft (destination: VisaDestinationCode, label: string, type: VisaTypeCode) {
+	return authPostAuthorized<ApplicationDto>('/v1/app/applications', await resolveApplicationRefs(destination, label, type))
+}
+
+// Move application to backend self-check state.
+async function runBackendSelfCheck (id: string) {
+	return authPostAuthorized<ApplicationDto>(`/v1/app/applications/${id}/self-check`)
+}
+
+// Submit application to backend review state.
+async function submitBackendApplication (id: string) {
+	return authPostAuthorized<ApplicationDto>(`/v1/app/applications/${id}/submit`)
+}
+
+// Ensure each UI applicant has a backend applicant row before autosave.
+async function syncBackendApplicants (applicationId: string, applicants: VisaApplicant[]) {
+	const next = [...applicants]
+	for(let i = 0; i < next.length; i++) {
+		if(next[i].backendApplicantId) continue
+		if(!next[i].passport.backendId) throw new Error('Select a saved passport before saving application')
+		const saved = await authPostAuthorized<{ publicId: string }>(`/v1/app/applications/${applicationId}/applicants`, {
+			passportId: next[i].passport.backendId,
+			isPrimary: i === 0,
+			schengenFields: mapApplicantToSchengenFields(next[i]),
+		})
+		next[i] = { ...next[i], backendApplicantId: saved.publicId }
+	}
+	return next
+}
+
+// Persist backend application form data in a single autosave request.
+async function autoSaveBackendDraft (applicationId: string, applicants: VisaApplicant[]) {
+	return authPostAuthorized(`/v1/app/applications/${applicationId}/auto-save`, mapDraftToAutoSavePayload(applicants))
 }
 
 // Resolve splash lifecycle based on document and script readiness.
@@ -1109,14 +1346,7 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 						</button>
 					</div>
 
-					<div className="visa-progress" role="presentation">
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={12} />
 
 					<div className="visa-copy">
 						<h1>{t('visaStartTitle')}</h1>
@@ -1173,14 +1403,7 @@ function VisaTypeScreen ({ selectedDestination, selectedDestinationLabel, select
 						</button>
 					</div>
 
-					<div className="visa-progress" role="presentation">
-						<span />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={24} />
 
 					<div className="visa-copy">
 						<h1>{t('visaTypeTitle')}</h1>
@@ -1263,14 +1486,7 @@ function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, 
 						</button>
 					</div>
 
-					<div className="visa-progress is-half" role="presentation">
-						<span />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={36} />
 
 					<div className="visa-copy">
 						<h1>{copy.title}</h1>
@@ -1320,8 +1536,8 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft }
 							<div className="draft-card" key={draft.id}>
 								<div className="draft-card-info">
 									<span className="draft-card-title">{`Заявление #${i + 1}`}</span>
-									<span className="draft-card-meta">{`${draft.applicants.length} заявител${draft.applicants.length === 1 ? 'ь' : draft.applicants.length < 5 ? 'я' : 'ей'} · Тип ${draft.visaType === 'type-c' ? 'C' : 'D'}`}</span>
-									<span className="draft-card-status">{'Черновик'}</span>
+									<span className="draft-card-meta">{`${draft.applicantCount ?? draft.applicants.length} заявител${(draft.applicantCount ?? draft.applicants.length) === 1 ? 'ь' : (draft.applicantCount ?? draft.applicants.length) < 5 ? 'я' : 'ей'} · Тип ${draft.visaType === 'type-c' ? 'C' : 'D'}`}</span>
+									<span className={`draft-card-status is-${draft.status ?? 'draft'}`}>{resolveDraftStatusLabel(draft.status)}</span>
 								</div>
 								<button className="draft-card-btn" onClick={() => onContinueDraft(draft.id)} type="button">{'Продолжить'}</button>
 							</div>
@@ -1510,14 +1726,7 @@ function PassportRecognitionScreen ({ onBack }: { onBack: () => void }) {
 						</button>
 					</div>
 
-					<div className="visa-progress is-full" role="presentation">
-						<span />
-						<span className="is-active" />
-						<span />
-						<span />
-						<span />
-						<i />
-					</div>
+					<VisaProgressTrip value={42} />
 
 					<div className="visa-copy">
 						<h1>{copy.checkingTitle}</h1>
@@ -1597,14 +1806,7 @@ function VisaPersonalHeader ({ copy, progressClass, onBack, onHome }: { copy: (t
 				</button>
 			</div>
 
-			<div className={`visa-progress ${progressClass}`} role="presentation">
-				<span />
-				<span className="is-active" />
-				<span />
-				<span />
-				<span />
-				<i />
-			</div>
+			<VisaProgressTrip value={progressClass === 'is-half' ? 48 : 54} />
 
 			<div className="visa-copy">
 				<h1>{copy.title}</h1>
@@ -2470,16 +2672,13 @@ function VisaDocumentsReadyScreen ({ applicant, visaTitle, onBack, onHome, onCon
 
 // Render appointment field row with the matching trailing icon.
 function VisaReadyField ({ label, value, icon, options, onChange }: { label: string, value: string, icon: FieldIcon, options?: string[], onChange: (v: string) => void }) {
-	return <LivingField icon={icon} label={label} onChange={onChange} options={options} value={value} />
+	return <div className="visa-ready-field"><LivingField icon={icon} label={label} onChange={onChange} options={options} value={value} /></div>
 }
 
 // Render document upload form from Figma node 520:15661.
-function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => void, onHome: () => void, onContinue: () => void }) {
+function VisaDocumentsScreen ({ docs, onBack, onHome, onContinue, onDocsChange }: { docs: typeof VISA_DOCS_TEXT['ru'], onBack: () => void, onHome: () => void, onContinue: () => void, onDocsChange: (field: keyof typeof VISA_DOCS_TEXT['ru'], value: string) => void }) {
 	const { locale, t } = useI18n()
 	const copy = VISA_DOCS_TEXT[locale]
-	const [hotelFile, setHotelFile] = useState(copy.hotelFile)
-	const [flightsFile, setFlightsFile] = useState(copy.flightsFile)
-	const [insuranceFile, setInsuranceFile] = useState(copy.insuranceFile)
 
 	return (
 		<section aria-label="Trip documents" className="visa-screen">
@@ -2503,9 +2702,9 @@ function VisaDocumentsScreen ({ onBack, onHome, onContinue }: { onBack: () => vo
 				</header>
 
 				<div className="visa-personal-form">
-					<VisaDocField filename={hotelFile} label={copy.hotel} onChange={setHotelFile} onClear={() => setHotelFile('')} />
-					<VisaDocField filename={flightsFile} label={copy.flights} onChange={setFlightsFile} onClear={() => setFlightsFile('')} />
-					<VisaDocField filename={insuranceFile} label={copy.insurance} onChange={setInsuranceFile} onClear={() => setInsuranceFile('')} />
+					<VisaDocField filename={docs.hotelFile} label={copy.hotel} onChange={(value) => onDocsChange('hotelFile', value)} onClear={() => onDocsChange('hotelFile', '')} />
+					<VisaDocField filename={docs.flightsFile} label={copy.flights} onChange={(value) => onDocsChange('flightsFile', value)} onClear={() => onDocsChange('flightsFile', '')} />
+					<VisaDocField filename={docs.insuranceFile} label={copy.insurance} onChange={(value) => onDocsChange('insuranceFile', value)} onClear={() => onDocsChange('insuranceFile', '')} />
 				</div>
 
 				<button className="passport-primary visa-personal-inline-button" onClick={onContinue} type="button">{t('authContinue')}</button>
@@ -3033,7 +3232,7 @@ function resolveInitialEntryStep (): EntryStep {
 
 // Convert current app view into URL hash route.
 function buildEntryRoute (step: EntryStep, tab: HomeTab) {
-	if(step === 'home') return `#/home/${tab}`
+	if(step === 'home') return tab === 'home' ? '#/home' : `#/${tab}`
 	return `#/${step}`
 }
 
@@ -3045,6 +3244,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 	const parts = hash.split('/').filter(Boolean)
 	if(parts[0] === 'onboarding') return { step: 'onboarding' as EntryStep, tab: 'home' as HomeTab }
 	if(parts[0] === 'auth') return { step: 'auth' as EntryStep, tab: 'home' as HomeTab }
+	if(HOME_TABS.includes(parts[0] as HomeTab)) return { step: 'home' as EntryStep, tab: parts[0] as HomeTab }
 	if(parts[0] !== 'home') return { step: fallbackStep, tab: fallbackTab }
 	const tab = parts[1] as HomeTab | undefined
 	if(!tab) return { step: 'home' as EntryStep, tab: 'home' as HomeTab }
@@ -3080,7 +3280,7 @@ function EntryFlow () {
 	const [reviewPassport, setReviewPassport] = useState<PassportEntry>(() => createPassportDraft(resolveFillTestValues()))
 	const [reviewPersonal, setReviewPersonal] = useState(() => createPersonalDraft(resolveFillTestValues()))
 	const [reviewTrip, setReviewTrip] = useState(() => createTripDraft(resolveFillTestValues()))
-	const [reviewDocs] = useState(() => createDocsDraft(resolveFillTestValues()))
+	const [reviewDocs, setReviewDocs] = useState(() => createDocsDraft(resolveFillTestValues()))
 	const [currentApplicants, setCurrentApplicants] = useState<VisaApplicant[]>([])
 	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
 	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
@@ -3110,6 +3310,101 @@ function EntryFlow () {
 			return
 		}
 		window.history.pushState({ step: nextStep, tab: nextTab }, '', route)
+	}
+
+	// Move back through actual route history, with a safe in-app fallback.
+	const goBack = (fallbackTab: HomeTab) => {
+		if(typeof window !== 'undefined' && window.history.length > 1) {
+			window.history.back()
+			return
+		}
+
+		navigate('home', fallbackTab)
+	}
+
+	// Persist local draft cache for UI fields not returned by backend list endpoints.
+	const persistLocalDrafts = (drafts: VisaDraft[]) => {
+		try { localStorage.setItem(VISA_DRAFTS_STORAGE_KEY, JSON.stringify(drafts)) } catch {}
+		return drafts
+	}
+
+	// Build cache draft from current in-progress visa UI state.
+	const buildCurrentDraftCache = (id = activeDraftId ?? `local-${Date.now()}`): VisaDraft => ({
+		id,
+		createdAt: savedDrafts.find((draft) => draft.id === id)?.createdAt ?? Date.now(),
+		visaType: selectedVisaType,
+		visaDestination: selectedVisaDestination,
+		visaDestinationLabel: selectedVisaDestinationLabel,
+		status: savedDrafts.find((draft) => draft.id === id)?.status ?? 'draft',
+		applicantCount: currentApplicants.length,
+		applicants: currentApplicants,
+		selectedPassport: selectedVisaPassport,
+		reviewPassport,
+		reviewPersonal,
+		reviewTrip,
+		reviewDocs,
+		photoDataUrl: visaPhotoDataUrl,
+	})
+
+	// Store in-progress visa state locally before backend draft exists.
+	const persistCurrentDraftCache = (id = activeDraftId ?? `local-${Date.now()}`) => {
+		const draft = buildCurrentDraftCache(id)
+		setActiveDraftId(id)
+		setSavedDrafts((prev) => persistLocalDrafts(prev.some((item) => item.id === id) ? prev.map((item) => item.id === id ? draft : item) : [...prev, draft]))
+		return draft
+	}
+
+	// Refresh document-list applications from backend and local UI cache.
+	const refreshBackendDrafts = async () => {
+		try {
+			setSavedDrafts(persistLocalDrafts(await loadBackendDrafts()))
+		} catch {}
+	}
+
+	// Persist status changes for the active visa draft.
+	const updateActiveDraftStatus = (status: NonNullable<VisaDraft['status']>) => {
+		if(!activeDraftId) return
+		setSavedDrafts((prev) => {
+			const next = prev.map((draft) => draft.id === activeDraftId ? { ...draft, status } : draft)
+			return persistLocalDrafts(next)
+		})
+	}
+
+	// Save current application to backend and local UI cache before payment.
+	const saveCurrentApplication = async () => {
+		const localId = activeDraftId ?? persistCurrentDraftCache().id
+		const shouldCreateBackend = localId.startsWith('local-') || localId.startsWith('draft-')
+		const backendDraft = shouldCreateBackend ? await createBackendDraft(selectedVisaDestination, selectedVisaDestinationLabel, selectedVisaType) : null
+		const id = backendDraft?.publicId ?? localId
+		const normalizedApplicants = currentApplicants.map((applicant) => {
+			if(applicant.passport.backendId) return applicant
+			const found = passports.find((item) => item.id === applicant.passport.id || item.passportNumber === applicant.passport.passportNumber) ?? (selectedVisaPassport?.backendId ? selectedVisaPassport : null)
+			return found ? { ...applicant, passport: found } : applicant
+		})
+		const applicants = await syncBackendApplicants(id, normalizedApplicants)
+		await autoSaveBackendDraft(id, applicants)
+		setCurrentApplicants(applicants)
+		setIsDraftOpenedFromDocuments(false)
+		const draft: VisaDraft = {
+			id,
+			createdAt: backendDraft ? Number(backendDraft.createdAt) || Date.now() : Date.now(),
+			visaType: selectedVisaType,
+			visaDestination: selectedVisaDestination,
+			visaDestinationLabel: selectedVisaDestinationLabel,
+			status: 'draft',
+			applicantCount: applicants.length,
+			applicants,
+			selectedPassport: selectedVisaPassport,
+			reviewPassport,
+			reviewPersonal,
+			reviewTrip,
+			reviewDocs,
+			photoDataUrl: visaPhotoDataUrl,
+		}
+		setSavedDrafts((prev) => persistLocalDrafts(prev.filter((item) => item.id !== localId).some((item) => item.id === id) ? prev.filter((item) => item.id !== localId).map((item) => item.id === id ? draft : item) : [...prev.filter((item) => item.id !== localId), draft]))
+		setActiveDraftId(id)
+		await refreshBackendDrafts()
+		navigate('home', 'visa-payment')
 	}
 
 	useEffect(() => {
@@ -3196,6 +3491,8 @@ function EntryFlow () {
 		const found = passports.find((item) => item.id === id)
 		if(!found) return
 		setSelectedVisaPassport(found)
+		setPassportDraft(found)
+		setReviewPassport(found)
 		navigate('home', 'visa-personal-one')
 	}
 
@@ -3217,6 +3514,20 @@ function EntryFlow () {
 	}, [step, activeTab])
 
 	useEffect(() => {
+		if(step !== 'home' || activeTab !== 'documents') return
+		refreshBackendDrafts()
+	}, [step, activeTab])
+
+	useEffect(() => {
+		if(step !== 'home' || !activeTab.startsWith('visa-') || !activeDraftId) return
+		setSavedDrafts((prev) => {
+			const createdAt = prev.find((draft) => draft.id === activeDraftId)?.createdAt ?? Date.now()
+			const draft = { ...buildCurrentDraftCache(activeDraftId), createdAt }
+			return persistLocalDrafts(prev.some((item) => item.id === activeDraftId) ? prev.map((item) => item.id === activeDraftId ? draft : item) : [...prev, draft])
+		})
+	}, [step, activeTab, activeDraftId, selectedVisaPassport, selectedVisaType, selectedVisaDestination, selectedVisaDestinationLabel, currentApplicants, reviewPassport, reviewPersonal, reviewTrip, reviewDocs, visaPhotoDataUrl])
+
+	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'passport-recognition') return
 		const timer = window.setTimeout(() => navigate('home', 'passports-step-one'), 1200)
 		return () => window.clearTimeout(timer)
@@ -3224,7 +3535,10 @@ function EntryFlow () {
 
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'visa-check') return
-		const timer = window.setTimeout(() => navigate('home', isVisaCheckSuccess ? 'visa-verified' : 'visa-rejected'), 1800)
+		const timer = window.setTimeout(() => {
+			if(!isVisaCheckSuccess) updateActiveDraftStatus('error')
+			navigate('home', isVisaCheckSuccess ? 'visa-verified' : 'visa-rejected')
+		}, 1800)
 		return () => window.clearTimeout(timer)
 	}, [step, activeTab, isVisaCheckSuccess])
 
@@ -3248,18 +3562,40 @@ function EntryFlow () {
 
 	// Start a clean visa flow using developer test data only when enabled.
 	const startVisaFlow = () => {
+		const id = `local-${Date.now()}`
+		const passport = createPassportDraft(fillTestValues)
+		const personal = createPersonalDraft(fillTestValues)
+		const trip = createTripDraft(fillTestValues)
+		const docs = createDocsDraft(fillTestValues)
 		setSelectedVisaCitizenship(fillTestValues ? 'Российская Федерация' : '')
 		setSelectedVisaResidence(fillTestValues ? 'Москва' : '')
 		setSelectedVisaDestinationLabel(fillTestValues ? 'Италия' : '')
 		setSelectedVisaDestination('italy')
 		setSelectedVisaType('type-c')
 		setSelectedVisaPassport(null)
-		setPassportDraft(createPassportDraft(fillTestValues))
-		setReviewPassport(createPassportDraft(fillTestValues))
-		setReviewPersonal(createPersonalDraft(fillTestValues))
-		setReviewTrip(createTripDraft(fillTestValues))
+		setPassportDraft(passport)
+		setReviewPassport(passport)
+		setReviewPersonal(personal)
+		setReviewTrip(trip)
+		setReviewDocs(docs)
 		setCurrentApplicants([])
-		setActiveDraftId(null)
+		setActiveDraftId(id)
+		setSavedDrafts((prev) => persistLocalDrafts([...prev, {
+			id,
+			createdAt: Date.now(),
+			visaType: 'type-c',
+			visaDestination: 'italy',
+			visaDestinationLabel: fillTestValues ? 'Италия' : '',
+			status: 'draft',
+			applicantCount: 0,
+			applicants: [],
+			selectedPassport: null,
+			reviewPassport: passport,
+			reviewPersonal: personal,
+			reviewTrip: trip,
+			reviewDocs: docs,
+			photoDataUrl: '',
+		}]))
 		setIsDraftOpenedFromDocuments(false)
 		navigate('home', 'visa-start')
 	}
@@ -3303,7 +3639,10 @@ function EntryFlow () {
 			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
 			await loadPassports()
 			if(passportFlowMode === 'visa-create') {
-				setSelectedVisaPassport(mapPassportDto(saved))
+				const passport = mapPassportDto(saved)
+				setSelectedVisaPassport(passport)
+				setPassportDraft(passport)
+				setReviewPassport(passport)
 				navigate('home', 'visa-personal-one')
 				return
 			}
@@ -3315,12 +3654,12 @@ function EntryFlow () {
 	}
 
 	// Cancel current visa application and remove its saved draft if present.
-	const cancelCurrentApplication = () => {
+	const cancelCurrentApplication = async () => {
 		if(activeDraftId) {
+			try { await authDeletePath(`/v1/app/applications/${activeDraftId}`) } catch {}
 			setSavedDrafts((prev) => {
 				const next = prev.filter((draft) => draft.id !== activeDraftId)
-				try { localStorage.setItem(VISA_DRAFTS_STORAGE_KEY, JSON.stringify(next)) } catch {}
-				return next
+				return persistLocalDrafts(next)
 			})
 		}
 
@@ -3349,44 +3688,58 @@ function EntryFlow () {
 								setSelectedVisaType(draft.visaType)
 								setSelectedVisaDestination(draft.visaDestination)
 								setSelectedVisaDestinationLabel(draft.visaDestinationLabel ?? SCHENGEN_DESTINATIONS.find((item) => item.code === draft.visaDestination)?.label ?? 'Италия')
+								setSelectedVisaPassport(draft.selectedPassport ?? null)
+								if(draft.reviewPassport) setReviewPassport(draft.reviewPassport)
+								if(draft.reviewPersonal) setReviewPersonal(draft.reviewPersonal)
+								if(draft.reviewTrip) setReviewTrip(draft.reviewTrip)
+								if(draft.reviewDocs) setReviewDocs(draft.reviewDocs)
+								setVisaPhotoDataUrl(draft.photoDataUrl ?? '')
 								setIsDraftOpenedFromDocuments(true)
-								navigate('home', 'visa-applicants')
+								if(draft.status === 'ready') {
+									navigate('home', 'visa-documents-ready')
+									return
+								}
+								if(draft.status === 'error') {
+									navigate('home', 'visa-rejected')
+									return
+								}
+								navigate('home', draft.applicants.length ? 'visa-applicants' : 'visa-start')
 							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
-								? <VisaStartScreen selectedCitizenship={selectedVisaCitizenship} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedResidence={selectedVisaResidence} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectCitizenship={setSelectedVisaCitizenship} onSelectDestination={selectVisaDestinationLabel} onSelectResidence={setSelectedVisaResidence} />
+								? <VisaStartScreen selectedCitizenship={selectedVisaCitizenship} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedResidence={selectedVisaResidence} onBack={() => goBack('home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectCitizenship={setSelectedVisaCitizenship} onSelectDestination={selectVisaDestinationLabel} onSelectResidence={setSelectedVisaResidence} />
 							: activeTab === 'visa-type'
-								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onConfirmWarning={() => {
+								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedType={selectedVisaType} onBack={() => goBack('visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onConfirmWarning={() => {
 									setIsVisaWarningOpen(false)
 									navigate('home', 'visa-passport')
 								}} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
 							: activeTab === 'visa-passport'
-								? <VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectSaved={openVisaPassportsList} />
+								? <VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => goBack('visa-type')} onHome={() => navigate('home', 'home')} onSelectSaved={openVisaPassportsList} />
 							: activeTab === 'passport-camera'
-								? <PassportCameraScreen onBack={() => navigate('home', 'visa-passport')} onCapture={() => navigate('home', 'passport-recognition')} />
+								? <PassportCameraScreen onBack={() => goBack('visa-passport')} onCapture={() => navigate('home', 'passport-recognition')} />
 							: activeTab === 'passport-recognition'
-								? <PassportRecognitionScreen onBack={() => navigate('home', 'passport-camera')} />
+								? <PassportRecognitionScreen onBack={() => goBack('passport-camera')} />
 							: activeTab === 'visa-personal-one'
-								? <VisaPersonalOneScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-passport')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-personal-two')} onHome={() => navigate('home', 'home')} />
+								? <VisaPersonalOneScreen personal={reviewPersonal} onBack={() => goBack('visa-passport')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-personal-two')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-personal-two'
-							? <VisaPersonalTwoScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-personal-one')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-trip')} onHome={() => navigate('home', 'home')} />
+							? <VisaPersonalTwoScreen personal={reviewPersonal} onBack={() => goBack('visa-personal-one')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-trip')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-trip'
-							? <VisaTripScreen trip={reviewTrip} onBack={() => navigate('home', 'visa-personal-two')} onChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-docs')} onHome={() => navigate('home', 'home')} />
+							? <VisaTripScreen trip={reviewTrip} onBack={() => goBack('visa-personal-two')} onChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'visa-docs')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-docs'
-							? <VisaDocumentsScreen onBack={() => navigate('home', 'visa-trip')} onContinue={() => navigate('home', 'visa-photo')} onHome={() => navigate('home', 'home')} />
+						? <VisaDocumentsScreen docs={reviewDocs} onBack={() => goBack('visa-trip')} onContinue={() => navigate('home', 'visa-photo')} onDocsChange={(field, value) => setReviewDocs((p) => ({ ...p, [field]: value }))} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-photo'
-							? <VisaPhotoScreen onBack={() => navigate('home', 'visa-docs')} onCamera={() => navigate('home', 'visa-photo-camera')} onHome={() => navigate('home', 'home')} onUpload={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
+							? <VisaPhotoScreen onBack={() => goBack('visa-docs')} onCamera={() => navigate('home', 'visa-photo-camera')} onHome={() => navigate('home', 'home')} onUpload={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
 						: activeTab === 'visa-photo-camera'
-							? <VisaPhotoCameraScreen onBack={() => navigate('home', 'visa-photo')} onCapture={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
+							? <VisaPhotoCameraScreen onBack={() => goBack('visa-photo')} onCapture={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
 						: activeTab === 'visa-photo-check'
-							? <VisaPhotoCheckScreen photoDataUrl={visaPhotoDataUrl} onBack={() => navigate('home', 'visa-photo')} onDone={() => { if (afterPhotoCheckTab === 'visa-review-passport') setReviewPassport({ ...passportDraft }); navigate('home', afterPhotoCheckTab) }} onHome={() => navigate('home', 'home')} />
+							? <VisaPhotoCheckScreen photoDataUrl={visaPhotoDataUrl} onBack={() => goBack('visa-photo')} onDone={() => { if (afterPhotoCheckTab === 'visa-review-passport') setReviewPassport({ ...(selectedVisaPassport ?? passportDraft) }); navigate('home', afterPhotoCheckTab) }} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-review-passport'
-							? <VisaReviewPassportScreen passport={reviewPassport} onBack={() => navigate('home', 'visa-photo')} onContinue={() => navigate('home', 'visa-review-personal')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPassport((p) => ({ ...p, [field]: value }))} />
+							? <VisaReviewPassportScreen passport={reviewPassport} onBack={() => goBack('visa-photo')} onContinue={() => navigate('home', 'visa-review-personal')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPassport((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-personal'
-							? <VisaReviewPersonalScreen personal={reviewPersonal} onBack={() => navigate('home', 'visa-review-passport')} onContinue={() => navigate('home', 'visa-review-trip')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} />
+							? <VisaReviewPersonalScreen personal={reviewPersonal} onBack={() => goBack('visa-review-passport')} onContinue={() => navigate('home', 'visa-review-trip')} onHome={() => navigate('home', 'home')} onChange={(field, value) => setReviewPersonal((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-trip'
-							? <VisaReviewTripScreen docs={reviewDocs} trip={reviewTrip} onBack={() => navigate('home', 'visa-review-personal')} onContinue={() => navigate('home', 'visa-review-photo')} onHome={() => navigate('home', 'home')} onTripChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} />
+							? <VisaReviewTripScreen docs={reviewDocs} trip={reviewTrip} onBack={() => goBack('visa-review-personal')} onContinue={() => navigate('home', 'visa-review-photo')} onHome={() => navigate('home', 'home')} onTripChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-photo'
-							? <VisaReviewPhotoScreen photoDataUrl={visaPhotoDataUrl} onBack={() => navigate('home', 'visa-review-trip')} onContinue={() => {
+							? <VisaReviewPhotoScreen photoDataUrl={visaPhotoDataUrl} onBack={() => goBack('visa-review-trip')} onContinue={() => {
 								const applicant: VisaApplicant = { passport: reviewPassport, personal: reviewPersonal, trip: reviewTrip, docs: reviewDocs, photoDataUrl: visaPhotoDataUrl }
 								if (editingApplicantIndex !== null) {
 									setCurrentApplicants((prev) => prev.map((a, i) => i === editingApplicantIndex ? applicant : a))
@@ -3400,13 +3753,14 @@ function EntryFlow () {
 							? <VisaApplicantsScreen
 								applicants={currentApplicants}
 								visaTitle={currentVisaTitle}
-								onBack={() => navigate('home', isDraftOpenedFromDocuments ? 'documents' : 'visa-review-photo')}
+								onBack={() => goBack(isDraftOpenedFromDocuments ? 'documents' : 'visa-review-photo')}
 								onCancelApplication={cancelCurrentApplication}
 								onHome={() => navigate('home', 'home')}
-								onAddApplicant={() => {
+									onAddApplicant={() => {
 									setReviewPassport(createPassportDraft(fillTestValues))
 									setReviewPersonal(createPersonalDraft(fillTestValues))
 									setReviewTrip(createTripDraft(fillTestValues))
+									setReviewDocs(createDocsDraft(fillTestValues))
 									setVisaPhotoDataUrl('')
 									setEditingApplicantIndex(null)
 									setAfterPhotoCheckTab('visa-review-passport')
@@ -3417,58 +3771,42 @@ function EntryFlow () {
 									setReviewPassport({ ...a.passport })
 									setReviewPersonal({ ...a.personal })
 									setReviewTrip({ ...a.trip })
+									setReviewDocs({ ...a.docs })
 									setVisaPhotoDataUrl(a.photoDataUrl)
 									setEditingApplicantIndex(index)
 									setAfterPhotoCheckTab('visa-review-passport')
 									navigate('home', 'visa-review-passport')
 								}}
-								onDeleteApplicant={(index) => setCurrentApplicants((prev) => prev.filter((_, i) => i !== index))}
-									onContinue={() => {
-									setIsDraftOpenedFromDocuments(false)
-									const draft: VisaDraft = {
-										id: activeDraftId ?? `draft-${Date.now()}`,
-										createdAt: Date.now(),
-										visaType: selectedVisaType,
-										visaDestination: selectedVisaDestination,
-										visaDestinationLabel: selectedVisaDestinationLabel,
-										applicants: currentApplicants,
-									}
-									setSavedDrafts((prev) => {
-										const next = activeDraftId ? prev.map((d) => d.id === activeDraftId ? draft : d) : [...prev, draft]
-										try { localStorage.setItem(VISA_DRAFTS_STORAGE_KEY, JSON.stringify(next)) } catch {}
-										return next
-									})
-									setActiveDraftId(draft.id)
-									navigate('home', 'visa-payment')
-								}}
-							/>
-						: activeTab === 'visa-payment'
-							? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => navigate('home', 'visa-applicants')} onHome={() => navigate('home', 'home')} onPay={() => navigate('home', 'visa-check')} onSelectPayment={setSelectedPayment} />
+									onDeleteApplicant={(index) => setCurrentApplicants((prev) => prev.filter((_, i) => i !== index))}
+									onContinue={() => { saveCurrentApplication() }}
+								/>
+							: activeTab === 'visa-payment'
+								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={async () => { if(activeDraftId) await runBackendSelfCheck(activeDraftId); updateActiveDraftStatus('checking'); navigate('home', 'visa-check') }} onSelectPayment={setSelectedPayment} />
 						: activeTab === 'visa-check'
-							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onDownload={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'visa-documents-ready')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+								? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={true} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onDownload={async () => { if(activeDraftId) await submitBackendApplication(activeDraftId); updateActiveDraftStatus('ready'); navigate('home', 'visa-documents-ready') }} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-rejected'
-							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-payment')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
+							? <VisaCheckResultScreen applicant={currentApplicants[0] ?? null} isSuccess={false} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onDownload={() => navigate('home', 'documents')} onEdit={() => navigate('home', 'visa-review-passport')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-documents-ready'
-							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => navigate('home', 'visa-verified')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
+							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('documents')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
-								? <ProfileDataScreen onBack={() => navigate('home', 'profile')} onAccountDeleted={() => {
+								? <ProfileDataScreen onBack={() => goBack('profile')} onAccountDeleted={() => {
 									navigate('onboarding', 'home')
 								}} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
+									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} isVisaCheckSuccess={isVisaCheckSuccess} onBack={() => goBack('profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onToggleVisaCheckSuccess={toggleVisaCheckSuccess} />
 									: activeTab === 'passports-list'
-										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => navigate('home', passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
+										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 										: activeTab === 'passports-step-one'
-										? <PassportStepOneScreen draft={passportDraft} onBack={() => navigate('home', passportFlowMode === 'visa-create' ? 'passport-camera' : 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
+									? <PassportStepOneScreen draft={passportDraft} onBack={() => goBack(passportFlowMode === 'visa-create' ? 'passport-camera' : 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
 										: activeTab === 'passports-step-two'
-											? <PassportStepTwoScreen draft={passportDraft} onBack={() => navigate('home', 'passports-step-one')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
+										? <PassportStepTwoScreen draft={passportDraft} onBack={() => goBack('passports-step-one')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
 											: activeTab === 'passports-review'
-												? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => navigate('home', 'passports-step-two')} onSave={savePassportDraft} />
-												: <PassportEditScreen draft={passportDraft} onBack={() => navigate('home', 'passports-list')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
+											? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => goBack('passports-step-two')} onSave={savePassportDraft} />
+											: <PassportEditScreen draft={passportDraft} onBack={() => goBack('passports-list')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
 		</>
 	)
 }
