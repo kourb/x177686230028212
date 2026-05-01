@@ -2,6 +2,9 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState } from 'react'
+import { COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS } from '@/data/countries'
+import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
+import { PROFESSION_OPTIONS } from '@/data/professions'
 import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n/config'
 import { I18nProvider, useI18n } from '@/i18n/provider'
 
@@ -1018,9 +1021,10 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 }
 
 // Render visa setup first step screen from Figma node 520:15433.
-function VisaStartScreen ({ selectedDestination, onBack, onHome, onContinue, onSelectDestination }: { selectedDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onContinue: () => void, onSelectDestination: (destination: VisaDestinationCode) => void }) {
+function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, onBack, onHome, onContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, onBack: () => void, onHome: () => void, onContinue: () => void, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: VisaDestinationCode) => void }) {
 	const { t } = useI18n()
 	const destinationOption = VISA_DESTINATION_OPTIONS.find((item) => item.code === selectedDestination) ?? VISA_DESTINATION_OPTIONS[0]
+	const destinationLabel = t(destinationOption.labelKey)
 
 	return (
 		<section aria-label="Visa setup" className="visa-screen">
@@ -1050,29 +1054,12 @@ function VisaStartScreen ({ selectedDestination, onBack, onHome, onContinue, onS
 				</header>
 
 				<div className="visa-form">
-					<div className="visa-field">
-						<label>{t('visaCitizenship')}</label>
-						<div className="profile-data-input with-right-icon">
-							<span>{t('visaCitizenshipValue')}</span>
-							<Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} />
-						</div>
-					</div>
-
-					<div className="visa-field">
-						<label>{t('visaResidence')}</label>
-						<div className="profile-data-input with-right-icon">
-							<span>{t('visaResidenceValue')}</span>
-							<Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} />
-						</div>
-					</div>
-
-					<div className="visa-field">
-						<label>{t('visaDestination')}</label>
-						<div className="profile-data-input with-right-icon">
-							<span>{t(destinationOption.labelKey)}</span>
-							<Image alt="Chevron down" height={24} src="/assets/icon-chevron-down.svg" unoptimized width={24} />
-						</div>
-					</div>
+					<LivingField icon="search" label={t('visaCitizenship')} onChange={onSelectCitizenship} options={COUNTRY_OPTIONS} value={selectedCitizenship} />
+					<LivingField icon="search" label={t('visaResidence')} onChange={onSelectResidence} options={CITY_OPTIONS} value={selectedResidence} />
+					<LivingField icon="search" label={t('visaDestination')} onChange={(value) => {
+						const found = SCHENGEN_DESTINATIONS.find((item) => item.label === value)
+						if(found) onSelectDestination(found.code)
+					}} options={SCHENGEN_DESTINATIONS.map((item) => item.label)} value={destinationLabel} />
 
 					<div className="visa-popular">
 						<label>{t('visaPopularDestinations')}</label>
@@ -1508,9 +1495,9 @@ function VisaPersonalOneScreen ({ personal, onBack, onHome, onContinue, onChange
 			<div className="visa-scroll visa-personal-scroll">
 				<VisaPersonalHeader copy={copy} onBack={onBack} onHome={onHome} progressClass="is-half" />
 				<div className="visa-personal-form">
-					<LivingField icon="search" label={copy.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} value={copy.birthPlaceValue} />
+					<LivingField icon="search" label={copy.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} options={BIRTH_PLACE_OPTIONS} value={copy.birthPlaceValue} />
 					<LivingField icon="chevron" label={copy.marital} onChange={(v) => onChange('maritalValue', v)} options={MARITAL_OPTIONS} value={copy.maritalValue} />
-					<LivingField icon="search" label={copy.profession} onChange={(v) => onChange('professionValue', v)} value={copy.professionValue} />
+					<LivingField icon="search" label={copy.profession} onChange={(v) => onChange('professionValue', v)} options={PROFESSION_OPTIONS} value={copy.professionValue} />
 					<LivingField label={copy.employer} onChange={(v) => onChange('employerValue', v)} value={copy.employerValue} />
 					<LivingField icon="search" label={copy.workAddress} onChange={(v) => onChange('workAddressValue', v)} value={copy.workAddressValue} />
 				</div>
@@ -1533,7 +1520,7 @@ function VisaPersonalTwoScreen ({ personal, onBack, onHome, onContinue, onChange
 			<div className="visa-scroll visa-personal-scroll">
 				<VisaPersonalHeader copy={copy} onBack={onBack} onHome={onHome} progressClass="is-full" />
 				<div className="visa-personal-form">
-					<LivingField icon="search" label={copy.residenceAddress} onChange={(v) => onChange('residenceAddressValue', v)} value={copy.residenceAddressValue} />
+					<LivingField icon="search" label={copy.residenceAddress} onChange={(v) => onChange('residenceAddressValue', v)} options={CITY_OPTIONS} value={copy.residenceAddressValue} />
 					<LivingField label={copy.phone} onChange={(v) => onChange('phoneValue', v)} value={copy.phoneValue} />
 					<LivingField label={copy.email} onChange={(v) => onChange('emailValue', v)} value={copy.emailValue} />
 				</div>
@@ -1579,10 +1566,11 @@ function VisaPersonalHeader ({ copy, progressClass, onBack, onHome }: { copy: (t
 // Render one live field row with optional calendar or dropdown sheet.
 function LivingField ({ icon, label, value, options, onChange }: { icon?: FieldIcon, label: string, value: string, options?: string[], onChange: (v: string) => void }) {
 	const iconSrc = icon === 'search' ? '/assets/icon-search.svg' : icon === 'calendar' ? '/assets/icon-calendar.svg' : '/assets/icon-chevron-down.svg'
-	const [sheet, setSheet] = useState<'calendar' | 'options' | null>(null)
+	const [sheet, setSheet] = useState<'calendar' | 'options' | 'search' | null>(null)
 	const openSheet = () => {
 		if(icon === 'calendar') setSheet('calendar')
 		if(icon === 'chevron') setSheet('options')
+		if(icon === 'search' && options) setSheet('search')
 	}
 
 	return (
@@ -1594,6 +1582,7 @@ function LivingField ({ icon, label, value, options, onChange }: { icon?: FieldI
 			</div>
 			{sheet === 'calendar' ? <CalendarSheet onClose={() => setSheet(null)} onSelect={(next) => { onChange(next); setSheet(null) }} value={value} /> : null}
 			{sheet === 'options' ? <OptionSheet onClose={() => setSheet(null)} onSelect={(next) => { onChange(next); setSheet(null) }} options={options ?? [value]} value={value} /> : null}
+			{sheet === 'search' ? <SearchSheet label={label} onClose={() => setSheet(null)} onSelect={(next) => { onChange(next); setSheet(null) }} options={options ?? [value]} value={value} /> : null}
 		</div>
 	)
 }
@@ -1604,6 +1593,32 @@ function OptionSheet ({ options, value, onSelect, onClose }: { options: string[]
 		<div className="field-sheet-backdrop" onClick={onClose}>
 			<div className="field-sheet" onClick={(event) => event.stopPropagation()}>
 				{options.map((option) => <button className={option === value ? 'is-active' : ''} key={option} onClick={() => onSelect(option)} type="button">{option}</button>)}
+			</div>
+		</div>
+	)
+}
+
+// Render searchable option picker for country, city and profession databases.
+function SearchSheet ({ label, options, value, onSelect, onClose }: { label: string, options: string[], value: string, onSelect: (v: string) => void, onClose: () => void }) {
+	const [query, setQuery] = useState('')
+	const normalized = query.trim().toLocaleLowerCase('ru')
+	const filtered = normalized ? options.filter((option) => option.toLocaleLowerCase('ru').includes(normalized)) : options
+
+	return (
+		<div className="field-sheet-backdrop" onClick={onClose}>
+			<div className="field-sheet search-sheet" onClick={(event) => event.stopPropagation()}>
+				<header>
+					<strong>{label}</strong>
+					<button aria-label="Close" onClick={onClose} type="button">×</button>
+				</header>
+				<div className="search-sheet-input">
+					<Image alt="Search" height={20} src="/assets/icon-search.svg" unoptimized width={20} />
+					<input autoFocus onChange={(event) => setQuery(event.target.value)} placeholder="Поиск" type="text" value={query} />
+				</div>
+				<div className="search-sheet-results">
+					{filtered.map((option) => <button className={option === value ? 'is-active' : ''} key={option} onClick={() => onSelect(option)} type="button">{option}</button>)}
+					{filtered.length === 0 ? <p>Ничего не найдено</p> : null}
+				</div>
 			</div>
 		</div>
 	)
@@ -1672,7 +1687,7 @@ function VisaTripScreen ({ trip, onBack, onHome, onContinue, onChange }: { trip:
 					<LivingField icon="chevron" label={copy.purpose} onChange={(v) => onChange('purposeValue', v)} options={PURPOSE_OPTIONS} value={copy.purposeValue} />
 					<LivingField icon="calendar" label={copy.entryDate} onChange={(v) => onChange('dateValue', v)} value={copy.dateValue} />
 					<LivingField icon="calendar" label={copy.exitDate} onChange={(v) => onChange('exitDateValue', v)} value={copy.exitDateValue} />
-					<LivingField icon="search" label={copy.residenceCountry} onChange={(v) => onChange('residenceCountryValue', v)} value={copy.residenceCountryValue} />
+					<LivingField icon="search" label={copy.residenceCountry} onChange={(v) => onChange('residenceCountryValue', v)} options={COUNTRY_OPTIONS} value={copy.residenceCountryValue} />
 					<LivingField icon="chevron" label={copy.prevVisas} onChange={(v) => onChange('prevVisasValue', v)} options={YES_NO_OPTIONS} value={copy.prevVisasValue} />
 				</div>
 
@@ -1945,7 +1960,7 @@ function VisaReviewPassportScreen ({ passport, onBack, onHome, onContinue, onCha
 					</div>
 				</header>
 				<div className="visa-personal-form">
-					<ReviewField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} value={passport.citizenship} />
+					<ReviewField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={COUNTRY_OPTIONS} value={passport.citizenship} />
 					<ReviewField label={t('profileDataFirstName')} onChange={(v) => onChange('firstName', v)} value={passport.firstName} />
 					<ReviewField label={t('profileDataLastName')} onChange={(v) => onChange('lastName', v)} value={passport.lastName} />
 					<ReviewField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={passport.birthDate} />
@@ -1985,12 +2000,12 @@ function VisaReviewPersonalScreen ({ personal, onBack, onHome, onContinue, onCha
 					</div>
 				</header>
 				<div className="visa-personal-form">
-					<ReviewField icon="search" label={personal.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} value={personal.birthPlaceValue} />
+					<ReviewField icon="search" label={personal.birthPlace} onChange={(v) => onChange('birthPlaceValue', v)} options={BIRTH_PLACE_OPTIONS} value={personal.birthPlaceValue} />
 					<ReviewField icon="chevron" label={personal.marital} onChange={(v) => onChange('maritalValue', v)} options={MARITAL_OPTIONS} value={personal.maritalValue} />
-					<ReviewField icon="search" label={personal.profession} onChange={(v) => onChange('professionValue', v)} value={personal.professionValue} />
+					<ReviewField icon="search" label={personal.profession} onChange={(v) => onChange('professionValue', v)} options={PROFESSION_OPTIONS} value={personal.professionValue} />
 					<ReviewField label={personal.employer} onChange={(v) => onChange('employerValue', v)} value={personal.employerValue} />
 					<ReviewField icon="search" label={personal.workAddress} onChange={(v) => onChange('workAddressValue', v)} value={personal.workAddressValue} />
-					<ReviewField icon="search" label={personal.residenceAddress} onChange={(v) => onChange('residenceAddressValue', v)} value={personal.residenceAddressValue} />
+					<ReviewField icon="search" label={personal.residenceAddress} onChange={(v) => onChange('residenceAddressValue', v)} options={CITY_OPTIONS} value={personal.residenceAddressValue} />
 					<ReviewField label={personal.phone} onChange={(v) => onChange('phoneValue', v)} value={personal.phoneValue} />
 					<ReviewField label={personal.email} onChange={(v) => onChange('emailValue', v)} value={personal.emailValue} />
 				</div>
@@ -2027,7 +2042,7 @@ function VisaReviewTripScreen ({ trip, docs, onBack, onHome, onContinue, onTripC
 					<ReviewField icon="chevron" label={trip.purpose} onChange={(v) => onTripChange('purposeValue', v)} options={PURPOSE_OPTIONS} value={trip.purposeValue} />
 					<ReviewField icon="calendar" label={trip.entryDate} onChange={(v) => onTripChange('dateValue', v)} value={trip.dateValue} />
 					<ReviewField icon="calendar" label={trip.exitDate} onChange={(v) => onTripChange('exitDateValue', v)} value={trip.exitDateValue} />
-					<ReviewField icon="search" label={trip.residenceCountry} onChange={(v) => onTripChange('residenceCountryValue', v)} value={trip.residenceCountryValue} />
+					<ReviewField icon="search" label={trip.residenceCountry} onChange={(v) => onTripChange('residenceCountryValue', v)} options={COUNTRY_OPTIONS} value={trip.residenceCountryValue} />
 					<ReviewField icon="chevron" label={trip.prevVisas} onChange={(v) => onTripChange('prevVisasValue', v)} options={YES_NO_OPTIONS} value={trip.prevVisasValue} />
 					<ReviewFileField filename={docs.hotelFile} label={docs.hotel} replaceLabel={'Заменить бронирование отеля'} viewLabel={'Посмотреть'} />
 					<ReviewFileField filename={docs.flightsFile} label={docs.flights} replaceLabel={'Заменить бронирование авиабилетов'} viewLabel={'Посмотреть'} />
@@ -2572,7 +2587,7 @@ function PassportStepOneScreen ({ draft, onBack, onNext, onChange }: { draft: Pa
 				</div>
 
 				<div className="passport-fields">
-					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} value={draft.citizenship} />
+					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={COUNTRY_OPTIONS} value={draft.citizenship} />
 					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
 					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
 					<LivingField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={draft.birthDate} />
@@ -2610,7 +2625,7 @@ function PassportStepTwoScreen ({ draft, onBack, onNext, onChange }: { draft: Pa
 					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
 					<LivingField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={draft.issueDate} />
 					<LivingField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={draft.expiryDate} />
-					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} value={draft.issuedBy} />
+					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} options={COUNTRY_OPTIONS} value={draft.issuedBy} />
 				</div>
 
 				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
@@ -2641,7 +2656,7 @@ function PassportEditScreen ({ draft, onBack, onChange, onSave }: { draft: Passp
 				</div>
 
 				<div className="passport-fields">
-					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} value={draft.citizenship} />
+					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={COUNTRY_OPTIONS} value={draft.citizenship} />
 					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
 					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
 					<LivingField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={draft.birthDate} />
@@ -2649,7 +2664,7 @@ function PassportEditScreen ({ draft, onBack, onChange, onSave }: { draft: Passp
 					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
 					<LivingField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={draft.issueDate} />
 					<LivingField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={draft.expiryDate} />
-					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} value={draft.issuedBy} />
+					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} options={COUNTRY_OPTIONS} value={draft.issuedBy} />
 				</div>
 
 				<button className="passport-primary" onClick={onSave} type="button">{t('passportSaveButton')}</button>
@@ -3000,6 +3015,8 @@ function EntryFlow () {
 	const [selectedVisaPassport, setSelectedVisaPassport] = useState<PassportEntry | null>(null)
 	const [isPassportsLoading, setIsPassportsLoading] = useState(false)
 	const [passportsError, setPassportsError] = useState('')
+	const [selectedVisaCitizenship, setSelectedVisaCitizenship] = useState('Российская Федерация')
+	const [selectedVisaResidence, setSelectedVisaResidence] = useState('Москва')
 	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
 	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
 	const [isVisaWarningOpen, setIsVisaWarningOpen] = useState(false)
@@ -3229,7 +3246,7 @@ function EntryFlow () {
 								navigate('home', 'visa-applicants')
 							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
-								? <VisaStartScreen selectedDestination={selectedVisaDestination} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectDestination={setSelectedVisaDestination} />
+								? <VisaStartScreen selectedCitizenship={selectedVisaCitizenship} selectedDestination={selectedVisaDestination} selectedResidence={selectedVisaResidence} onBack={() => navigate('home', 'home')} onContinue={() => navigate('home', 'visa-type')} onHome={() => navigate('home', 'home')} onSelectCitizenship={setSelectedVisaCitizenship} onSelectDestination={setSelectedVisaDestination} onSelectResidence={setSelectedVisaResidence} />
 							: activeTab === 'visa-type'
 								? <VisaTypeScreen isWarningOpen={isVisaWarningOpen} selectedDestination={selectedVisaDestination} selectedType={selectedVisaType} onBack={() => navigate('home', 'visa-start')} onCloseWarning={() => setIsVisaWarningOpen(false)} onConfirmWarning={() => {
 									setIsVisaWarningOpen(false)

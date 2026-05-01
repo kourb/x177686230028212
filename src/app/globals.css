@@ -1759,6 +1759,75 @@ html:not(.motion-disabled) .calendar-sheet {
 	color: var(--fill-blue);
 }
 
+.search-sheet {
+	grid-template-rows: auto auto minmax(0, 1fr);
+	gap: 12px;
+}
+
+.search-sheet header {
+	display: grid;
+	grid-template-columns: 1fr 40px;
+	align-items: center;
+	gap: 8px;
+}
+
+.search-sheet header strong {
+	min-width: 0;
+	font-size: 20px;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	font-weight: 600;
+	color: var(--ink);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.search-sheet header button {
+	height: 40px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	justify-content: center;
+	font-size: 28px;
+	line-height: 1;
+	color: rgb(0 29 71 / 0.58);
+}
+
+.search-sheet-input {
+	height: 48px;
+	padding: 0 14px;
+	border: 1px solid rgb(0 29 71 / 0.14);
+	border-radius: 14px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.search-sheet-input input {
+	all: unset;
+	flex: 1 1 auto;
+	min-width: 0;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.search-sheet-results {
+	display: grid;
+	gap: 8px;
+	overflow-y: auto;
+	min-height: 0;
+}
+
+.search-sheet-results p {
+	margin: 12px 0 0;
+	font-size: 15px;
+	line-height: 1.4;
+	color: rgb(0 29 71 / 0.58);
+}
+
 .calendar-sheet {
 	display: grid;
 	gap: 16px;
