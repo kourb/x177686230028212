@@ -147,6 +147,14 @@ type ApplicationListResponse = {
 	hasMore: boolean
 }
 
+type StatusLogEntryDto = {
+	oldStatus: number | string
+	newStatus: number | string
+	comment: string | null
+	templateCode: string | null
+	createdAt: number | string
+}
+
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
 type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
@@ -951,6 +959,11 @@ async function runBackendSelfCheck (id: string) {
 // Load backend application status by public ID.
 async function loadBackendApplication (id: string) {
 	return authGet<ApplicationDto>(`/v1/app/applications/${id}`)
+}
+
+// Load backend status transition history for application debugging.
+async function loadBackendStatusLog (id: string) {
+	return authGet<StatusLogEntryDto[]>(`/v1/app/applications/${id}/status-log`)
 }
 
 // Move editable application back to backend draft state before autosave.
@@ -2951,6 +2964,7 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 	const [errorText, setErrorText] = useState('')
 	const [sessionsData, setSessionsData] = useState<unknown>(null)
 	const [dashboardData, setDashboardData] = useState<unknown>(null)
+	const [applicationStatusData, setApplicationStatusData] = useState<unknown>(null)
 	const auth = resolveAuthPayload()
 
 	useEffect(() => {
@@ -2961,14 +2975,22 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 			setErrorText('')
 
 			try {
-				const [sessions, dashboard] = await Promise.all([
+				const [sessions, dashboard, applications] = await Promise.all([
 					authGet<unknown>('/v1/app/auth/sessions'),
 					authGet<unknown>('/v1/app/dashboard'),
+					authGet<ApplicationListResponse>('/v1/app/applications?pageSize=20'),
 				])
+				const statusLogs = await Promise.all(applications.items.map(async (item) => ({
+					publicId: item.publicId,
+					status: item.status,
+					mappedStatus: mapApplicationStatus(item.status),
+					statusLog: await loadBackendStatusLog(item.publicId),
+				})))
 
 				if(!active) return
 				setSessionsData(sessions)
 				setDashboardData(dashboard)
+				setApplicationStatusData({ applications: applications.items, statusLogs })
 			} catch (error) {
 				if(!active) return
 				setErrorText(error instanceof Error ? error.message : t('authUnexpectedError'))
@@ -3047,6 +3069,13 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 					<div className="dev-json-block">
 						<b>{t('devDashboard')}</b>
 						<pre>{JSON.stringify(dashboardData, null, 2)}</pre>
+					</div>
+				) : null}
+
+				{applicationStatusData ? (
+					<div className="dev-json-block">
+						<b>{'Application statuses'}</b>
+						<pre>{JSON.stringify(applicationStatusData, null, 2)}</pre>
 					</div>
 				) : null}
 			</div>
@@ -3533,13 +3562,22 @@ function EntryFlow () {
 		if(step !== 'home' || activeTab !== 'visa-check' || !activeDraftId || visaCheckRequestRef.current === activeDraftId) return
 		visaCheckRequestRef.current = activeDraftId
 		let active = true
+		let timer = 0
 
 		const check = async () => {
 			const application = await loadBackendApplication(activeDraftId)
 			if(!active) return
 			const status = mapApplicationStatus(application.status)
 			updateActiveDraftStatus(status)
-			navigate('home', status === 'error' ? 'visa-rejected' : 'visa-verified')
+			if(status === 'error') {
+				navigate('home', 'visa-rejected')
+				return
+			}
+			if(status === 'ready') {
+				navigate('home', 'visa-verified')
+				return
+			}
+			timer = window.setTimeout(check, 3000)
 		}
 
 		check().catch(() => {
@@ -3547,6 +3585,7 @@ function EntryFlow () {
 		})
 		return () => {
 			active = false
+			window.clearTimeout(timer)
 		}
 	}, [step, activeTab, activeDraftId])
 
