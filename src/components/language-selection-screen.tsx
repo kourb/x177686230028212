@@ -1261,7 +1261,31 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 
 	return (
 		<section aria-label="Home" className="home-screen">
+			<aside className="home-desktop-sidebar" aria-label="Desktop navigation">
+				<span className="home-desktop-caption">{'Навигация'}</span>
+				<nav className="home-desktop-menu">
+					<button className="home-desktop-menu-item is-active" type="button">
+						<Image alt="Home" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-home.svg" unoptimized width={24} />
+						<span>{'Главная страница'}</span>
+					</button>
+					<button className="home-desktop-menu-item" onClick={onOpenDocuments} type="button">
+						<Image alt="Documents" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
+						<span>{t('documentsTitle')}</span>
+					</button>
+					<button className="home-desktop-menu-item" onClick={onOpenProfile} type="button">
+						<Image alt="Profile" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
+						<span>{t('profileTitle')}</span>
+					</button>
+				</nav>
+			</aside>
+
 			<div className="home-scroll">
+				<div className="home-desktop-breadcrumbs" aria-label="Breadcrumbs">
+					<span>{'ShenGen'}</span>
+					<i />
+					<span>{'Главная страница'}</span>
+				</div>
+
 				<div className="home-hero-wrap">
 					<Image alt="Travel destination" className="home-hero-image" height={460} src="/assets/home-destination.svg" unoptimized width={402} />
 				</div>
@@ -1273,6 +1297,26 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 
 				<button className="home-cta" onClick={onOpenVisaStart} type="button">{t('homeStartVisa')}</button>
 			</div>
+
+			<aside className="home-desktop-rail" aria-label="Notifications">
+				<section className="home-desktop-notifications">
+					<span className="home-desktop-caption">{'Уведомления'}</span>
+					<button className="home-notification-card" type="button">
+						<span className="home-notification-badge">{'Готовая виза'}</span>
+						<b>{'Обновление статуса заявки'}</b>
+						<small>{'Сегодня, 14:11'}</small>
+					</button>
+					<button className="home-notification-card is-compact" type="button">
+						<b>{'Вход в аккаунт на новом устройстве'}</b>
+						<small>{'Вчера, 09:25'}</small>
+					</button>
+				</section>
+
+				<button className="home-support-button" type="button">
+					<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
+					<span>{'Есть вопросы?'}</span>
+				</button>
+			</aside>
 
 			<HomeTabbar active="home" onOpenDocuments={onOpenDocuments} onOpenHome={() => {}} onOpenProfile={onOpenProfile} />
 		</section>
