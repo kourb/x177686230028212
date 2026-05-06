@@ -3628,6 +3628,8 @@ html:not(.motion-disabled) .calendar-sheet {
 	.passports-screen .passports-empty-picture {
 		padding-left: 0;
 		padding-right: 0;
+		display: flex;
+		justify-content: center;
 	}
 
 	.documents-screen .documents-empty-copy,
@@ -3639,14 +3641,9 @@ html:not(.motion-disabled) .calendar-sheet {
 
 	.documents-screen .documents-empty-image,
 	.passports-screen .passports-empty-image {
-		width: 100%;
-		max-width: 370px;
-		margin-inline: auto;
-	}
-
-	.passports-screen .passports-empty-copy {
-		max-width: 370px;
-		margin-inline: auto;
+		width: min(370px, 100%);
+		height: auto;
+		flex-shrink: 0;
 	}
 
 	.documents-screen .documents-scroll,

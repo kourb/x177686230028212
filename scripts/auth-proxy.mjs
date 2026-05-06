@@ -44,13 +44,15 @@ async function handleProxy (request, response) {
 		return
 	}
 
+	const requestBody = (request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH') ? await readBody(request) : null
+
 	const upstreamResponse = await fetch(`${UPSTREAM}${path}${url.search}`, {
 		method: request.method,
 		headers: {
-			...(request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH' ? { 'Content-Type': 'application/json' } : {}),
+			...(requestBody !== null ? { 'Content-Type': 'application/json' } : {}),
 			...(request.headers.authorization ? { Authorization: request.headers.authorization } : {}),
 		},
-		...(request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH' ? { body: await readBody(request) } : {}),
+		...(requestBody !== null ? { body: requestBody } : {}),
 		signal: AbortSignal.timeout(30000),
 	})
 	const text = await upstreamResponse.text()
