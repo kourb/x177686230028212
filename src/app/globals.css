@@ -532,6 +532,10 @@ body {
 	display: none;
 }
 
+.desktop-visa-chrome {
+	display: none;
+}
+
 .home-scroll {
 	overflow-y: auto;
 	padding-bottom: 12px;
@@ -2675,7 +2679,23 @@ html:not(.motion-disabled) .calendar-sheet {
 		background: #fff;
 	}
 
+	.app-content:has(.desktop-visa-chrome) {
+		width: 100%;
+		height: 100dvh;
+		max-height: none;
+		display: grid;
+		grid-template-columns: minmax(302px, 302px) minmax(560px, 668px) minmax(302px, 302px);
+		justify-content: center;
+		align-items: start;
+		overflow: hidden;
+		background: #fff;
+	}
+
 	.desktop-global-chrome {
+		display: contents;
+	}
+
+	.desktop-visa-chrome {
 		display: contents;
 	}
 
@@ -2700,6 +2720,189 @@ html:not(.motion-disabled) .calendar-sheet {
 		grid-column: 3;
 		border-left: 1px solid rgb(0 29 71 / 0.16);
 		padding-right: 0;
+	}
+
+	.desktop-visa-chrome .visa-desktop-progress,
+	.desktop-visa-chrome .visa-desktop-applicants {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+		padding: 32px;
+		min-width: 0;
+		height: min(895px, 100dvh);
+		grid-row: 1;
+	}
+
+	.desktop-visa-chrome .visa-desktop-progress {
+		grid-column: 1;
+		border-right: 1px solid rgb(0 29 71 / 0.16);
+		padding-left: 0;
+	}
+
+	.desktop-visa-chrome .visa-desktop-applicants {
+		grid-column: 3;
+		border-left: 1px solid rgb(0 29 71 / 0.16);
+		padding-right: 0;
+		justify-content: space-between;
+	}
+
+	.desktop-visa-chrome .visa-desktop-steps {
+		display: grid;
+		gap: 8px;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step {
+		all: unset;
+		min-height: 64px;
+		padding: 8px;
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		font-size: 17px;
+		line-height: 1.4;
+		letter-spacing: -0.02em;
+		font-weight: 500;
+		color: var(--ink);
+		cursor: pointer;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step i {
+		flex: 0 0 auto;
+		width: 4px;
+		height: 48px;
+		border-radius: 999px;
+		background: rgb(0 29 71 / 0.16);
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-active {
+		background: rgb(0 29 71 / 0.08);
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-active i {
+		background: linear-gradient(to bottom, #0066f5 0 50%, #001d47 50% 100%);
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-complete {
+		color: #0a8a3e;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-complete i {
+		background: #0a8a3e;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step span {
+		display: block;
+		max-width: 234px;
+	}
+
+	.desktop-visa-chrome .visa-desktop-applicant-section {
+		display: grid;
+		gap: 24px;
+	}
+
+	.desktop-visa-chrome .visa-desktop-applicant-list {
+		display: grid;
+		gap: 8px;
+	}
+
+	.desktop-visa-chrome .visa-desktop-applicant,
+	.desktop-visa-chrome .visa-desktop-add-applicant,
+	.desktop-visa-chrome .visa-desktop-home-button {
+		all: unset;
+		min-height: 56px;
+		padding: 0 16px;
+		border-radius: 12px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 17px;
+		line-height: 1.4;
+		letter-spacing: -0.02em;
+		font-weight: 500;
+		color: var(--ink);
+		cursor: pointer;
+	}
+
+	.desktop-visa-chrome .visa-desktop-applicant {
+		background: rgb(0 29 71 / 0.08);
+	}
+
+	.desktop-visa-chrome .visa-desktop-empty-applicant {
+		padding: 16px;
+		border: 1px dashed rgb(0 29 71 / 0.16);
+		border-radius: 12px;
+		font-size: 15px;
+		line-height: 1.4;
+		color: rgb(0 29 71 / 0.64);
+	}
+
+	.desktop-visa-chrome .visa-desktop-add-applicant,
+	.desktop-visa-chrome .visa-desktop-home-button {
+		border: 1px solid rgb(0 29 71 / 0.16);
+		justify-content: center;
+	}
+
+	.desktop-visa-chrome .visa-desktop-side-actions {
+		display: grid;
+		gap: 16px;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .visa-screen,
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen {
+		grid-column: 2;
+		grid-row: 1;
+		width: min(668px, calc(100vw - 604px));
+		height: min(895px, 100dvh);
+		margin: 0;
+		justify-self: center;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .visa-screen,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen,
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen {
+		display: grid;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .visa-screen .visa-scroll,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .passports-scroll,
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen {
+		width: 100%;
+		height: 100%;
+		padding: 32px;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .visa-screen .visa-bottom,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .visa-bottom {
+		padding: 0 32px 32px;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .visa-screen .passport-primary,
+	.app-content:has(.desktop-visa-chrome) > .visa-screen .visa-secondary-button,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .passport-primary,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .visa-secondary-button {
+		width: 100%;
+		margin: 0;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .visa-screen .visa-toolbar-controls,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .passport-flow-toolbar,
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen .passport-camera-back {
+		padding: 0;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen {
+		height: min(895px, 100dvh);
+		padding: 32px;
+		overflow: hidden;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen .passport-camera-controls {
+		left: 50%;
+		transform: translateX(-50%);
 	}
 
 	.app-content:has(.desktop-global-chrome) > section {
