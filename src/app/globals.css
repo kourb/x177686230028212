@@ -2548,7 +2548,8 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 @media (min-width: 768px) {
-	.app-content:has(.auth-screen) {
+	.app-content:has(.auth-screen),
+	.app-content:has(.onboarding-screen) {
 		width: 100%;
 		height: 100dvh;
 		max-height: none;
@@ -2556,6 +2557,42 @@ html:not(.motion-disabled) .calendar-sheet {
 		place-items: center;
 		background: #ecf2fe url('/assets/auth-desktop-background.svg') center / cover no-repeat;
 		overflow: hidden;
+	}
+
+	.onboarding-screen {
+		position: relative;
+		z-index: 1;
+		width: min(668px, calc(100vw - 64px));
+		height: auto;
+		padding: 32px;
+		border-radius: 32px;
+		background: #fff;
+		display: grid;
+		grid-template-rows: 256px auto 56px;
+		row-gap: 24px;
+	}
+
+	.onboarding-hero {
+		min-height: 0;
+		border-radius: 24px;
+		background: #ecf2fe;
+	}
+
+	.onboarding-hero-image {
+		top: 50%;
+		left: 50%;
+		width: 458px;
+		height: auto;
+		max-width: calc(100% - 32px);
+		transform: translate(-50%, -50%);
+	}
+
+	.onboarding-copy {
+		padding-inline: 0;
+	}
+
+	.onboarding-cta {
+		margin-inline: 0;
 	}
 
 	.auth-screen {
