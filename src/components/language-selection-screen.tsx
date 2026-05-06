@@ -22,7 +22,7 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '3833035762
 
 type AuthPath = '/v1/app/auth/email/send-otp' | '/v1/app/auth/email/verify-otp' | '/v1/app/auth/google' | '/v1/app/auth/refresh' | '/v1/app/passports'
 
-type AuthDeletePath = '/v1/app/auth/account'
+type AuthDeletePath = '/v1/app/auth/account' | '/v1/app/auth/sessions'
 
 type AuthDeleteDynamicPath = `/v1/app/passports/${string}` | `/v1/app/applications/${string}`
 
@@ -474,7 +474,7 @@ function resolveUserProfile () {
 	}
 }
 
-// Clear persisted auth and profile data after account deletion.
+// Clear persisted auth and profile data after account logout or deletion.
 function clearPersistedSession () {
 	window.localStorage.removeItem(AUTH_STORAGE_KEY)
 	window.localStorage.removeItem(USER_PROFILE_STORAGE_KEY)
@@ -3084,7 +3084,7 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 }
 
 // Render profile data screen from Figma node 521:20347.
-function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, onAccountDeleted: () => void }) {
+function ProfileDataScreen ({ onBack, onLoggedOut, onAccountDeleted }: { onBack: () => void, onLoggedOut: () => void, onAccountDeleted: () => void }) {
 	const { t, locale, setLocale } = useI18n()
 	const auth = resolveAuthPayload()
 	const email = auth?.user?.email ?? 'alex.german@gmail.com'
@@ -3094,6 +3094,7 @@ function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, 
 	const lastName = nameParts[1] ?? 'German'
 	const [isLocaleOpen, setIsLocaleOpen] = useState(false)
 	const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false)
+	const [isLogoutBusy, setIsLogoutBusy] = useState(false)
 	const [isDeleteBusy, setIsDeleteBusy] = useState(false)
 	const [deleteError, setDeleteError] = useState('')
 	const localeRootRef = useRef<HTMLDivElement | null>(null)
@@ -3110,6 +3111,15 @@ function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, 
 		document.addEventListener('pointerdown', onPointerDown)
 		return () => document.removeEventListener('pointerdown', onPointerDown)
 	}, [isLocaleOpen])
+
+	// Revoke auth sessions when possible and always reset local login state.
+	const logout = async () => {
+		setIsLogoutBusy(true)
+		try { await authDelete('/v1/app/auth/sessions') } catch {}
+		clearPersistedSession()
+		setIsLogoutBusy(false)
+		onLoggedOut()
+	}
 
 	// Delete account via API and reset local auth session.
 	const deleteAccount = async () => {
@@ -3178,6 +3188,14 @@ function ProfileDataScreen ({ onBack, onAccountDeleted }: { onBack: () => void, 
 				<section className="profile-section" aria-label={t('profileSectionExtra')}>
 					<h2>{t('profileSectionExtra')}</h2>
 					<div className="profile-list">
+						<button className="profile-row" disabled={isLogoutBusy} onClick={logout} type="button">
+							<span className="profile-row-left">
+								<Image alt="Logout" className="profile-row-icon" height={24} src="/assets/icon-settings-profile.svg" unoptimized width={24} />
+								<b>{t('profileItemLogout')}</b>
+							</span>
+							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+						</button>
+
 						<button className="profile-row" type="button">
 							<span className="profile-row-left">
 								<Image alt="Biometrics" className="profile-row-icon" height={24} src="/assets/icon-profile-biometrics.svg" unoptimized width={24} />
@@ -3468,6 +3486,24 @@ function EntryFlow () {
 	// Open home screen immediately after successful auth.
 	const onAuthenticated = () => {
 		navigate('home', 'home')
+	}
+
+	// Reset account-scoped UI state before returning to onboarding.
+	const endLocalSession = () => {
+		window.localStorage.removeItem(VISA_DRAFTS_STORAGE_KEY)
+		setPassports([])
+		setSavedDrafts([])
+		setSelectedVisaPassport(null)
+		setCurrentApplicants([])
+		setActiveDraftId(null)
+		setIsDraftOpenedFromDocuments(false)
+		setVisaPhotoDataUrl('')
+		setPassportDraft(createPassportDraft(fillTestValues))
+		setReviewPassport(createPassportDraft(fillTestValues))
+		setReviewPersonal(createPersonalDraft(fillTestValues))
+		setReviewTrip(createTripDraft(fillTestValues))
+		setReviewDocs(createDocsDraft(fillTestValues))
+		navigate('onboarding', 'home', 'replace')
 	}
 
 	// Load saved passports list from backend API.
@@ -3839,9 +3875,7 @@ function EntryFlow () {
 						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
-								? <ProfileDataScreen onBack={() => goBack('profile')} onAccountDeleted={() => {
-									navigate('onboarding', 'home')
-								}} />
+								? <ProfileDataScreen onBack={() => goBack('profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
 									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} />
 									: activeTab === 'passports-list'

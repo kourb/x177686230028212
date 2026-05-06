@@ -2547,6 +2547,74 @@ html:not(.motion-disabled) .calendar-sheet {
 	}
 }
 
+@media (min-width: 768px) {
+	.app-content:has(.auth-screen) {
+		width: 100%;
+		height: 100dvh;
+		max-height: none;
+		display: grid;
+		place-items: center;
+		background: #ecf2fe;
+		overflow: hidden;
+	}
+
+	.app-content:has(.auth-screen)::before,
+	.app-content:has(.auth-screen)::after {
+		content: '';
+		position: absolute;
+		pointer-events: none;
+		opacity: 0.48;
+	}
+
+	.app-content:has(.auth-screen)::before {
+		left: -120px;
+		bottom: -82px;
+		width: 660px;
+		height: 660px;
+		background: url('/assets/hero-travel.svg') center / contain no-repeat;
+		transform: rotate(15deg);
+	}
+
+	.app-content:has(.auth-screen)::after {
+		right: -16px;
+		top: -84px;
+		width: 520px;
+		height: 520px;
+		border: 6px dashed rgb(0 102 245 / 0.52);
+		border-radius: 50%;
+		filter: blur(0.2px);
+	}
+
+	.auth-screen {
+		position: relative;
+		z-index: 1;
+		width: min(668px, calc(100vw - 64px));
+		height: auto;
+		max-width: none;
+		margin: 0;
+		padding: 32px;
+		border-radius: 32px;
+		background: #fff;
+		row-gap: 24px;
+	}
+
+	.auth-header,
+	.auth-form,
+	.auth-divider {
+		padding-inline: 0;
+	}
+
+	.auth-continue,
+	.auth-social {
+		margin-inline: 0;
+	}
+
+	.auth-header h1 {
+		font-size: 34px;
+		line-height: 1.1;
+	}
+}
+
 @keyframes pulse {
 	0% {
 		opacity: 0.68;
