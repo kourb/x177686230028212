@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState } from 'react'
 import { COUNTRY_OPTIONS, DESTINATION_COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
+import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
 import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n/config'
@@ -1387,61 +1388,74 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 // Render persistent desktop notification rail.
 type ChatMessage = { id: number, from: 'operator' | 'user', text: string }
 
-const OPERATOR_SCRIPT = ['yo nigga', 'yo', 'yo', 'whats the problem?']
-const OPERATOR_REPLY = ['ok niga i got it', 'problems??', 'whats ur problems?']
-const OPERATOR_REPLY_DELAYS = [900, 2000, 3400]
-const OPERATOR_REPLY2 = 'WOWOWO MAN WOWOWO'
-const OPERATOR_DELAYS = [1800, 3200, 4400, 6000]
+// Typing delay based on message length: ~60ms per char + random 300-700ms.
+function typingDelay (text: string) {
+	return Math.min(text.length * 60 + 300 + Math.random() * 400, 3000)
+}
 
-// Render support chat widget with mock operator flow.
+// Render support chat widget with randomized Big Smoke script.
 function SupportChat ({ onClose }: { onClose: () => void }) {
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [input, setInput] = useState('')
 	const [joined, setJoined] = useState(false)
+	const [isTyping, setIsTyping] = useState(false)
 	const bottomRef = useRef<HTMLDivElement | null>(null)
 	const idRef = useRef(0)
-	const hasReplied = useRef(false)
-	const hasReplied2 = useRef(false)
+	const replyStage = useRef(0)
+	const timers = useRef<number[]>([])
 
 	const addMsg = (from: 'operator' | 'user', text: string) =>
 		setMessages((prev) => [...prev, { id: ++idRef.current, from, text }])
 
+	// Queue messages sequentially: show typing → delay → send → next.
+	const queueMsgs = (msgs: string[], startDelay = 0) => {
+		let offset = startDelay
+		for(const text of msgs) {
+			const t1 = window.setTimeout(() => setIsTyping(true), offset)
+			const delay = typingDelay(text)
+			const t2 = window.setTimeout(() => { setIsTyping(false); addMsg('operator', text) }, offset + delay)
+			timers.current.push(t1, t2)
+			offset += delay + 200
+		}
+	}
+
 	useEffect(() => {
-		const joinTimer = setTimeout(() => {
+		const t = window.setTimeout(() => {
 			setJoined(true)
-			OPERATOR_SCRIPT.forEach((text, i) => {
-				setTimeout(() => addMsg('operator', text), OPERATOR_DELAYS[i])
-			})
-		}, 1200)
-		return () => clearTimeout(joinTimer)
+			queueMsgs(buildOpening(BIG_SMOKE.script), 300)
+		}, 1400)
+		timers.current.push(t)
+		return () => {
+			timers.current.forEach(window.clearTimeout)
+			timers.current = []
+			setJoined(false)
+			setIsTyping(false)
+			setMessages([])
+		}
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-	}, [messages, joined])
+	}, [messages, joined, isTyping])
 
 	const send = () => {
 		const text = input.trim()
 		if(!text) return
 		addMsg('user', text)
 		setInput('')
-		if(!hasReplied.current) {
-			hasReplied.current = true
-			OPERATOR_REPLY.forEach((text, i) => setTimeout(() => addMsg('operator', text), OPERATOR_REPLY_DELAYS[i]))
-		} else if(!hasReplied2.current) {
-			hasReplied2.current = true
-			setTimeout(() => addMsg('operator', OPERATOR_REPLY2), 900)
-		}
+		const stage = replyStage.current
+		replyStage.current += 1
+		queueMsgs(stage === 0 ? buildAcknowledge(BIG_SMOKE.script) : buildWow(BIG_SMOKE.script), 400)
 	}
 
 	return (
 		<div className="support-chat">
 			<header className="support-chat-header">
-				<Image alt="Big Smoke" className="support-chat-avatar" height={36} src="/assets/bigsmoke.png" unoptimized width={36} />
+				{joined ? <Image alt={BIG_SMOKE.name} className="support-chat-avatar" height={36} src={BIG_SMOKE.avatar} unoptimized width={36} /> : <div className="support-chat-avatar-placeholder" />}
 				<div className="support-chat-meta">
-					<b>{'Big Smoke'}</b>
-					<span>{joined ? 'онлайн' : 'подключается...'}</span>
+					{joined ? <b>{BIG_SMOKE.name}</b> : <b>{'Поддержка'}</b>}
+					<span>{isTyping ? 'набирает сообщение...' : joined ? 'онлайн' : 'подключается...'}</span>
 				</div>
 				<button className="support-chat-close" onClick={onClose} type="button">{'✕'}</button>
 			</header>
@@ -1450,10 +1464,11 @@ function SupportChat ({ onClose }: { onClose: () => void }) {
 				{joined ? <p className="support-chat-system">{'Оператор присоединился'}</p> : <p className="support-chat-system">{'Ищем оператора...'}</p>}
 				{messages.map((msg) => (
 					<div className={`support-chat-msg is-${msg.from}`} key={msg.id}>
-						{msg.from === 'operator' ? <Image alt="Big Smoke" className="support-chat-msg-avatar" height={24} src="/assets/bigsmoke.png" unoptimized width={24} /> : null}
+						{msg.from === 'operator' ? <Image alt={BIG_SMOKE.name} className="support-chat-msg-avatar" height={24} src={BIG_SMOKE.avatar} unoptimized width={24} /> : null}
 						<span>{msg.text}</span>
 					</div>
 				))}
+
 				<div ref={bottomRef} />
 			</div>
 

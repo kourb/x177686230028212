@@ -3687,6 +3687,19 @@ html:not(.motion-disabled) .calendar-sheet {
 		flex-shrink: 0;
 	}
 
+	.support-chat-avatar-placeholder {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: rgb(0 29 71 / 0.08);
+		flex-shrink: 0;
+	}
+
+	.support-chat-typing {
+		color: rgb(0 29 71 / 0.45) !important;
+		font-style: italic;
+	}
+
 	.support-chat-meta {
 		display: flex;
 		flex-direction: column;
