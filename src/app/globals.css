@@ -2488,6 +2488,15 @@ html:not(.motion-disabled) .calendar-sheet {
 	color: var(--ink);
 }
 
+.passport-field-row.is-invalid .profile-data-input {
+	border-color: rgb(217 48 37 / 0.64);
+	box-shadow: 0 0 0 4px rgb(217 48 37 / 0.08);
+}
+
+.passport-field-row.is-invalid label {
+	color: #d93025;
+}
+
 .profile-data-input.with-icon,
 .profile-data-input.with-right-icon {
 	justify-content: space-between;
@@ -2754,6 +2763,7 @@ html:not(.motion-disabled) .calendar-sheet {
 		grid-column: 1;
 		border-right: 1px solid rgb(0 29 71 / 0.16);
 		padding-left: 0;
+		overflow-y: auto;
 	}
 
 	.desktop-visa-chrome .visa-desktop-applicants {
@@ -2814,6 +2824,14 @@ html:not(.motion-disabled) .calendar-sheet {
 
 	.desktop-visa-chrome .visa-desktop-step.is-error i {
 		background: #d93025;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-pending {
+		color: #b45309;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-pending i {
+		background: #f59e0b;
 	}
 
 	.desktop-visa-chrome .visa-desktop-step span {
@@ -2878,10 +2896,27 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-visa-chrome) > .passports-screen {
 		grid-column: 2;
 		grid-row: 1;
-		width: min(668px, calc(100vw - 604px));
+		width: 100%;
+		max-width: 668px;
 		height: min(895px, 100dvh);
 		margin: 0;
 		justify-self: center;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .passports-screen {
+		grid-template-columns: 1fr;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .passports-screen > .passports-scroll {
+		grid-column: 1;
+		width: 100%;
+		justify-self: stretch;
+	}
+
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .passports-stack,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen .passports-empty {
+		width: 100%;
+		max-width: none;
 	}
 
 	.app-content:has(.desktop-visa-chrome) > .visa-screen,
@@ -4482,6 +4517,20 @@ html:not(.motion-disabled) .calendar-sheet {
 
 @keyframes visa-check-spin {
 	to { transform: rotate(360deg); }
+}
+
+@keyframes btn-shake {
+	0%, 100% { transform: translateX(0); }
+	15%       { transform: translateX(-7px); }
+	30%       { transform: translateX(7px); }
+	45%       { transform: translateX(-5px); }
+	60%       { transform: translateX(5px); }
+	75%       { transform: translateX(-3px); }
+	90%       { transform: translateX(3px); }
+}
+
+button.is-shaking {
+	animation: btn-shake 0.45s ease;
 }
 
 /* ─── Visa Documents Ready screen (Step 12) ─── */
