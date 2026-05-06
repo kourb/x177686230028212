@@ -165,9 +165,9 @@ type StatusLogEntryDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings'
 
-const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support']
+const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings']
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
@@ -1196,7 +1196,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			if(displayName) setUserProfile({ displayName })
 			await loadProfileFromBackend()
-			reloadNotifications()
+			reloadNotifications(); reloadChatStore()
 			addNotification('Вход выполнен через Google')
 			setStep('done')
 			onAuthenticated()
@@ -1217,7 +1217,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			})
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			await loadProfileFromBackend()
-			reloadNotifications()
+			reloadNotifications(); reloadChatStore()
 			addNotification('Вход в аккаунт выполнен')
 			setStep('done')
 			onAuthenticated()
@@ -1242,7 +1242,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			const displayName = `${firstName.trim()} ${lastName.trim()}`
 			setUserProfile({ displayName })
 			await saveProfileToBackend(firstName.trim(), lastName.trim())
-			reloadNotifications()
+			reloadNotifications(); reloadChatStore()
 			addNotification('Аккаунт создан и выполнен вход')
 			setStep('done')
 			onAuthenticated()
@@ -1458,6 +1458,7 @@ function typingDelay (text: string) {
 }
 
 // --- Chat store ---
+type ChatPersistedState = { messages: ChatMessage[], unread: number, replyStage: number }
 type ChatSnapshot = { messages: ChatMessage[], isTyping: boolean, joined: boolean, unread: number }
 type ChatStore = {
 	messages: ChatMessage[]
@@ -1472,14 +1473,42 @@ type ChatStore = {
 	snapshot: ChatSnapshot
 }
 
-const chatStore: ChatStore = {
-	messages: [], isTyping: false, joined: false, replyStage: 0,
-	started: false, unread: 0, timers: [], idleTimer: 0, subs: new Set(),
-	snapshot: { messages: [], isTyping: false, joined: false, unread: 0 },
+// Resolve per-user localStorage key for chat history.
+function chatKey () {
+	try {
+		const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+		const uid = raw ? (JSON.parse(raw) as AuthTokenResponse).user?.userId : undefined
+		return uid ? `visa-chat-${uid}` : 'visa-chat-guest'
+	} catch { return 'visa-chat-guest' }
 }
 
+function loadChatState (): ChatPersistedState {
+	try { return JSON.parse(localStorage.getItem(chatKey()) ?? 'null') ?? { messages: [], unread: 0, replyStage: 0 } } catch { return { messages: [], unread: 0, replyStage: 0 } }
+}
+
+function saveChatState () {
+	try { localStorage.setItem(chatKey(), JSON.stringify({ messages: chatStore.messages, unread: chatStore.unread, replyStage: chatStore.replyStage })) } catch {}
+}
+
+function makeChatSnapshot (): ChatSnapshot {
+	return { messages: chatStore.messages, isTyping: chatStore.isTyping, joined: chatStore.joined, unread: chatStore.unread }
+}
+
+const chatStore: ChatStore = (() => {
+	const saved = typeof window !== 'undefined' ? loadChatState() : { messages: [], unread: 0, replyStage: 0 }
+	const msgs = saved.messages
+	const joined = msgs.length > 0
+	return {
+		messages: msgs, isTyping: false, joined,
+		replyStage: saved.replyStage,
+		started: joined,
+		unread: saved.unread, timers: [], idleTimer: 0, subs: new Set(),
+		snapshot: { messages: msgs, isTyping: false, joined, unread: saved.unread },
+	}
+})()
+
 function chatNotify () {
-	chatStore.snapshot = { messages: chatStore.messages, isTyping: chatStore.isTyping, joined: chatStore.joined, unread: chatStore.unread }
+	chatStore.snapshot = makeChatSnapshot()
 	chatStore.subs.forEach((fn) => fn())
 }
 
@@ -1487,12 +1516,14 @@ function chatNotify () {
 function chatMarkRead () {
 	if(chatStore.unread === 0) return
 	chatStore.unread = 0
+	saveChatState()
 	chatNotify()
 }
 
 function chatAddMsg (from: 'operator' | 'user', text: string) {
 	chatStore.messages = [...chatStore.messages, { id: Date.now() + Math.random(), from, text }]
 	if(from === 'operator') chatStore.unread += 1
+	saveChatState()
 	chatNotify()
 }
 
@@ -1529,12 +1560,40 @@ function chatInit () {
 	chatStore.timers.push(t)
 }
 
+// Reset chat store for a new user session.
+function resetChatStore () {
+	chatStore.timers.forEach(window.clearTimeout)
+	window.clearTimeout(chatStore.idleTimer)
+	chatStore.timers = []
+	chatStore.messages = []
+	chatStore.isTyping = false
+	chatStore.joined = false
+	chatStore.replyStage = 0
+	chatStore.started = false
+	chatStore.unread = 0
+	chatStore.idleTimer = 0
+	chatNotify()
+}
+
+// Reload chat from localStorage for the current user (call after login).
+function reloadChatStore () {
+	resetChatStore()
+	const saved = loadChatState()
+	chatStore.messages = saved.messages
+	chatStore.replyStage = saved.replyStage
+	chatStore.unread = saved.unread
+	chatStore.joined = saved.messages.length > 0
+	chatStore.started = saved.messages.length > 0
+	chatNotify()
+}
+
 function chatSend (text: string) {
 	if(!text.trim()) return
 	chatAddMsg('user', text)
 	chatResetIdle()
 	const stage = chatStore.replyStage
 	chatStore.replyStage += 1
+	saveChatState()
 	chatQueueMsgs(stage === 0 ? buildAcknowledge(BIG_SMOKE.script) : buildWow(BIG_SMOKE.script), 400)
 }
 
@@ -1558,6 +1617,7 @@ function SupportChat ({ onClose, embed, rootRef }: { onClose: () => void, embed?
 	const inputRef = useRef<HTMLInputElement | null>(null)
 
 	useEffect(() => { chatInit() }, [])
+	useEffect(() => { chatMarkRead() }, [])
 	useEffect(() => { if(!embed) inputRef.current?.focus() }, [embed])
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1711,7 +1771,7 @@ function DesktopRail () {
 			}
 		</section>
 
-		<button className="home-support-button" onClick={() => setChatOpen((v) => !v)} type="button">
+		<button className="home-support-button" onClick={() => { if(!chatOpen) chatMarkRead(); setChatOpen((v) => !v) }} type="button">
 			<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
 			<span>{'Есть вопросы?'}</span>
 			{!chatOpen && unread > 0 ? <span className="home-support-badge">{unread}</span> : null}
@@ -3784,6 +3844,7 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 		setIsLogoutBusy(true)
 		try { await authDelete('/v1/app/auth/sessions') } catch {}
 		clearPersistedSession()
+		resetChatStore()
 		setIsLogoutBusy(false)
 		onLoggedOut()
 	}
@@ -3796,6 +3857,7 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 		try {
 			await authDelete('/v1/app/auth/account')
 			clearPersistedSession()
+			resetChatStore()
 			onAccountDeleted()
 		} catch (error) {
 			setDeleteError(error instanceof Error ? error.message : t('authUnexpectedError'))
