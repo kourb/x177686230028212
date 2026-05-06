@@ -45,6 +45,7 @@ type ApiResponse<T> = {
 	data: T | null
 	error: {
 		message?: string
+		details?: unknown
 	} | null
 }
 
@@ -58,6 +59,12 @@ async function readApiResponse<T> (response: Response) {
 	} catch {
 		return { data: null, error: { message: text } } as ApiResponse<T>
 	}
+}
+
+// Build a useful API error instead of hiding backend validation details.
+function resolveApiErrorMessage<T> (path: string, response: Response, body: ApiResponse<T>) {
+	if(body.error?.message) return body.error.details ? `${body.error.message}: ${JSON.stringify(body.error.details)}` : body.error.message
+	return `${response.status} ${path}`
 }
 
 type AuthTokenResponse = {
@@ -629,14 +636,14 @@ function mapApplicationDtoToDraft (dto: ApplicationDto, local?: VisaDraft): Visa
 function mapApplicantToSchengenFields (applicant: VisaApplicant) {
 	return {
 		birthPlace: applicant.personal.birthPlaceValue || null,
-		maritalStatus: applicant.personal.maritalValue ? 1 : null,
+		maritalStatus: null,
 		occupation: applicant.personal.professionValue || null,
 		employerName: applicant.personal.employerValue || null,
 		employerAddress: applicant.personal.workAddressValue || null,
 		residenceAddress: applicant.personal.residenceAddressValue || null,
 		phone: applicant.personal.phoneValue || null,
 		email: applicant.personal.emailValue || null,
-		travelPurpose: applicant.trip.purposeValue ? 1 : null,
+		travelPurpose: null,
 		previousSchengenVisas: applicant.trip.prevVisasValue || null,
 		countriesLast3Years: applicant.trip.residenceCountryValue || null,
 	}
@@ -842,7 +849,7 @@ async function authPostAuthorized<T> (path: string, payload: Record<string, unkn
 		clearPersistedSession()
 		throw new Error('Session expired. Sign in again')
 	}
-	if(!response.ok || !body.data) throw new Error(body.error?.message ?? (body.error ? JSON.stringify(body.error) : 'Authorization request failed'))
+	if(!response.ok || !body.data) throw new Error(resolveApiErrorMessage(path, response, body))
 	return body.data
 }
 
@@ -985,7 +992,6 @@ async function syncBackendApplicants (applicationId: string, applicants: VisaApp
 		const saved = await authPostAuthorized<{ publicId: string }>(`/v1/app/applications/${applicationId}/applicants`, {
 			passportId: next[i].passport.backendId,
 			isPrimary: i === 0,
-			schengenFields: mapApplicantToSchengenFields(next[i]),
 		})
 		next[i] = { ...next[i], backendApplicantId: saved.publicId }
 	}

@@ -15,3 +15,4 @@
 - `auth-email-otp-flow.md` — App auth supports email OTP endpoints; verify requires `device` object (`deviceId`, `deviceName`) and returns token pair in `data`
 - `auth-cors-proxy-localhost.md` — Browser CORS blocks direct frontend calls to remote auth host; use Next API proxy routes under `/api/auth/...` for localhost testing
 - `execution-speed-rule-added.md` — Added project rule to avoid long repeated checks and heavy verification loops during active work
+- `grafana-observability.md` — Grafana/Loki/Tempo observability access and correlationId log lookup workflow

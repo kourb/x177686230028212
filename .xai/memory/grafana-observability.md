@@ -1,0 +1,6 @@
+- Grafana observability lives at `https://133892.ip-ns.net/grafana/d/schengenapp-overview/schengenapp-e28094-services-overview?orgId=1&refresh=30s`.
+- Credentials are the same as Scalar from `doc/scalar.txt`; Grafana API is under `/grafana/api/...`.
+- Datasources: Loki `uid=loki`, Prometheus `uid=prometheus`, Tempo `uid=tempo`.
+- For backend 500/API errors, immediately query Loki by `correlationId`/`TraceId` around the response timestamp.
+- Useful endpoint: `/grafana/api/datasources/proxy/uid/loki/loki/api/v1/query_range` with query `{service=~".+"} |= "<correlationId>"`.
+- Delete-account finding: `auth-service` failed with FK `applicants_passport_id_fkey`; deleting passports before `visa.applicants` causes Postgres `23503`.
