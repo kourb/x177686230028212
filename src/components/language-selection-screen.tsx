@@ -973,16 +973,19 @@ async function saveProfileToBackend (firstName: string, lastName: string) {
 	await authPut('/v1/app/state/profile', { value: JSON.stringify({ firstName, lastName }) })
 }
 
+// In-memory cache for reference data (countries + visa-types per countryId).
+const refCache: { countries?: CountryDto[], visaTypes: Record<string, VisaTypeDto[]> } = { visaTypes: {} }
+
 // Resolve backend country and visa type IDs from public reference data.
 async function resolveApplicationRefs (destination: VisaDestinationCode, label: string, type: VisaTypeCode) {
-	const countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
+	if(!refCache.countries) refCache.countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
 	const aliases = resolveBackendCountryAliases(destination, label).map((item) => item.toLowerCase())
-	const country = countries.find((item) => aliases.includes(item.code.toLowerCase()) || aliases.includes(item.name.toLowerCase())) ?? countries.find((item) => aliases.some((alias) => item.name.toLowerCase().includes(alias)))
+	const country = refCache.countries.find((item) => aliases.includes(item.code.toLowerCase()) || aliases.includes(item.name.toLowerCase())) ?? refCache.countries.find((item) => aliases.some((alias) => item.name.toLowerCase().includes(alias)))
 	if(!country) throw new Error('Visa country is unavailable in backend reference')
 
-	const visaTypes = await authGet<VisaTypeDto[]>(`/v1/app/reference/visa-types?countryId=${country.id}`)
+	if(!refCache.visaTypes[country.id]) refCache.visaTypes[country.id] = await authGet<VisaTypeDto[]>(`/v1/app/reference/visa-types?countryId=${country.id}`)
 	const typeLetter = type === 'type-d' ? 'd' : 'c'
-	const visaType = visaTypes.find((item) => item.code.toLowerCase().includes(typeLetter)) ?? visaTypes.find((item) => item.name.toLowerCase().includes(`type ${typeLetter}`)) ?? visaTypes[0]
+	const visaType = refCache.visaTypes[country.id].find((item) => item.code.toLowerCase().includes(typeLetter)) ?? refCache.visaTypes[country.id].find((item) => item.name.toLowerCase().includes(`type ${typeLetter}`)) ?? refCache.visaTypes[country.id][0]
 	if(!visaType) throw new Error('Visa type is unavailable in backend reference')
 
 	return { countryId: country.id, visaTypeId: visaType.id }
@@ -1382,7 +1385,95 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 }
 
 // Render persistent desktop notification rail.
+type ChatMessage = { id: number, from: 'operator' | 'user', text: string }
+
+const OPERATOR_SCRIPT = ['yo nigga', 'yo', 'yo', 'whats the problem?']
+const OPERATOR_REPLY = ['ok niga i got it', 'problems??', 'whats ur problems?']
+const OPERATOR_REPLY_DELAYS = [900, 2000, 3400]
+const OPERATOR_REPLY2 = 'WOWOWO MAN WOWOWO'
+const OPERATOR_DELAYS = [1800, 3200, 4400, 6000]
+
+// Render support chat widget with mock operator flow.
+function SupportChat ({ onClose }: { onClose: () => void }) {
+	const [messages, setMessages] = useState<ChatMessage[]>([])
+	const [input, setInput] = useState('')
+	const [joined, setJoined] = useState(false)
+	const bottomRef = useRef<HTMLDivElement | null>(null)
+	const idRef = useRef(0)
+	const hasReplied = useRef(false)
+	const hasReplied2 = useRef(false)
+
+	const addMsg = (from: 'operator' | 'user', text: string) =>
+		setMessages((prev) => [...prev, { id: ++idRef.current, from, text }])
+
+	useEffect(() => {
+		const joinTimer = setTimeout(() => {
+			setJoined(true)
+			OPERATOR_SCRIPT.forEach((text, i) => {
+				setTimeout(() => addMsg('operator', text), OPERATOR_DELAYS[i])
+			})
+		}, 1200)
+		return () => clearTimeout(joinTimer)
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	useEffect(() => {
+		bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+	}, [messages, joined])
+
+	const send = () => {
+		const text = input.trim()
+		if(!text) return
+		addMsg('user', text)
+		setInput('')
+		if(!hasReplied.current) {
+			hasReplied.current = true
+			OPERATOR_REPLY.forEach((text, i) => setTimeout(() => addMsg('operator', text), OPERATOR_REPLY_DELAYS[i]))
+		} else if(!hasReplied2.current) {
+			hasReplied2.current = true
+			setTimeout(() => addMsg('operator', OPERATOR_REPLY2), 900)
+		}
+	}
+
+	return (
+		<div className="support-chat">
+			<header className="support-chat-header">
+				<Image alt="Big Smoke" className="support-chat-avatar" height={36} src="/assets/bigsmoke.png" unoptimized width={36} />
+				<div className="support-chat-meta">
+					<b>{'Big Smoke'}</b>
+					<span>{joined ? 'онлайн' : 'подключается...'}</span>
+				</div>
+				<button className="support-chat-close" onClick={onClose} type="button">{'✕'}</button>
+			</header>
+
+			<div className="support-chat-body">
+				{joined ? <p className="support-chat-system">{'Оператор присоединился'}</p> : <p className="support-chat-system">{'Ищем оператора...'}</p>}
+				{messages.map((msg) => (
+					<div className={`support-chat-msg is-${msg.from}`} key={msg.id}>
+						{msg.from === 'operator' ? <Image alt="Big Smoke" className="support-chat-msg-avatar" height={24} src="/assets/bigsmoke.png" unoptimized width={24} /> : null}
+						<span>{msg.text}</span>
+					</div>
+				))}
+				<div ref={bottomRef} />
+			</div>
+
+			<div className="support-chat-input-row">
+				<input
+					className="support-chat-input"
+					placeholder="Написать сообщение..."
+					value={input}
+					onChange={(e) => setInput(e.target.value)}
+					onKeyDown={(e) => { if(e.key === 'Enter') send() }}
+					type="text"
+				/>
+				<button className="support-chat-send" onClick={send} type="button">{'→'}</button>
+			</div>
+		</div>
+	)
+}
+
 function DesktopRail () {
+	const [chatOpen, setChatOpen] = useState(false)
 	return <aside className="desktop-rail" aria-label="Notifications">
 		<section className="desktop-rail-notifications">
 			<span className="home-desktop-caption">{'Уведомления'}</span>
@@ -1397,10 +1488,12 @@ function DesktopRail () {
 			</button>
 		</section>
 
-		<button className="home-support-button" type="button">
+		<button className="home-support-button" onClick={() => setChatOpen((v) => !v)} type="button">
 			<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
 			<span>{'Есть вопросы?'}</span>
 		</button>
+
+		{chatOpen ? <SupportChat onClose={() => setChatOpen(false)} /> : null}
 	</aside>
 }
 
@@ -3370,6 +3463,23 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOp
 function DeveloperDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile, onClearDrafts }: { onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onClearDrafts: () => void }) {
 	const { t } = useI18n()
 	const [confirmOpen, setConfirmOpen] = useState(false)
+	const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+	const [resetBusy, setResetBusy] = useState(false)
+	const [resetError, setResetError] = useState('')
+
+	// Send POST /v1/app/me/reset to wipe all backend applications for this account.
+	const resetApplications = async () => {
+		setResetBusy(true)
+		setResetError('')
+		try {
+			await authPostAuthorized('/v1/app/me/reset', { confirm: 'RESET' })
+		} catch (error) {
+			setResetError(error instanceof Error ? error.message : 'Ошибка сброса')
+		}
+		setResetBusy(false)
+		setConfirmResetOpen(false)
+	}
+
 	return (
 		<section aria-label="Developer data" className="dev-screen">
 			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
@@ -3385,10 +3495,16 @@ function DeveloperDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfi
 					<div className="dev-card">
 						<button className="dev-danger-button" onClick={() => setConfirmOpen(true)} type="button">{'Удалить все черновики'}</button>
 					</div>
+					<div className="dev-section-title">{'Заявления'}</div>
+					<div className="dev-card">
+						{resetError ? <p className="dev-error">{resetError}</p> : null}
+						<button className="dev-danger-button" disabled={resetBusy} onClick={() => setConfirmResetOpen(true)} type="button">{'Удалить все заявления'}</button>
+					</div>
 				</div>
 			</div>
 			<DesktopRail />
 			{confirmOpen ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить все черновики?" subtitle="Все сохранённые черновики заявлений будут удалены без возможности восстановления." onCancel={() => setConfirmOpen(false)} onConfirm={() => { setConfirmOpen(false); onClearDrafts() }} /> : null}
+			{confirmResetOpen ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить все заявления?" subtitle="Все заявления на бэкенде будут безвозвратно удалены." onCancel={() => setConfirmResetOpen(false)} onConfirm={resetApplications} /> : null}
 		</section>
 	)
 }
@@ -3406,6 +3522,7 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 	const originalLast = nameParts[1] ?? ''
 	const hasNameChanges = firstName !== originalFirst || lastName !== originalLast
 	const [isSaveBusy, setIsSaveBusy] = useState(false)
+	const [saveError, setSaveError] = useState('')
 	const [isLocaleOpen, setIsLocaleOpen] = useState(false)
 	const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false)
 	const [isLogoutBusy, setIsLogoutBusy] = useState(false)
@@ -3429,7 +3546,12 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 	// Save updated first/last name to backend profile state.
 	const saveName = async () => {
 		setIsSaveBusy(true)
-		await saveProfileToBackend(firstName, lastName)
+		setSaveError('')
+		try {
+			await saveProfileToBackend(firstName, lastName)
+		} catch (error) {
+			setSaveError(error instanceof Error ? error.message : 'Ошибка сохранения')
+		}
 		setIsSaveBusy(false)
 	}
 
@@ -3507,9 +3629,8 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 						<div className="profile-data-input">{email}</div>
 					</div>
 
-					{hasNameChanges ? (
-						<button className="profile-save-button" disabled={isSaveBusy} onClick={saveName} type="button">{'Сохранить'}</button>
-					) : null}
+					{saveError ? <p className="profile-save-error">{saveError}</p> : null}
+					<button className="profile-save-button" disabled={!hasNameChanges || isSaveBusy} onClick={saveName} type="button">{'Сохранить'}</button>
 				</section>
 
 				<section className="profile-section" aria-label={t('profileSectionExtra')}>
@@ -3985,6 +4106,7 @@ function EntryFlow () {
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'documents') return
 		refreshBackendDrafts()
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [step, activeTab])
 
 	useEffect(() => {
@@ -3994,6 +4116,7 @@ function EntryFlow () {
 			const draft = { ...buildCurrentDraftCache(activeDraftId), createdAt: existing?.createdAt ?? Date.now(), status: existing?.status ?? 'draft' }
 			return persistLocalDrafts(prev.some((item) => item.id === activeDraftId) ? prev.map((item) => item.id === activeDraftId ? draft : item) : [...prev, draft])
 		})
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [step, activeTab, activeDraftId, selectedVisaPassport, selectedVisaType, selectedVisaDestination, selectedVisaDestinationLabel, currentApplicants, reviewPassport, reviewPersonal, reviewTrip, reviewDocs, visaPhotoDataUrl])
 
 	useEffect(() => {
@@ -4031,6 +4154,7 @@ function EntryFlow () {
 			active = false
 			window.clearTimeout(timer)
 		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [step, activeTab, activeDraftId])
 
 	// Persist developer-selected animation preference.
@@ -4127,7 +4251,7 @@ function EntryFlow () {
 
 		setPassportsError('')
 		try {
-			const saved = await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
+			await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
 			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
 			await loadPassports()
 			navigate('home', 'passports-list')

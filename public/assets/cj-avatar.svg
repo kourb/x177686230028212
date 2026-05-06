@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <circle cx="32" cy="32" r="32" fill="#1a1a2e"/>
+  <!-- neck -->
+  <rect x="26" y="40" width="12" height="8" rx="2" fill="#3d2b1f"/>
+  <!-- shoulders / tank top -->
+  <ellipse cx="32" cy="56" rx="22" ry="14" fill="#e8e8e8"/>
+  <!-- shirt detail -->
+  <rect x="22" y="48" width="20" height="16" fill="#e8e8e8"/>
+  <!-- head -->
+  <ellipse cx="32" cy="28" rx="13" ry="15" fill="#3d2b1f"/>
+  <!-- ears -->
+  <ellipse cx="19" cy="28" rx="3" ry="4" fill="#3d2b1f"/>
+  <ellipse cx="45" cy="28" rx="3" ry="4" fill="#3d2b1f"/>
+  <!-- eyes -->
+  <ellipse cx="26" cy="26" rx="3" ry="3.5" fill="#fff"/>
+  <ellipse cx="38" cy="26" rx="3" ry="3.5" fill="#fff"/>
+  <circle cx="27" cy="27" r="2" fill="#1a0a00"/>
+  <circle cx="39" cy="27" r="2" fill="#1a0a00"/>
+  <circle cx="27.5" cy="26" r="0.7" fill="#fff"/>
+  <circle cx="39.5" cy="26" r="0.7" fill="#fff"/>
+  <!-- eyebrows -->
+  <path d="M23 22 Q26 20 29 22" stroke="#1a0a00" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <path d="M35 22 Q38 20 41 22" stroke="#1a0a00" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- nose -->
+  <ellipse cx="32" cy="30" rx="2" ry="1.5" fill="#2a1a10"/>
+  <!-- mouth / smile -->
+  <path d="M27 35 Q32 39 37 35" stroke="#1a0a00" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- chain -->
+  <path d="M24 52 Q32 56 40 52" stroke="#FFD700" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>

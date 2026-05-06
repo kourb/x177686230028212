@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 const UPSTREAM = process.env.AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const PORT = Number(process.env.AUTH_PROXY_PORT ?? 8787)
 const ALLOW_ORIGIN = process.env.AUTH_PROXY_ALLOW_ORIGIN ?? 'http://localhost:3000'
-const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/register', '/v1/app/auth/login', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard', '/v1/app/passports', '/v1/app/applications', '/v1/app/reference/countries', '/v1/app/reference/visa-types', '/v1/app/payments'])
+const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/register', '/v1/app/auth/login', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard', '/v1/app/passports', '/v1/app/applications', '/v1/app/reference/countries', '/v1/app/reference/visa-types', '/v1/app/payments', '/v1/app/me/reset'])
 
 // Apply CORS headers for local browser access.
 function setCors (response) {
@@ -51,6 +51,7 @@ async function handleProxy (request, response) {
 			...(request.headers.authorization ? { Authorization: request.headers.authorization } : {}),
 		},
 		...(request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH' ? { body: await readBody(request) } : {}),
+		signal: AbortSignal.timeout(30000),
 	})
 	const text = await upstreamResponse.text()
 
@@ -77,10 +78,11 @@ createServer(async (request, response) => {
 
 	try {
 		await handleProxy(request, response)
-	} catch {
+	} catch (error) {
+		console.error(`[proxy error] ${request.method} ${request.url}:`, error?.message ?? error)
 		setCors(response)
 		response.writeHead(502, { 'Content-Type': 'application/json' })
-		response.end(JSON.stringify({ error: { message: 'Proxy request failed' }, data: null }))
+		response.end(JSON.stringify({ error: { message: error?.message ?? 'Proxy request failed' }, data: null }))
 	}
 }).listen(PORT, () => {
 	console.log(`[auth-proxy] listening on http://localhost:${PORT}`)
