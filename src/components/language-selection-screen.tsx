@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
 import { COUNTRY_OPTIONS, DESTINATION_COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
@@ -1196,6 +1196,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			if(displayName) setUserProfile({ displayName })
 			await loadProfileFromBackend()
+			reloadNotifications()
 			addNotification('Вход выполнен через Google')
 			setStep('done')
 			onAuthenticated()
@@ -1216,6 +1217,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			})
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			await loadProfileFromBackend()
+			reloadNotifications()
 			addNotification('Вход в аккаунт выполнен')
 			setStep('done')
 			onAuthenticated()
@@ -1240,6 +1242,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			const displayName = `${firstName.trim()} ${lastName.trim()}`
 			setUserProfile({ displayName })
 			await saveProfileToBackend(firstName.trim(), lastName.trim())
+			reloadNotifications()
 			addNotification('Аккаунт создан и выполнен вход')
 			setStep('done')
 			onAuthenticated()
@@ -1265,9 +1268,9 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 
 				<div className="auth-form">
 					<label htmlFor="auth-first-name">{t('authFirstNameLabel')}</label>
-					<input autoFocus id="auth-first-name" onChange={(e) => setFirstName(e.target.value)} placeholder={t('authFirstNamePlaceholder')} type="text" value={firstName} />
+					<input autoFocus id="auth-first-name" onChange={(e) => setFirstName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' && canContinueRegister) submitRegister() }} placeholder={t('authFirstNamePlaceholder')} type="text" value={firstName} />
 					<label htmlFor="auth-last-name">{t('authLastNameLabel')}</label>
-					<input id="auth-last-name" onChange={(e) => setLastName(e.target.value)} placeholder={t('authLastNamePlaceholder')} type="text" value={lastName} />
+					<input id="auth-last-name" onChange={(e) => setLastName(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter' && canContinueRegister) submitRegister() }} placeholder={t('authLastNamePlaceholder')} type="text" value={lastName} />
 					<label htmlFor="auth-email-reg">{t('emailLabel')}</label>
 					<input disabled id="auth-email-reg" readOnly type="email" value={email} />
 					{errorText ? <p className="auth-note is-error">{errorText}</p> : null}
@@ -1390,10 +1393,17 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 
 // --- Notification store ---
 type AppNotification = { id: number, text: string, badge?: string, badgePending?: boolean, time: string }
-const NOTIF_STORAGE_KEY = 'visa-notifications'
+// Resolve per-user localStorage key for notifications.
+function notifKey () {
+	try {
+		const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+		const uid = raw ? (JSON.parse(raw) as AuthTokenResponse).user?.userId : undefined
+		return uid ? `visa-notifications-${uid}` : 'visa-notifications-guest'
+	} catch { return 'visa-notifications-guest' }
+}
 
 function loadNotifs (): AppNotification[] {
-	try { return JSON.parse(localStorage.getItem(NOTIF_STORAGE_KEY) ?? '[]') } catch { return [] }
+	try { return JSON.parse(localStorage.getItem(notifKey()) ?? '[]') } catch { return [] }
 }
 
 const notifStore: { items: AppNotification[], subs: Set<() => void> } = {
@@ -1402,6 +1412,12 @@ const notifStore: { items: AppNotification[], subs: Set<() => void> } = {
 }
 
 function notifNotify () { notifStore.subs.forEach((fn) => fn()) }
+
+// Reload notifications from storage for the current user (call after login).
+function reloadNotifications () {
+	notifStore.items = loadNotifs()
+	notifNotify()
+}
 
 // Format Date as "Сегодня, HH:MM" or "Вчера, HH:MM".
 function formatNotifTime (d = new Date()) {
@@ -1416,14 +1432,14 @@ function formatNotifTime (d = new Date()) {
 // Push a new notification (max 5 kept).
 function addNotification (text: string, badge?: string, badgePending?: boolean) {
 	notifStore.items = [{ id: Date.now(), text, badge, badgePending, time: formatNotifTime() }, ...notifStore.items].slice(0, 5)
-	localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(notifStore.items))
+	localStorage.setItem(notifKey(), JSON.stringify(notifStore.items))
 	notifNotify()
 }
 
 // Clear all notifications.
 function clearNotifications () {
 	notifStore.items = []
-	localStorage.removeItem(NOTIF_STORAGE_KEY)
+	localStorage.removeItem(notifKey())
 	notifNotify()
 }
 
@@ -1535,14 +1551,14 @@ type ChatMessage = { id: number, from: 'operator' | 'user', text: string }
 
 // Typing delay based on message length: ~60ms per char + random 300-700ms.
 // Render support chat widget backed by shared chatStore.
-function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean }) {
+function SupportChat ({ onClose, embed, rootRef }: { onClose: () => void, embed?: boolean, rootRef?: RefObject<HTMLDivElement | null> }) {
 	const { messages, isTyping, joined } = useChatStore()
 	const [input, setInput] = useState('')
 	const bottomRef = useRef<HTMLDivElement | null>(null)
+	const inputRef = useRef<HTMLInputElement | null>(null)
 
 	useEffect(() => { chatInit() }, [])
-	useEffect(() => { chatMarkRead() })
-
+	useEffect(() => { if(!embed) inputRef.current?.focus() }, [embed])
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
 	}, [messages, joined, isTyping])
@@ -1555,7 +1571,7 @@ function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean
 	}
 
 	return (
-		<div className={embed ? 'support-chat is-embed' : 'support-chat'}>
+		<div className={embed ? 'support-chat is-embed' : 'support-chat'} ref={rootRef}>
 			{embed ? null : (
 				<header className="support-chat-header">
 					{joined ? <Image alt={BIG_SMOKE.name} className="support-chat-avatar" height={36} src={BIG_SMOKE.avatar} unoptimized width={36} /> : <div className="support-chat-avatar-placeholder" />}
@@ -1592,6 +1608,7 @@ function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean
 				<input
 					className="support-chat-input"
 					placeholder="Написать сообщение..."
+					ref={inputRef}
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={(e) => { if(e.key === 'Enter') send() }}
@@ -1659,8 +1676,21 @@ function DesktopRail () {
 	const [chatOpen, setChatOpen] = useState(false)
 	const notifications = useNotifications()
 	const { unread } = useChatStore()
+	const railRef = useRef<HTMLElement | null>(null)
+	const chatRef = useRef<HTMLDivElement | null>(null)
 
-	return <aside className="desktop-rail" aria-label="Notifications">
+	useEffect(() => {
+		if(!chatOpen) return
+		const onPointerDown = (e: PointerEvent) => {
+			if(railRef.current?.contains(e.target as Node)) return
+			if(chatRef.current?.contains(e.target as Node)) return
+			setChatOpen(false)
+		}
+		document.addEventListener('pointerdown', onPointerDown)
+		return () => document.removeEventListener('pointerdown', onPointerDown)
+	}, [chatOpen])
+
+	return <aside className="desktop-rail" aria-label="Notifications" ref={railRef}>
 		<section className="desktop-rail-notifications">
 			<div className="desktop-rail-notif-header">
 				<span className="home-desktop-caption">{'Уведомления'}</span>
@@ -1668,13 +1698,16 @@ function DesktopRail () {
 			</div>
 			{notifications.length === 0
 				? <p className="desktop-rail-empty">{'Нет уведомлений'}</p>
-				: notifications.map((n) => (
-					<button className={`home-notification-card${n.badge ? '' : ' is-compact'}`} key={n.id} type="button">
-						{n.badge ? <span className={`home-notification-badge${n.badgePending ? ' is-pending' : ''}`}>{n.badge}</span> : null}
-						<b>{n.text}</b>
-						<small>{n.time}</small>
-					</button>
-				))
+				: notifications.map((n) => {
+					const isSupport = n.text.startsWith('Сообщение от')
+					return (
+						<button className={`home-notification-card${n.badge ? '' : ' is-compact'}`} key={n.id} onClick={isSupport ? () => setChatOpen(true) : undefined} type="button">
+							{n.badge ? <span className={`home-notification-badge${n.badgePending ? ' is-pending' : ''}`}>{n.badge}</span> : null}
+							<b>{n.text}</b>
+							<small>{n.time}</small>
+						</button>
+					)
+				})
 			}
 		</section>
 
@@ -1684,7 +1717,7 @@ function DesktopRail () {
 			{!chatOpen && unread > 0 ? <span className="home-support-badge">{unread}</span> : null}
 		</button>
 
-		{chatOpen ? <SupportChat onClose={() => setChatOpen(false)} /> : null}
+		{chatOpen ? <SupportChat onClose={() => setChatOpen(false)} rootRef={chatRef} /> : null}
 	</aside>
 }
 

@@ -3648,9 +3648,20 @@ html:not(.motion-disabled) .calendar-sheet {
 	.desktop-rail {
 		display: flex;
 		flex-direction: column;
-		gap: 24px;
+		gap: 0;
 		padding: 32px;
 		min-width: 0;
+		overflow: hidden;
+	}
+
+	.desktop-rail-notifications {
+		flex: 1;
+		overflow-y: auto;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding-bottom: 24px;
 	}
 
 	.home-desktop-sidebar {
@@ -3754,11 +3765,6 @@ html:not(.motion-disabled) .calendar-sheet {
 
 	.home-tabbar {
 		display: none;
-	}
-
-	.desktop-rail-notifications {
-		display: grid;
-		gap: 16px;
 	}
 
 	.desktop-rail-notif-header {
