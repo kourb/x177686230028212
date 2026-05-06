@@ -1261,23 +1261,7 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 
 	return (
 		<section aria-label="Home" className="home-screen">
-			<aside className="home-desktop-sidebar" aria-label="Desktop navigation">
-				<span className="home-desktop-caption">{'Навигация'}</span>
-				<nav className="home-desktop-menu">
-					<button className="home-desktop-menu-item is-active" type="button">
-						<Image alt="Home" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-home.svg" unoptimized width={24} />
-						<span>{'Главная страница'}</span>
-					</button>
-					<button className="home-desktop-menu-item" onClick={onOpenDocuments} type="button">
-						<Image alt="Documents" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
-						<span>{t('documentsTitle')}</span>
-					</button>
-					<button className="home-desktop-menu-item" onClick={onOpenProfile} type="button">
-						<Image alt="Profile" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-profile.svg" unoptimized width={24} />
-						<span>{t('profileTitle')}</span>
-					</button>
-				</nav>
-			</aside>
+			<DesktopSidebar active="home" onOpenDocuments={onOpenDocuments} onOpenHome={() => {}} onOpenProfile={onOpenProfile} />
 
 			<div className="home-scroll">
 				<div className="home-desktop-breadcrumbs" aria-label="Breadcrumbs">
@@ -1321,6 +1305,31 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 			<HomeTabbar active="home" onOpenDocuments={onOpenDocuments} onOpenHome={() => {}} onOpenProfile={onOpenProfile} />
 		</section>
 	)
+}
+
+// Render persistent desktop sidebar navigation.
+function DesktopSidebar ({ active, onOpenDocuments, onOpenHome, onOpenProfile }: { active: HomeRootTab, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void }) {
+	const homeActive = active === 'home'
+	const documentsActive = active === 'documents'
+	const profileActive = active === 'profile'
+
+	return <aside className="home-desktop-sidebar" aria-label="Desktop navigation">
+		<span className="home-desktop-caption">{'Навигация'}</span>
+		<nav className="home-desktop-menu">
+			<button className={`home-desktop-menu-item${homeActive ? ' is-active' : ''}`} onClick={homeActive ? undefined : onOpenHome} type="button">
+				<Image alt="Home" className="home-desktop-menu-icon" height={24} src={homeActive ? '/assets/icon-tab-home.svg' : '/assets/icon-tab-home-inactive.svg'} unoptimized width={24} />
+				<span>{'Главная страница'}</span>
+			</button>
+			<button className={`home-desktop-menu-item${documentsActive ? ' is-active' : ''}`} onClick={documentsActive ? undefined : onOpenDocuments} type="button">
+				<Image alt="Documents" className="home-desktop-menu-icon" height={24} src="/assets/icon-tab-documents.svg" unoptimized width={24} />
+				<span>{'Заявки и страховки'}</span>
+			</button>
+			<button className={`home-desktop-menu-item${profileActive ? ' is-active' : ''}`} onClick={profileActive ? undefined : onOpenProfile} type="button">
+				<Image alt="Profile" className="home-desktop-menu-icon" height={24} src={profileActive ? '/assets/icon-tab-profile-active.svg' : '/assets/icon-tab-profile.svg'} unoptimized width={24} />
+				<span>{'Профиль и настройки'}</span>
+			</button>
+		</nav>
+	</aside>
 }
 
 // Render bottom tabbar with an animated marker that survives screen remounts.
@@ -1553,6 +1562,8 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 
 	return (
 		<section aria-label="Documents and insurances" className="documents-screen">
+			<DesktopSidebar active="documents" onOpenDocuments={() => {}} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="documents-scroll">
 				<section className="documents-top-copy" aria-label="Documents heading">
 					<h1>{t('documentsTitle')}</h1>
@@ -1613,6 +1624,8 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 
 	return (
 		<section aria-label="Profile and settings" className="profile-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={() => {}} />
+
 			<div className="profile-scroll">
 				<header className="profile-header">
 					<h1>{t('profileTitle')}</h1>
@@ -2790,12 +2803,14 @@ function VisaDocField ({ label, filename, onChange, onClear }: { label: string, 
 }
 
 // Render saved passports list screen from Figma node 521:20478.
-function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, isLoading, errorText, onBack, onAdd, onEdit, onDelete, onSelect }: { passports: PassportEntry[], selectedPassportId: string | null, isSelectionMode: boolean, isLoading: boolean, errorText: string, onBack: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void, onSelect: (id: string) => void }) {
+function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, isLoading, errorText, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onAdd, onEdit, onDelete, onSelect }: { passports: PassportEntry[], selectedPassportId: string | null, isSelectionMode: boolean, isLoading: boolean, errorText: string, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void, onSelect: (id: string) => void }) {
 	const { t } = useI18n()
 	const hasEntries = passports.length > 0
 
 	return (
 		<section aria-label="Saved passports" className="passports-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="passports-scroll">
 				<header className="passports-toolbar">
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
@@ -2853,11 +2868,13 @@ function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, 
 }
 
 // Render passport form first step from Figma node 521:20487.
-function PassportStepOneScreen ({ draft, onBack, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
+function PassportStepOneScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
 	const { t } = useI18n()
 
 	return (
 		<section aria-label="Passport step one" className="passports-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="passports-scroll">
 				<header className="passport-flow-toolbar">
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
@@ -2888,11 +2905,13 @@ function PassportStepOneScreen ({ draft, onBack, onNext, onChange }: { draft: Pa
 }
 
 // Render passport form second step from Figma node 521:20499.
-function PassportStepTwoScreen ({ draft, onBack, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
+function PassportStepTwoScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
 	const { t } = useI18n()
 
 	return (
 		<section aria-label="Passport step two" className="passports-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="passports-scroll">
 				<header className="passport-flow-toolbar">
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
@@ -2922,11 +2941,13 @@ function PassportStepTwoScreen ({ draft, onBack, onNext, onChange }: { draft: Pa
 }
 
 // Render single-screen passport edit form with immediate save action.
-function PassportEditScreen ({ draft, onBack, onChange, onSave }: { draft: PassportEntry, onBack: () => void, onChange: (field: keyof PassportEntry, value: string) => void, onSave: () => void }) {
+function PassportEditScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onChange, onSave }: { draft: PassportEntry, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onChange: (field: keyof PassportEntry, value: string) => void, onSave: () => void }) {
 	const { t } = useI18n()
 
 	return (
 		<section aria-label="Passport edit" className="passports-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="passports-scroll">
 				<header className="passport-flow-toolbar">
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
@@ -2961,11 +2982,13 @@ function PassportEditScreen ({ draft, onBack, onChange, onSave }: { draft: Passp
 }
 
 // Render passport review screen from Figma node 521:20510.
-function PassportReviewScreen ({ draft, actionLabel, onBack, onSave }: { draft: PassportEntry, actionLabel: string, onBack: () => void, onSave: () => void }) {
+function PassportReviewScreen ({ draft, actionLabel, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onSave }: { draft: PassportEntry, actionLabel: string, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onSave: () => void }) {
 	const { t } = useI18n()
 
 	return (
 		<section aria-label="Passport review" className="passports-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="passports-scroll">
 				<header className="passport-flow-toolbar">
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
@@ -3128,7 +3151,7 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 }
 
 // Render profile data screen from Figma node 521:20347.
-function ProfileDataScreen ({ onBack, onLoggedOut, onAccountDeleted }: { onBack: () => void, onLoggedOut: () => void, onAccountDeleted: () => void }) {
+function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile, onLoggedOut, onAccountDeleted }: { onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onLoggedOut: () => void, onAccountDeleted: () => void }) {
 	const { t, locale, setLocale } = useI18n()
 	const auth = resolveAuthPayload()
 	const email = auth?.user?.email ?? 'alex.german@gmail.com'
@@ -3183,6 +3206,8 @@ function ProfileDataScreen ({ onBack, onLoggedOut, onAccountDeleted }: { onBack:
 
 	return (
 		<section aria-label="Profile data" className="profile-data-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
 			<div className="profile-data-scroll">
 				<header className="profile-data-toolbar">
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
@@ -3919,18 +3944,18 @@ function EntryFlow () {
 						: activeTab === 'profile'
 								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
 							: activeTab === 'profile-data'
-								? <ProfileDataScreen onBack={() => goBack('profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
+								? <ProfileDataScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
 									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} />
 									: activeTab === 'passports-list'
-										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
-										: activeTab === 'passports-step-one'
-									? <PassportStepOneScreen draft={passportDraft} onBack={() => goBack(passportFlowMode === 'visa-create' ? 'passport-camera' : 'passports-list')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
+										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
+									: activeTab === 'passports-step-one'
+									? <PassportStepOneScreen draft={passportDraft} onBack={() => goBack(passportFlowMode === 'visa-create' ? 'passport-camera' : 'passports-list')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-step-two')} />
 										: activeTab === 'passports-step-two'
-										? <PassportStepTwoScreen draft={passportDraft} onBack={() => goBack('passports-step-one')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
+										? <PassportStepTwoScreen draft={passportDraft} onBack={() => goBack('passports-step-one')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onChange={updatePassportDraftField} onNext={() => navigate('home', 'passports-review')} />
 											: activeTab === 'passports-review'
-											? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => goBack('passports-step-two')} onSave={savePassportDraft} />
-											: <PassportEditScreen draft={passportDraft} onBack={() => goBack('passports-list')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
+											? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => goBack('passports-step-two')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onSave={savePassportDraft} />
+											: <PassportEditScreen draft={passportDraft} onBack={() => goBack('passports-list')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
 		</>
 	)
 }

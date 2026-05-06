@@ -2632,7 +2632,11 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 @media (min-width: 1180px) {
-	.app-content:has(.home-screen) {
+	.app-content:has(.home-screen),
+	.app-content:has(.documents-screen),
+	.app-content:has(.profile-screen),
+	.app-content:has(.profile-data-screen),
+	.app-content:has(.passports-screen) {
 		width: 100%;
 		height: 100dvh;
 		max-height: none;
@@ -2648,6 +2652,236 @@ html:not(.motion-disabled) .calendar-sheet {
 		grid-template-columns: minmax(248px, 302px) minmax(560px, 668px) minmax(248px, 302px);
 		grid-template-rows: 1fr;
 		background: #fff;
+	}
+
+	.documents-screen,
+	.profile-screen,
+	.profile-data-screen,
+	.passports-screen {
+		width: min(1272px, 100vw - 64px);
+		height: min(895px, 100dvh);
+		margin: 0 auto;
+		display: grid;
+		grid-template-columns: minmax(248px, 302px) minmax(0, 1fr);
+		background: #fff;
+	}
+
+	.documents-screen .documents-scroll,
+	.profile-screen .profile-scroll,
+	.profile-data-screen .profile-data-scroll,
+	.passports-screen .passports-scroll {
+		padding: 32px;
+		min-height: 0;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+
+	.documents-screen .documents-scroll,
+	.profile-screen .profile-scroll,
+	.profile-data-screen .profile-data-scroll,
+	.passports-screen .passports-scroll {
+		width: min(668px, 100%);
+		justify-self: center;
+	}
+
+	.documents-screen .documents-top-copy,
+	.profile-screen .profile-header,
+	.profile-screen .profile-section,
+	.profile-data-screen .profile-data-block,
+	.profile-data-screen .profile-section,
+	.passports-screen .passports-toolbar,
+	.passports-screen .passports-status,
+	.passports-screen .passports-empty,
+	.passports-screen .passports-stack {
+		padding-inline: 0;
+	}
+
+	.documents-screen .documents-top-copy,
+	.profile-screen .profile-header,
+	.profile-screen .profile-section,
+	.profile-data-screen .profile-data-block,
+	.profile-data-screen .profile-section,
+	.passports-screen .passports-toolbar,
+	.passports-screen .passports-status,
+	.passports-screen .passports-empty,
+	.passports-screen .passports-stack {
+		margin-top: 0;
+	}
+
+	.documents-screen .documents-tabs,
+	.documents-screen .documents-cards-group,
+	.documents-screen .documents-empty,
+	.profile-screen .profile-list,
+	.profile-data-screen .profile-list,
+	.profile-data-screen .profile-data-input,
+	.passports-screen .passports-empty-picture,
+	.passports-screen .passports-empty-copy,
+	.passports-screen .passports-stack,
+	.passports-screen .passport-card,
+	.passports-screen .passport-card-actions {
+		margin-inline: 0;
+	}
+
+	.documents-screen .documents-empty-picture,
+	.passports-screen .passports-empty-picture {
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.documents-screen .documents-empty-copy,
+	.passports-screen .passports-empty-copy,
+	.passports-screen .passports-stack {
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.documents-screen .documents-empty-image,
+	.passports-screen .passports-empty-image {
+		width: 100%;
+		max-width: 370px;
+	}
+
+	.documents-screen .documents-scroll,
+	.profile-screen .profile-scroll,
+	.profile-data-screen .profile-data-scroll,
+	.passports-screen .passports-scroll {
+		display: grid;
+		align-content: start;
+		gap: 24px;
+	}
+
+	.documents-screen .documents-top-copy,
+	.profile-screen .profile-header,
+	.profile-data-screen .profile-data-toolbar,
+	.passports-screen .passports-toolbar,
+	.passports-screen .passport-flow-toolbar {
+		margin-top: 0;
+	}
+
+	.documents-screen .documents-top-copy h1,
+	.profile-screen .profile-header h1,
+	.profile-data-screen .profile-data-block h2,
+	.passports-screen .passports-stack h1,
+	.passports-screen .passports-empty-copy h2 {
+		font-size: 34px;
+		line-height: 1.1;
+	}
+
+	.documents-screen .documents-top-copy p,
+	.profile-screen .profile-header p,
+	.profile-data-screen .profile-data-field label,
+	.profile-data-screen .profile-data-input,
+	.passports-screen .passports-empty-copy p,
+	.passports-screen .passport-card-body p {
+		font-size: 17px;
+		line-height: 1.4;
+	}
+
+	.documents-screen .documents-drafts,
+	.documents-screen .documents-empty,
+	.profile-screen .profile-section,
+	.profile-data-screen .profile-data-block,
+	.profile-data-screen .profile-section,
+	.passports-screen .passports-empty,
+	.passports-screen .passports-stack {
+		gap: 24px;
+	}
+
+	.documents-screen .documents-tabs,
+	.documents-screen .documents-cards-group,
+	.profile-screen .profile-list,
+	.profile-data-screen .profile-list,
+	.passports-screen .passports-stack {
+		width: 100%;
+	}
+
+	.documents-screen .documents-tab,
+	.documents-screen .draft-card,
+	.profile-screen .profile-row,
+	.profile-data-screen .profile-row,
+	.passports-screen .passport-card,
+	.passports-screen .passport-card-actions {
+		width: 100%;
+	}
+
+	.documents-screen .documents-empty,
+	.profile-screen .profile-section,
+	.profile-data-screen .profile-data-block,
+	.profile-data-screen .profile-section,
+	.passports-screen .passports-empty,
+	.passports-screen .passports-stack {
+		padding-left: 0;
+		padding-right: 0;
+	}
+
+	.documents-screen .documents-scroll,
+	.profile-screen .profile-scroll,
+	.profile-data-screen .profile-data-scroll,
+	.passports-screen .passports-scroll {
+		justify-items: stretch;
+	}
+
+	.documents-screen .documents-scroll,
+	.profile-screen .profile-scroll,
+	.profile-data-screen .profile-data-scroll,
+	.passports-screen .passports-scroll {
+		padding-top: 32px;
+	}
+
+	.documents-screen .documents-scroll,
+	.profile-screen .profile-scroll,
+	.profile-data-screen .profile-data-scroll,
+	.passports-screen .passports-scroll {
+		padding-bottom: 32px;
+	}
+
+	.documents-screen .documents-top-copy,
+	.profile-screen .profile-header,
+	.profile-data-screen .profile-data-block,
+	.passports-screen .passports-stack,
+	.passports-screen .passports-empty {
+		margin-inline: 0;
+	}
+
+	.documents-screen .documents-tabs {
+		margin-top: 0;
+	}
+
+	.documents-screen .documents-empty-picture,
+	.passports-screen .passports-empty-picture {
+		padding-top: 0;
+	}
+
+	.documents-screen .documents-empty-copy,
+	.passports-screen .passports-empty-copy {
+		text-align: left;
+	}
+
+	.documents-screen .documents-empty,
+	.passports-screen .passports-empty {
+		justify-items: start;
+	}
+
+	.documents-screen .documents-top-copy,
+	.profile-screen .profile-header {
+		gap: 12px;
+	}
+
+	.profile-screen .profile-section h2,
+	.profile-data-screen .profile-data-block h2,
+	.passports-screen .passports-stack h1,
+	.passports-screen .passports-empty-copy h2 {
+		height: auto;
+	}
+
+	.passports-screen .passports-toolbar,
+	.passports-screen .passport-flow-toolbar,
+	.profile-data-screen .profile-data-toolbar {
+		padding: 0;
+	}
+
+	.passports-screen .passports-status {
+		padding: 0;
 	}
 
 	.home-desktop-sidebar,
