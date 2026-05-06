@@ -1528,23 +1528,20 @@ function SupportScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: 
 					<button className={`support-tab${tab === 'chat' ? ' is-active' : ''}`} onClick={() => setTab('chat')} type="button">{'Support'}</button>
 				</div>
 
-				{tab === 'faq' ? (
-					<div className="support-faq">
-						{FAQ_ITEMS.map((item, i) => (
-							<div className={`support-faq-item${openFaq === i ? ' is-open' : ''}`} key={i}>
-								<button className="support-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} type="button">
-									<span>{item.q}</span>
-									<Image alt="" className={`support-faq-chevron${openFaq === i ? ' is-open' : ''}`} height={20} src="/assets/icon-chevron-right.svg" unoptimized width={20} />
-								</button>
-								{openFaq === i ? <p className="support-faq-a">{item.a}</p> : null}
-							</div>
-						))}
-					</div>
-				) : (
-					<div className="support-chat-embed">
-						<SupportChat onClose={() => setTab('faq')} embed />
-					</div>
-				)}
+				<div className={`support-faq${tab === 'faq' ? '' : ' is-hidden'}`}>
+					{FAQ_ITEMS.map((item, i) => (
+						<div className={`support-faq-item${openFaq === i ? ' is-open' : ''}`} key={i}>
+							<button className="support-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} type="button">
+								<span>{item.q}</span>
+								<Image alt="" className={`support-faq-chevron${openFaq === i ? ' is-open' : ''}`} height={20} src="/assets/icon-chevron-right.svg" unoptimized width={20} />
+							</button>
+							{openFaq === i ? <p className="support-faq-a">{item.a}</p> : null}
+						</div>
+					))}
+				</div>
+				<div className={`support-chat-embed${tab === 'chat' ? '' : ' is-hidden'}`}>
+					<SupportChat onClose={() => setTab('faq')} embed />
+				</div>
 			</div>
 
 			<DesktopRail />

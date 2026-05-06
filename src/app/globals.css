@@ -1765,6 +1765,11 @@ html:not(.motion-disabled) .visa-progress-trip::after {
 	flex: 1;
 }
 
+.support-faq.is-hidden,
+.support-chat-embed.is-hidden {
+	display: none;
+}
+
 .support-faq-item {
 	border-bottom: 1px solid rgb(0 29 71 / 0.08);
 }
@@ -3306,13 +3311,18 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .profile-data-screen .profile-data-scroll,
 	.app-content:has(.desktop-global-chrome) > .passports-screen .passports-scroll,
 	.app-content:has(.desktop-global-chrome) > .dev-screen .dev-scroll,
-	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-scroll,
-	.app-content:has(.desktop-global-chrome) > .support-screen .support-scroll {
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-scroll {
 		width: 100%;
 		height: 100%;
 		padding: 32px;
 		min-height: 0;
 		overflow-y: auto;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-scroll {
+		width: 100%;
+		height: 100%;
+		min-height: 0;
 	}
 
 	.app-content:has(.desktop-global-chrome) > .home-screen .home-desktop-breadcrumbs {
