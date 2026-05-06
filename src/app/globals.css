@@ -2568,7 +2568,7 @@ html:not(.motion-disabled) .calendar-sheet {
 		border-radius: 32px;
 		background: #fff;
 		display: grid;
-		grid-template-rows: 256px auto 56px;
+		grid-template-rows: 340px auto 56px;
 		row-gap: 24px;
 	}
 
@@ -2581,9 +2581,9 @@ html:not(.motion-disabled) .calendar-sheet {
 	.onboarding-hero-image {
 		top: 50%;
 		left: 50%;
-		width: 458px;
+		width: min(458px, calc(100% - 32px));
 		height: auto;
-		max-width: calc(100% - 32px);
+		max-height: calc(100% - 32px);
 		transform: translate(-50%, -50%);
 	}
 
