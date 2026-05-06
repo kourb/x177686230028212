@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { COUNTRY_OPTIONS, DESTINATION_COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
-import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow } from '@/data/chat-characters'
+import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
 import { SUPPORTED_LOCALES, type LocaleCode } from '@/i18n/config'
@@ -1442,13 +1442,14 @@ function typingDelay (text: string) {
 }
 
 // --- Chat store ---
-type ChatSnapshot = { messages: ChatMessage[], isTyping: boolean, joined: boolean }
+type ChatSnapshot = { messages: ChatMessage[], isTyping: boolean, joined: boolean, unread: number }
 type ChatStore = {
 	messages: ChatMessage[]
 	isTyping: boolean
 	joined: boolean
 	replyStage: number
 	started: boolean
+	unread: number
 	timers: number[]
 	idleTimer: number
 	subs: Set<() => void>
@@ -1457,17 +1458,25 @@ type ChatStore = {
 
 const chatStore: ChatStore = {
 	messages: [], isTyping: false, joined: false, replyStage: 0,
-	started: false, timers: [], idleTimer: 0, subs: new Set(),
-	snapshot: { messages: [], isTyping: false, joined: false },
+	started: false, unread: 0, timers: [], idleTimer: 0, subs: new Set(),
+	snapshot: { messages: [], isTyping: false, joined: false, unread: 0 },
 }
 
 function chatNotify () {
-	chatStore.snapshot = { messages: chatStore.messages, isTyping: chatStore.isTyping, joined: chatStore.joined }
+	chatStore.snapshot = { messages: chatStore.messages, isTyping: chatStore.isTyping, joined: chatStore.joined, unread: chatStore.unread }
 	chatStore.subs.forEach((fn) => fn())
+}
+
+// Mark all messages as read (call when chat is open/visible).
+function chatMarkRead () {
+	if(chatStore.unread === 0) return
+	chatStore.unread = 0
+	chatNotify()
 }
 
 function chatAddMsg (from: 'operator' | 'user', text: string) {
 	chatStore.messages = [...chatStore.messages, { id: Date.now() + Math.random(), from, text }]
+	if(from === 'operator') chatStore.unread += 1
 	chatNotify()
 }
 
@@ -1488,7 +1497,7 @@ function chatResetIdle () {
 		const text = pick(['yo u there?', 'hello??', 'aye man you still here?', 'heyyyy', 'you good?'])
 		chatQueueMsgs([text])
 		addNotification(`Сообщение от ${BIG_SMOKE.name}`)
-	}, 25000)
+	}, 12000)
 }
 
 // Start the opening sequence once — idempotent.
@@ -1532,6 +1541,7 @@ function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean
 	const bottomRef = useRef<HTMLDivElement | null>(null)
 
 	useEffect(() => { chatInit() }, [])
+	useEffect(() => { chatMarkRead() })
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1648,6 +1658,7 @@ function SupportScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: 
 function DesktopRail () {
 	const [chatOpen, setChatOpen] = useState(false)
 	const notifications = useNotifications()
+	const { unread } = useChatStore()
 
 	return <aside className="desktop-rail" aria-label="Notifications">
 		<section className="desktop-rail-notifications">
@@ -1670,6 +1681,7 @@ function DesktopRail () {
 		<button className="home-support-button" onClick={() => setChatOpen((v) => !v)} type="button">
 			<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
 			<span>{'Есть вопросы?'}</span>
+			{!chatOpen && unread > 0 ? <span className="home-support-badge">{unread}</span> : null}
 		</button>
 
 		{chatOpen ? <SupportChat onClose={() => setChatOpen(false)} /> : null}

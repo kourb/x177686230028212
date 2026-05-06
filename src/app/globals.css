@@ -3834,6 +3834,21 @@ html:not(.motion-disabled) .calendar-sheet {
 		color: rgb(0 29 71 / 0.52);
 	}
 
+	.home-support-badge {
+		min-width: 18px;
+		height: 18px;
+		padding: 0 5px;
+		border-radius: 999px;
+		background: #f50d00;
+		color: #fff;
+		font-size: 11px;
+		font-weight: 600;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-sizing: border-box;
+	}
+
 	.home-support-button {
 		all: unset;
 		margin-top: auto;
