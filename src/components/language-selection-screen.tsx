@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState } from 'react'
+import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { COUNTRY_OPTIONS, DESTINATION_COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
@@ -1196,6 +1196,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			if(displayName) setUserProfile({ displayName })
 			await loadProfileFromBackend()
+			addNotification('Вход выполнен через Google')
 			setStep('done')
 			onAuthenticated()
 		} catch (error) {
@@ -1215,6 +1216,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			})
 			window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokenPair))
 			await loadProfileFromBackend()
+			addNotification('Вход в аккаунт выполнен')
 			setStep('done')
 			onAuthenticated()
 		} catch {
@@ -1238,6 +1240,7 @@ function AuthScreen ({ onAuthenticated }: { onAuthenticated: () => void }) {
 			const displayName = `${firstName.trim()} ${lastName.trim()}`
 			setUserProfile({ displayName })
 			await saveProfileToBackend(firstName.trim(), lastName.trim())
+			addNotification('Аккаунт создан и выполнен вход')
 			setStep('done')
 			onAuthenticated()
 		} catch (error) {
@@ -1385,55 +1388,150 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 	)
 }
 
-// Render persistent desktop notification rail.
-type ChatMessage = { id: number, from: 'operator' | 'user', text: string }
+// --- Notification store ---
+type AppNotification = { id: number, text: string, badge?: string, badgePending?: boolean, time: string }
+const NOTIF_STORAGE_KEY = 'visa-notifications'
+
+function loadNotifs (): AppNotification[] {
+	try { return JSON.parse(localStorage.getItem(NOTIF_STORAGE_KEY) ?? '[]') } catch { return [] }
+}
+
+const notifStore: { items: AppNotification[], subs: Set<() => void> } = {
+	items: typeof window !== 'undefined' ? loadNotifs() : [],
+	subs: new Set(),
+}
+
+function notifNotify () { notifStore.subs.forEach((fn) => fn()) }
+
+// Format Date as "Сегодня, HH:MM" or "Вчера, HH:MM".
+function formatNotifTime (d = new Date()) {
+	const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+	const now = new Date()
+	const isToday = d.toDateString() === now.toDateString()
+	const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1)
+	const isYesterday = d.toDateString() === yesterday.toDateString()
+	return isToday ? `Сегодня, ${hm}` : isYesterday ? `Вчера, ${hm}` : hm
+}
+
+// Push a new notification (max 5 kept).
+function addNotification (text: string, badge?: string, badgePending?: boolean) {
+	notifStore.items = [{ id: Date.now(), text, badge, badgePending, time: formatNotifTime() }, ...notifStore.items].slice(0, 5)
+	localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(notifStore.items))
+	notifNotify()
+}
+
+// Clear all notifications.
+function clearNotifications () {
+	notifStore.items = []
+	localStorage.removeItem(NOTIF_STORAGE_KEY)
+	notifNotify()
+}
+
+// Subscribe to notification store updates.
+function useNotifications () {
+	return useSyncExternalStore(
+		(cb) => { notifStore.subs.add(cb); return () => notifStore.subs.delete(cb) },
+		() => notifStore.items,
+	)
+}
+// --- End notification store ---
 
 // Typing delay based on message length: ~60ms per char + random 300-700ms.
 function typingDelay (text: string) {
 	return Math.min(text.length * 60 + 300 + Math.random() * 400, 3000)
 }
 
-// Render support chat widget with randomized Big Smoke script.
-function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean }) {
-	const [messages, setMessages] = useState<ChatMessage[]>([])
-	const [input, setInput] = useState('')
-	const [joined, setJoined] = useState(false)
-	const [isTyping, setIsTyping] = useState(false)
-	const bottomRef = useRef<HTMLDivElement | null>(null)
-	const idRef = useRef(0)
-	const replyStage = useRef(0)
-	const timers = useRef<number[]>([])
+// --- Chat store ---
+type ChatSnapshot = { messages: ChatMessage[], isTyping: boolean, joined: boolean }
+type ChatStore = {
+	messages: ChatMessage[]
+	isTyping: boolean
+	joined: boolean
+	replyStage: number
+	started: boolean
+	timers: number[]
+	idleTimer: number
+	subs: Set<() => void>
+	snapshot: ChatSnapshot
+}
 
-	const addMsg = (from: 'operator' | 'user', text: string) =>
-		setMessages((prev) => [...prev, { id: ++idRef.current, from, text }])
+const chatStore: ChatStore = {
+	messages: [], isTyping: false, joined: false, replyStage: 0,
+	started: false, timers: [], idleTimer: 0, subs: new Set(),
+	snapshot: { messages: [], isTyping: false, joined: false },
+}
 
-	// Queue messages sequentially: show typing → delay → send → next.
-	const queueMsgs = (msgs: string[], startDelay = 0) => {
-		let offset = startDelay
-		for(const text of msgs) {
-			const t1 = window.setTimeout(() => setIsTyping(true), offset)
-			const delay = typingDelay(text)
-			const t2 = window.setTimeout(() => { setIsTyping(false); addMsg('operator', text) }, offset + delay)
-			timers.current.push(t1, t2)
-			offset += delay + 200
-		}
+function chatNotify () {
+	chatStore.snapshot = { messages: chatStore.messages, isTyping: chatStore.isTyping, joined: chatStore.joined }
+	chatStore.subs.forEach((fn) => fn())
+}
+
+function chatAddMsg (from: 'operator' | 'user', text: string) {
+	chatStore.messages = [...chatStore.messages, { id: Date.now() + Math.random(), from, text }]
+	chatNotify()
+}
+
+function chatQueueMsgs (msgs: string[], startDelay = 0) {
+	let offset = startDelay
+	for(const text of msgs) {
+		const delay = typingDelay(text)
+		const t1 = window.setTimeout(() => { chatStore.isTyping = true; chatNotify() }, offset)
+		const t2 = window.setTimeout(() => { chatStore.isTyping = false; chatAddMsg('operator', text) }, offset + delay)
+		chatStore.timers.push(t1, t2)
+		offset += delay + 200
 	}
+}
 
-	useEffect(() => {
-		const t = window.setTimeout(() => {
-			setJoined(true)
-			queueMsgs(buildOpening(BIG_SMOKE.script), 300)
-		}, 1400)
-		timers.current.push(t)
-		return () => {
-			timers.current.forEach(window.clearTimeout)
-			timers.current = []
-			setJoined(false)
-			setIsTyping(false)
-			setMessages([])
-		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
+function chatResetIdle () {
+	window.clearTimeout(chatStore.idleTimer)
+	chatStore.idleTimer = window.setTimeout(() => {
+		const text = pick(['yo u there?', 'hello??', 'aye man you still here?', 'heyyyy', 'you good?'])
+		chatQueueMsgs([text])
+		addNotification(`Сообщение от ${BIG_SMOKE.name}`)
+	}, 25000)
+}
+
+// Start the opening sequence once — idempotent.
+function chatInit () {
+	if(chatStore.started) return
+	chatStore.started = true
+	const t = window.setTimeout(() => {
+		chatStore.joined = true
+		chatNotify()
+		chatQueueMsgs(buildOpening(BIG_SMOKE.script), 300)
+		chatResetIdle()
+	}, 1400)
+	chatStore.timers.push(t)
+}
+
+function chatSend (text: string) {
+	if(!text.trim()) return
+	chatAddMsg('user', text)
+	chatResetIdle()
+	const stage = chatStore.replyStage
+	chatStore.replyStage += 1
+	chatQueueMsgs(stage === 0 ? buildAcknowledge(BIG_SMOKE.script) : buildWow(BIG_SMOKE.script), 400)
+}
+
+function useChatStore () {
+	return useSyncExternalStore(
+		(cb) => { chatStore.subs.add(cb); return () => chatStore.subs.delete(cb) },
+		() => chatStore.snapshot,
+	)
+}
+// --- End chat store ---
+
+// Render persistent desktop notification rail.
+type ChatMessage = { id: number, from: 'operator' | 'user', text: string }
+
+// Typing delay based on message length: ~60ms per char + random 300-700ms.
+// Render support chat widget backed by shared chatStore.
+function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean }) {
+	const { messages, isTyping, joined } = useChatStore()
+	const [input, setInput] = useState('')
+	const bottomRef = useRef<HTMLDivElement | null>(null)
+
+	useEffect(() => { chatInit() }, [])
 
 	useEffect(() => {
 		bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1442,11 +1540,8 @@ function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean
 	const send = () => {
 		const text = input.trim()
 		if(!text) return
-		addMsg('user', text)
 		setInput('')
-		const stage = replyStage.current
-		replyStage.current += 1
-		queueMsgs(stage === 0 ? buildAcknowledge(BIG_SMOKE.script) : buildWow(BIG_SMOKE.script), 400)
+		chatSend(text)
 	}
 
 	return (
@@ -1552,18 +1647,24 @@ function SupportScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: 
 
 function DesktopRail () {
 	const [chatOpen, setChatOpen] = useState(false)
+	const notifications = useNotifications()
+
 	return <aside className="desktop-rail" aria-label="Notifications">
 		<section className="desktop-rail-notifications">
-			<span className="home-desktop-caption">{'Уведомления'}</span>
-			<button className="home-notification-card" type="button">
-				<span className="home-notification-badge">{'Готовая виза'}</span>
-				<b>{'Обновление статуса заявки'}</b>
-				<small>{'Сегодня, 14:11'}</small>
-			</button>
-			<button className="home-notification-card is-compact" type="button">
-				<b>{'Вход в аккаунт на новом устройстве'}</b>
-				<small>{'Вчера, 09:25'}</small>
-			</button>
+			<div className="desktop-rail-notif-header">
+				<span className="home-desktop-caption">{'Уведомления'}</span>
+				{notifications.length > 0 ? <button className="desktop-rail-clear" onClick={clearNotifications} type="button">{'Очистить'}</button> : null}
+			</div>
+			{notifications.length === 0
+				? <p className="desktop-rail-empty">{'Нет уведомлений'}</p>
+				: notifications.map((n) => (
+					<button className={`home-notification-card${n.badge ? '' : ' is-compact'}`} key={n.id} type="button">
+						{n.badge ? <span className={`home-notification-badge${n.badgePending ? ' is-pending' : ''}`}>{n.badge}</span> : null}
+						<b>{n.text}</b>
+						<small>{n.time}</small>
+					</button>
+				))
+			}
 		</section>
 
 		<button className="home-support-button" onClick={() => setChatOpen((v) => !v)} type="button">
@@ -4208,6 +4309,7 @@ function EntryFlow () {
 		visaCheckRequestRef.current = activeDraftId
 		let active = true
 		let timer = 0
+		addNotification('Заявка на визу проверяется', 'На проверке', true)
 
 		const check = async () => {
 			const application = await loadBackendApplication(activeDraftId)
@@ -4215,10 +4317,12 @@ function EntryFlow () {
 			const status = mapApplicationStatus(application.status)
 			updateActiveDraftStatus(status)
 			if(status === 'error') {
+				addNotification('Заявка на визу отклонена', 'Отказ')
 				navigate('home', 'visa-rejected')
 				return
 			}
 			if(status === 'ready') {
+				addNotification('Виза одобрена и готова', 'Готовая виза')
 				navigate('home', 'visa-verified')
 				return
 			}

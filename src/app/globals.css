@@ -3761,6 +3761,29 @@ html:not(.motion-disabled) .calendar-sheet {
 		gap: 16px;
 	}
 
+	.desktop-rail-notif-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.desktop-rail-clear {
+		all: unset;
+		font-size: 13px;
+		color: rgb(0 29 71 / 0.4);
+		cursor: pointer;
+	}
+
+	.desktop-rail-clear:hover {
+		color: var(--ink);
+	}
+
+	.desktop-rail-empty {
+		margin: 0;
+		font-size: 14px;
+		color: rgb(0 29 71 / 0.36);
+	}
+
 	.home-notification-card {
 		all: unset;
 		min-height: 81px;
@@ -3790,6 +3813,10 @@ html:not(.motion-disabled) .calendar-sheet {
 		line-height: 1.2;
 		font-weight: 500;
 		color: #fff;
+	}
+
+	.home-notification-badge.is-pending {
+		background: #f59e0b;
 	}
 
 	.home-notification-card b {
