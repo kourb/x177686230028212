@@ -384,6 +384,97 @@ body {
 	color: var(--ink);
 }
 
+.auth-header--with-back {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.auth-back-button {
+	all: unset;
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	margin-top: -8px;
+	margin-left: -8px;
+}
+
+.auth-password-wrap {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.auth-password-wrap input {
+	flex: 1;
+	padding-right: 52px !important;
+}
+
+.auth-eye-button {
+	all: unset;
+	position: absolute;
+	right: 16px;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: rgb(0 29 71 / 0.52);
+	line-height: 0;
+}
+
+.auth-checkbox-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	cursor: pointer;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.auth-checkbox-row input[type="checkbox"] {
+	all: unset;
+	flex-shrink: 0;
+	width: 20px;
+	height: 20px;
+	border: 1px solid rgb(0 29 71 / 0.16);
+	border-radius: 4px;
+	margin-top: 2px;
+	cursor: pointer;
+	position: relative;
+}
+
+.auth-checkbox-row input[type="checkbox"]:checked {
+	background: var(--ink);
+	border-color: var(--ink);
+}
+
+.auth-checkbox-row input[type="checkbox"]:checked::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 2px;
+	width: 6px;
+	height: 10px;
+	border: 2px solid #fff;
+	border-top: none;
+	border-left: none;
+	transform: rotate(45deg);
+}
+
+.auth-terms-link {
+	color: rgb(0 102 255);
+	text-decoration: none;
+}
+
 .auth-form {
 	padding: 0 16px;
 	display: grid;
@@ -2134,6 +2225,28 @@ html:not(.motion-disabled) .calendar-sheet {
 	display: grid;
 	gap: 12px;
 	align-content: start;
+}
+
+
+.dev-section-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: rgb(0 29 71 / 0.48);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	padding: 0 4px;
+	margin-top: 4px;
+}
+
+.dev-danger-button {
+	all: unset;
+	display: block;
+	width: 100%;
+	padding: 2px 0;
+	font-size: 15px;
+	font-weight: 500;
+	color: #d93025;
+	cursor: pointer;
 }
 
 .dev-card {
