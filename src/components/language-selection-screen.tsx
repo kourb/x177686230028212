@@ -1850,13 +1850,13 @@ function DesktopRail () {
 	const [chatOpen, setChatOpen] = useState(false)
 	const notifications = useNotifications()
 	const { unread } = useChatStore()
-	const railRef = useRef<HTMLElement | null>(null)
+	const supportBtnRef = useRef<HTMLButtonElement | null>(null)
 	const chatRef = useRef<HTMLDivElement | null>(null)
 
 	useEffect(() => {
 		if(!chatOpen) return
 		const onPointerDown = (e: PointerEvent) => {
-			if(railRef.current?.contains(e.target as Node)) return
+			if(supportBtnRef.current?.contains(e.target as Node)) return
 			if(chatRef.current?.contains(e.target as Node)) return
 			setChatOpen(false)
 		}
@@ -1864,7 +1864,7 @@ function DesktopRail () {
 		return () => document.removeEventListener('pointerdown', onPointerDown)
 	}, [chatOpen])
 
-	return <aside className="desktop-rail" aria-label="Notifications" ref={railRef}>
+	return <aside className="desktop-rail" aria-label="Notifications">
 		<section className="desktop-rail-notifications">
 			<div className="desktop-rail-notif-header">
 				<span className="home-desktop-caption">{'Уведомления'}</span>
@@ -1885,7 +1885,7 @@ function DesktopRail () {
 			}
 		</section>
 
-		<button className="home-support-button" onClick={() => { if(!chatOpen) chatMarkRead(); setChatOpen((v) => !v) }} type="button">
+		<button className="home-support-button" onClick={() => { if(!chatOpen) chatMarkRead(); setChatOpen((v) => !v) }} ref={supportBtnRef} type="button">
 			<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
 			<span>{'Есть вопросы?'}</span>
 			{!chatOpen && unread > 0 ? <span className="home-support-badge">{unread}</span> : null}
