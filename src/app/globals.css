@@ -2716,6 +2716,7 @@ html:not(.motion-disabled) .calendar-sheet {
 	padding: 24px 16px 0;
 	display: grid;
 	place-items: center;
+	justify-self: stretch;
 }
 
 .passports-empty-image {
@@ -3640,6 +3641,12 @@ html:not(.motion-disabled) .calendar-sheet {
 	.passports-screen .passports-empty-image {
 		width: 100%;
 		max-width: 370px;
+		margin-inline: auto;
+	}
+
+	.passports-screen .passports-empty-copy {
+		max-width: 370px;
+		margin-inline: auto;
 	}
 
 	.documents-screen .documents-scroll,

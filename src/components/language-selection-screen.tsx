@@ -4464,7 +4464,7 @@ function EntryFlow () {
 	const visaReviewPhotoComplete = visaPhotoComplete
 	const visaApplicantsComplete = currentApplicants.length > 0
 	const visaSubmitted = Boolean(activeDraftId && (activeDraftStatus === 'checking' || activeDraftStatus === 'ready' || activeDraftStatus === 'error' || activeTab === 'visa-check' || activeTab === 'visa-verified' || activeTab === 'visa-rejected'))
-	const isVisaDesktopFlow = activeTab.startsWith('visa-') || activeTab === 'passport-camera' || activeTab === 'passport-recognition' || (activeTab.startsWith('passports') && (passportListMode === 'visa' || passportFlowMode === 'visa-create'))
+	const isVisaDesktopFlow = activeTab.startsWith('visa-') || activeTab === 'passport-camera' || activeTab === 'passport-recognition' || (activeTab.startsWith('passports') && passportListMode === 'visa') || (activeTab.startsWith('passports-step') || activeTab === 'passports-review') && passportFlowMode === 'visa-create'
 	const visaDesktopSteps: VisaDesktopStep[] = [
 		{ label: 'Выбор гражданства, направления и типа визы', tab: 'visa-start', active: activeTab === 'visa-start', completed: Boolean(submittedVisaTabs['visa-start'] && visaChoiceComplete), invalid: Boolean(submittedVisaTabs['visa-start'] && !visaChoiceComplete) },
 		{ label: 'Выбор типа визы', tab: 'visa-type', active: activeTab === 'visa-type', completed: Boolean(submittedVisaTabs['visa-type'] && visaTypeComplete), invalid: Boolean(submittedVisaTabs['visa-type'] && !visaTypeComplete) },
