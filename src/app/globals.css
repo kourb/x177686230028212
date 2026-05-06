@@ -1832,6 +1832,146 @@ html:not(.motion-disabled) .visa-progress-trip::after {
 	flex-shrink: 0;
 }
 
+.simple-settings-screen {
+	position: relative;
+	height: 100%;
+	display: grid;
+	grid-template-rows: 1fr auto;
+	background: #fff;
+	overflow: hidden;
+}
+
+.simple-settings-scroll {
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+.simple-settings-empty {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.simple-settings-empty p {
+	margin: 0;
+	font-size: 17px;
+	color: rgb(0 29 71 / 0.4);
+	letter-spacing: -0.02em;
+}
+
+.notif-settings-group {
+	padding: 20px 16px 0;
+	display: grid;
+	gap: 12px;
+}
+
+.notif-settings-label {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: rgb(0 29 71 / 0.4);
+}
+
+.notif-settings-push-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.notif-settings-push-status {
+	font-size: 15px;
+	color: rgb(0 29 71 / 0.52);
+}
+
+.notif-settings-push-status.is-granted { color: #16a34a; }
+.notif-settings-push-status.is-denied { color: #d93025; }
+
+.notif-settings-enable-button {
+	all: unset;
+	height: 36px;
+	padding: 0 16px;
+	border-radius: 999px;
+	background: #0066FF;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.notif-settings-hint {
+	margin: 0;
+	font-size: 13px;
+	color: rgb(0 29 71 / 0.4);
+	line-height: 1.4;
+}
+
+.notif-settings-list {
+	display: grid;
+	border: 1px solid rgb(0 29 71 / 0.1);
+	border-radius: 14px;
+	overflow: hidden;
+}
+
+.notif-settings-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 14px 16px;
+	border-bottom: 1px solid rgb(0 29 71 / 0.07);
+	cursor: pointer;
+}
+
+.notif-settings-row:last-child { border-bottom: none; }
+
+.notif-settings-row-copy {
+	display: grid;
+	gap: 2px;
+}
+
+.notif-settings-row-copy b {
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--ink);
+}
+
+.notif-settings-row-copy span {
+	font-size: 12px;
+	color: rgb(0 29 71 / 0.4);
+	line-height: 1.4;
+}
+
+.notif-toggle {
+	flex-shrink: 0;
+	width: 44px;
+	height: 26px;
+	border-radius: 999px;
+	background: rgb(0 29 71 / 0.15);
+	position: relative;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.notif-toggle.is-on { background: #0066FF; }
+
+.notif-toggle-thumb {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: #fff;
+	transition: transform 0.2s;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+.notif-toggle.is-on .notif-toggle-thumb { transform: translateX(18px); }
+
 .profile-save-button {
 	all: unset;
 	width: 100%;
@@ -3283,7 +3423,8 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .profile-data-screen,
 	.app-content:has(.desktop-global-chrome) > .passports-screen,
 	.app-content:has(.desktop-global-chrome) > .dev-screen,
-	.app-content:has(.desktop-global-chrome) > .support-screen {
+	.app-content:has(.desktop-global-chrome) > .support-screen,
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen {
 		display: grid;
 		grid-template-columns: 1fr;
 	}
@@ -3301,7 +3442,10 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .dev-screen > .home-desktop-sidebar,
 	.app-content:has(.desktop-global-chrome) > .dev-screen > .desktop-rail,
 	.app-content:has(.desktop-global-chrome) > .support-screen > .home-desktop-sidebar,
-	.app-content:has(.desktop-global-chrome) > .support-screen > .desktop-rail {
+	.app-content:has(.desktop-global-chrome) > .support-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen > .home-tabbar {
 		display: none;
 	}
 
@@ -3319,10 +3463,21 @@ html:not(.motion-disabled) .calendar-sheet {
 		overflow-y: auto;
 	}
 
-	.app-content:has(.desktop-global-chrome) > .support-screen .support-scroll {
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-scroll,
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen .simple-settings-scroll {
 		width: 100%;
 		height: 100%;
 		min-height: 0;
+		padding: 32px;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen .support-toolbar {
+		padding: 0 0 12px;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .simple-settings-screen .notif-settings-group {
+		padding-left: 0;
+		padding-right: 0;
 	}
 
 	.app-content:has(.desktop-global-chrome) > .home-screen .home-desktop-breadcrumbs {

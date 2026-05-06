@@ -1680,6 +1680,120 @@ function SupportChat ({ onClose, embed, rootRef }: { onClose: () => void, embed?
 	)
 }
 
+// Render payment history screen.
+function PaymentHistoryScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: { onBack: () => void, onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfile: () => void }) {
+	return (
+		<section aria-label="Payment history" className="simple-settings-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+			<div className="simple-settings-scroll">
+				<header className="support-toolbar">
+					<button aria-label="Назад" className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<h2>{'История платежей'}</h2>
+				</header>
+				<div className="simple-settings-empty">
+					<p>{'Нет истории платежей'}</p>
+				</div>
+			</div>
+			<DesktopRail />
+			<HomeTabbar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+		</section>
+	)
+}
+
+const NOTIF_STORAGE_PREFS_KEY_PREFIX = 'visa-notif-prefs-'
+
+// Resolve per-user notification prefs key.
+function notifPrefsKey () {
+	try {
+		const raw = localStorage.getItem(AUTH_STORAGE_KEY)
+		const uid = raw ? (JSON.parse(raw) as AuthTokenResponse).user?.userId : undefined
+		return `${NOTIF_STORAGE_PREFS_KEY_PREFIX}${uid ?? 'guest'}`
+	} catch { return `${NOTIF_STORAGE_PREFS_KEY_PREFIX}guest` }
+}
+
+type NotifPrefs = { visaStatus: boolean, payments: boolean, security: boolean, news: boolean }
+
+function loadNotifPrefs (): NotifPrefs {
+	try { return { visaStatus: true, payments: true, security: true, news: false, ...JSON.parse(localStorage.getItem(notifPrefsKey()) ?? '{}') } } catch { return { visaStatus: true, payments: true, security: true, news: false } }
+}
+
+function saveNotifPrefs (prefs: NotifPrefs) {
+	try { localStorage.setItem(notifPrefsKey(), JSON.stringify(prefs)) } catch {}
+}
+
+// Render notifications settings screen.
+function NotificationsSettingsScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: { onBack: () => void, onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfile: () => void }) {
+	const [prefs, setPrefs] = useState<NotifPrefs>(loadNotifPrefs)
+	const [pushPermission, setPushPermission] = useState<NotificationPermission>(() =>
+		typeof Notification !== 'undefined' ? Notification.permission : 'default'
+	)
+
+	const update = (key: keyof NotifPrefs, value: boolean) => {
+		const next = { ...prefs, [key]: value }
+		setPrefs(next)
+		saveNotifPrefs(next)
+	}
+
+	// Request browser push notification permission.
+	const requestPush = async () => {
+		if(typeof Notification === 'undefined') return
+		const result = await Notification.requestPermission()
+		setPushPermission(result)
+	}
+
+	const pushLabel = pushPermission === 'granted' ? 'Включены' : pushPermission === 'denied' ? 'Заблокированы в браузере' : 'Не включены'
+	const pushCanRequest = pushPermission === 'default'
+
+	return (
+		<section aria-label="Notification settings" className="simple-settings-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+			<div className="simple-settings-scroll">
+				<header className="support-toolbar">
+					<button aria-label="Назад" className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<h2>{'Уведомления'}</h2>
+				</header>
+
+				<div className="notif-settings-group">
+					<p className="notif-settings-label">{'Push-уведомления в браузере'}</p>
+					<div className="notif-settings-push-row">
+						<span className={`notif-settings-push-status${pushPermission === 'granted' ? ' is-granted' : pushPermission === 'denied' ? ' is-denied' : ''}`}>{pushLabel}</span>
+						{pushCanRequest ? <button className="notif-settings-enable-button" onClick={requestPush} type="button">{'Включить'}</button> : null}
+					</div>
+					{pushPermission === 'denied' ? <p className="notif-settings-hint">{'Чтобы включить, разрешите уведомления в настройках браузера.'}</p> : null}
+				</div>
+
+				<div className="notif-settings-group">
+					<p className="notif-settings-label">{'Типы уведомлений'}</p>
+					<div className="notif-settings-list">
+						{([
+							{ key: 'visaStatus' as const, label: 'Статус заявки на визу', hint: 'Изменения статуса, готовность документов' },
+							{ key: 'payments' as const, label: 'Платежи', hint: 'Подтверждения оплаты и счета' },
+							{ key: 'security' as const, label: 'Безопасность', hint: 'Новые входы в аккаунт' },
+							{ key: 'news' as const, label: 'Новости и советы', hint: 'Обновления сервиса, полезные материалы' },
+						]).map(({ key, label, hint }) => (
+							<label className="notif-settings-row" key={key}>
+								<div className="notif-settings-row-copy">
+									<b>{label}</b>
+									<span>{hint}</span>
+								</div>
+								<div className={`notif-toggle${prefs[key] ? ' is-on' : ''}`} onClick={() => update(key, !prefs[key])} role="switch" aria-checked={prefs[key]} tabIndex={0} onKeyDown={(e) => { if(e.key === ' ' || e.key === 'Enter') update(key, !prefs[key]) }}>
+									<div className="notif-toggle-thumb" />
+								</div>
+							</label>
+						))}
+					</div>
+				</div>
+			</div>
+			<DesktopRail />
+			<HomeTabbar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+		</section>
+	)
+}
+
 const FAQ_ITEMS = [
 	{ q: 'Сколько времени занимает оформление визы?', a: 'В среднем 5–15 рабочих дней. Зависит от страны назначения и загруженности консульства.' },
 	{ q: 'Какие документы нужны для шенгенской визы?', a: 'Загранпаспорт, фото, бронирование отеля и авиабилетов, медицинская страховка, справка с работы или выписка с банковского счёта.' },
@@ -2173,7 +2287,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 }
 
 // Render profile/settings screen from Figma node 562:10062.
-function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpenDeveloper, onOpenPassports, onOpenSupport }: { onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void, onOpenSupport: () => void }) {
+function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpenDeveloper, onOpenPassports, onOpenSupport, onOpenPayments, onOpenNotifications }: { onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void, onOpenSupport: () => void, onOpenPayments: () => void, onOpenNotifications: () => void }) {
 	const { t } = useI18n()
 
 	return (
@@ -2205,26 +2319,26 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
 						</button>
 
-						<button className="profile-row" type="button">
-							<span className="profile-row-left">
-								<Image alt="Payments" className="profile-row-icon" height={24} src="/assets/icon-settings-payments.svg" unoptimized width={24} />
-								<b>{t('profileItemPayments')}</b>
-							</span>
-							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
-						</button>
+					<button className="profile-row" onClick={onOpenPayments} type="button">
+						<span className="profile-row-left">
+							<Image alt="Payments" className="profile-row-icon" height={24} src="/assets/icon-settings-payments.svg" unoptimized width={24} />
+							<b>{t('profileItemPayments')}</b>
+						</span>
+						<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+					</button>
 					</div>
 				</section>
 
 				<section className="profile-section" aria-label={t('profileSectionExtra')}>
 					<h2>{t('profileSectionExtra')}</h2>
 					<div className="profile-list">
-						<button className="profile-row" type="button">
-							<span className="profile-row-left">
-								<Image alt="Notifications" className="profile-row-icon" height={24} src="/assets/icon-settings-notifications.svg" unoptimized width={24} />
-								<b>{t('profileItemNotifications')}</b>
-							</span>
-							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
-						</button>
+					<button className="profile-row" onClick={onOpenNotifications} type="button">
+						<span className="profile-row-left">
+							<Image alt="Notifications" className="profile-row-icon" height={24} src="/assets/icon-settings-notifications.svg" unoptimized width={24} />
+							<b>{t('profileItemNotifications')}</b>
+						</span>
+						<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+					</button>
 
 					<button className="profile-row" onClick={onOpenSupport} type="button">
 						<span className="profile-row-left">
@@ -4054,7 +4168,7 @@ function EntryFlow () {
 	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
 	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
 	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
-	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'support' || activeTab.startsWith('passports') ? 'profile' : 'home'
+	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'support' || activeTab === 'payment-history' || activeTab === 'notifications-settings' || activeTab.startsWith('passports') ? 'profile' : 'home'
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -4680,7 +4794,7 @@ function EntryFlow () {
 						: activeTab === 'visa-documents-ready'
 							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('documents')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
-								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} onOpenSupport={() => navigate('home', 'support')} />
+								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} onOpenSupport={() => navigate('home', 'support')} onOpenPayments={() => navigate('home', 'payment-history')} onOpenNotifications={() => navigate('home', 'notifications-settings')} />
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
@@ -4689,6 +4803,10 @@ function EntryFlow () {
 								? <DeveloperDataScreen onBack={() => goBack('developer-mode')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onClearDrafts={() => { setSavedDrafts(persistLocalDrafts([])); setActiveDraftId(null) }} />
 								: activeTab === 'support'
 								? <SupportScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
+								: activeTab === 'payment-history'
+								? <PaymentHistoryScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
+								: activeTab === 'notifications-settings'
+								? <NotificationsSettingsScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 									: activeTab === 'passports-step-one'
