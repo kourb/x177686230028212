@@ -3522,8 +3522,6 @@ html:not(.motion-disabled) .calendar-sheet {
 	}
 
 	.home-hero-image {
-		width: 604px;
-		height: 410px;
 		object-fit: contain;
 	}
 
@@ -3594,6 +3592,7 @@ html:not(.motion-disabled) .calendar-sheet {
 
 	.home-support-button {
 		all: unset;
+		margin-top: auto;
 		height: 56px;
 		border-radius: 999px;
 		border: 1px solid rgb(0 29 71 / 0.16);
