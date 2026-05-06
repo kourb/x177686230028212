@@ -784,6 +784,7 @@ html:not(.motion-disabled) .home-tabbar::before {
 .documents-empty {
 	display: grid;
 	gap: 0;
+	justify-items: center;
 }
 
 .documents-empty-picture {
@@ -803,6 +804,8 @@ html:not(.motion-disabled) .home-tabbar::before {
 	display: grid;
 	gap: 12px;
 	text-align: center;
+	justify-items: center;
+	width: 100%;
 }
 
 .documents-empty-copy h2 {
@@ -3384,12 +3387,10 @@ html:not(.motion-disabled) .calendar-sheet {
 		padding-top: 0;
 	}
 
-	.documents-screen .documents-empty-copy,
 	.passports-screen .passports-empty-copy {
 		text-align: left;
 	}
 
-	.documents-screen .documents-empty,
 	.passports-screen .passports-empty {
 		justify-items: start;
 	}

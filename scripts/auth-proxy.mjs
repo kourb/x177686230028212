@@ -8,7 +8,7 @@ const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verif
 // Apply CORS headers for local browser access.
 function setCors (response) {
 	response.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN)
-	response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
+	response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
 	response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }
 
@@ -47,10 +47,10 @@ async function handleProxy (request, response) {
 	const upstreamResponse = await fetch(`${UPSTREAM}${path}${url.search}`, {
 		method: request.method,
 		headers: {
-			...(request.method === 'POST' || request.method === 'PATCH' ? { 'Content-Type': 'application/json' } : {}),
+			...(request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH' ? { 'Content-Type': 'application/json' } : {}),
 			...(request.headers.authorization ? { Authorization: request.headers.authorization } : {}),
 		},
-		...(request.method === 'POST' || request.method === 'PATCH' ? { body: await readBody(request) } : {}),
+		...(request.method === 'POST' || request.method === 'PUT' || request.method === 'PATCH' ? { body: await readBody(request) } : {}),
 	})
 	const text = await upstreamResponse.text()
 
@@ -68,7 +68,7 @@ createServer(async (request, response) => {
 		return
 	}
 
-	if(request.method !== 'GET' && request.method !== 'POST' && request.method !== 'PATCH' && request.method !== 'DELETE') {
+	if(request.method !== 'GET' && request.method !== 'POST' && request.method !== 'PUT' && request.method !== 'PATCH' && request.method !== 'DELETE') {
 		setCors(response)
 		response.writeHead(405, { 'Content-Type': 'application/json' })
 		response.end(JSON.stringify({ error: { message: 'Method not allowed' }, data: null }))
