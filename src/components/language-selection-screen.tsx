@@ -1282,29 +1282,34 @@ function HomeScreen ({ onOpenDocuments, onOpenProfile, onOpenVisaStart }: { onOp
 				<button className="home-cta" onClick={onOpenVisaStart} type="button">{t('homeStartVisa')}</button>
 			</div>
 
-			<aside className="home-desktop-rail" aria-label="Notifications">
-				<section className="home-desktop-notifications">
-					<span className="home-desktop-caption">{'Уведомления'}</span>
-					<button className="home-notification-card" type="button">
-						<span className="home-notification-badge">{'Готовая виза'}</span>
-						<b>{'Обновление статуса заявки'}</b>
-						<small>{'Сегодня, 14:11'}</small>
-					</button>
-					<button className="home-notification-card is-compact" type="button">
-						<b>{'Вход в аккаунт на новом устройстве'}</b>
-						<small>{'Вчера, 09:25'}</small>
-					</button>
-				</section>
-
-				<button className="home-support-button" type="button">
-					<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
-					<span>{'Есть вопросы?'}</span>
-				</button>
-			</aside>
+			<DesktopRail />
 
 			<HomeTabbar active="home" onOpenDocuments={onOpenDocuments} onOpenHome={() => {}} onOpenProfile={onOpenProfile} />
 		</section>
 	)
+}
+
+// Render persistent desktop notification rail.
+function DesktopRail () {
+	return <aside className="desktop-rail" aria-label="Notifications">
+		<section className="desktop-rail-notifications">
+			<span className="home-desktop-caption">{'Уведомления'}</span>
+			<button className="home-notification-card" type="button">
+				<span className="home-notification-badge">{'Готовая виза'}</span>
+				<b>{'Обновление статуса заявки'}</b>
+				<small>{'Сегодня, 14:11'}</small>
+			</button>
+			<button className="home-notification-card is-compact" type="button">
+				<b>{'Вход в аккаунт на новом устройстве'}</b>
+				<small>{'Вчера, 09:25'}</small>
+			</button>
+		</section>
+
+		<button className="home-support-button" type="button">
+			<Image alt="Support" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
+			<span>{'Есть вопросы?'}</span>
+		</button>
+	</aside>
 }
 
 // Render persistent desktop sidebar navigation.
@@ -1612,6 +1617,8 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 				)}
 			</div>
 
+			<DesktopRail />
+
 			<HomeTabbar active="documents" onOpenDocuments={() => {}} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
 			{deleteDraftId ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить заявку?" subtitle="Черновик заявки и добавленные заявители будут удалены." onCancel={() => setDeleteDraftId(null)} onConfirm={confirmDeleteDraft} /> : null}
 		</section>
@@ -1691,6 +1698,8 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 				</section>
 			</div>
 
+			<DesktopRail />
+
 			<HomeTabbar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={() => {}} />
 		</section>
 	)
@@ -1763,6 +1772,8 @@ function PassportCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCa
 				<button aria-label="Capture" className="passport-camera-shutter" disabled={!isReady} onClick={capture} type="button" />
 				<button aria-label="Flash" className="passport-camera-flash" type="button" />
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
@@ -2863,6 +2874,8 @@ function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, 
 					</div>
 				) : null}
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
@@ -2900,6 +2913,8 @@ function PassportStepOneScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 
 				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
@@ -2936,6 +2951,8 @@ function PassportStepTwoScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 
 				<button className="passport-primary" onClick={onNext} type="button">{t('authContinue')}</button>
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
@@ -2977,6 +2994,8 @@ function PassportEditScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpe
 
 				<button className="passport-primary" onClick={onSave} type="button">{t('passportSaveButton')}</button>
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
@@ -3020,12 +3039,14 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onOpenDocuments, on
 					<button className="passport-primary" onClick={onSave} type="button">{actionLabel}</button>
 				</div>
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onToggleAnimationsDisabled, onToggleFillTestValues }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void }) {
+function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onToggleAnimationsDisabled, onToggleFillTestValues }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void }) {
 	const { t } = useI18n()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
@@ -3074,14 +3095,17 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 
 	return (
 		<section aria-label="Developer mode" className="dev-screen">
-			<header className="dev-toolbar">
-				<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
-					<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
-				</button>
-				<h2>{t('profileItemDeveloperMode')}</h2>
-			</header>
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
 
-			<div className="dev-content">
+			<div className="dev-scroll">
+				<header className="dev-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<h2>{t('profileItemDeveloperMode')}</h2>
+				</header>
+
+				<div className="dev-content">
 				<div className="dev-card dev-switch-card">
 					<div>
 						<b>{'Заполнять тестовые значения'}</b>
@@ -3145,7 +3169,10 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onTo
 						<pre>{JSON.stringify(applicationStatusData, null, 2)}</pre>
 					</div>
 				) : null}
+				</div>
 			</div>
+
+			<DesktopRail />
 		</section>
 	)
 }
@@ -3946,7 +3973,7 @@ function EntryFlow () {
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} />
+									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 									: activeTab === 'passports-step-one'

@@ -139,6 +139,14 @@ body {
 	-webkit-overflow-scrolling: touch;
 }
 
+@media (max-width: 1179px) {
+	.app-content {
+		width: 100%;
+		height: 100dvh;
+		max-height: none;
+	}
+}
+
 .locale-switcher {
 	position: absolute;
 	top: 8px;
@@ -516,7 +524,7 @@ body {
 
 .home-desktop-sidebar,
 .home-desktop-breadcrumbs,
-.home-desktop-rail {
+.desktop-rail {
 	display: none;
 }
 
@@ -2067,9 +2075,16 @@ html:not(.motion-disabled) .calendar-sheet {
 	height: 100%;
 	background: #fff;
 	display: grid;
-	grid-template-rows: 40px 1fr;
-	gap: 24px;
+	grid-template-rows: 1fr;
+	overflow: hidden;
+}
+
+.dev-scroll {
+	overflow-y: auto;
 	padding-bottom: 16px;
+	display: grid;
+	align-content: start;
+	gap: 24px;
 }
 
 .dev-toolbar {
@@ -2090,7 +2105,6 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 .dev-content {
-	overflow-y: auto;
 	padding: 0 16px;
 	display: grid;
 	gap: 12px;
@@ -2636,7 +2650,8 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.documents-screen),
 	.app-content:has(.profile-screen),
 	.app-content:has(.profile-data-screen),
-	.app-content:has(.passports-screen) {
+	.app-content:has(.passports-screen),
+	.app-content:has(.dev-screen) {
 		width: 100%;
 		height: 100dvh;
 		max-height: none;
@@ -2657,19 +2672,21 @@ html:not(.motion-disabled) .calendar-sheet {
 	.documents-screen,
 	.profile-screen,
 	.profile-data-screen,
-	.passports-screen {
+	.passports-screen,
+	.dev-screen {
 		width: min(1272px, 100vw - 64px);
 		height: min(895px, 100dvh);
 		margin: 0 auto;
 		display: grid;
-		grid-template-columns: minmax(248px, 302px) minmax(0, 1fr);
+		grid-template-columns: minmax(248px, 302px) minmax(560px, 668px) minmax(248px, 302px);
 		background: #fff;
 	}
 
 	.documents-screen .documents-scroll,
 	.profile-screen .profile-scroll,
 	.profile-data-screen .profile-data-scroll,
-	.passports-screen .passports-scroll {
+	.passports-screen .passports-scroll,
+	.dev-screen .dev-scroll {
 		padding: 32px;
 		min-height: 0;
 		overflow-x: hidden;
@@ -2679,7 +2696,8 @@ html:not(.motion-disabled) .calendar-sheet {
 	.documents-screen .documents-scroll,
 	.profile-screen .profile-scroll,
 	.profile-data-screen .profile-data-scroll,
-	.passports-screen .passports-scroll {
+	.passports-screen .passports-scroll,
+	.dev-screen .dev-scroll {
 		width: min(668px, 100%);
 		justify-self: center;
 	}
@@ -2690,6 +2708,7 @@ html:not(.motion-disabled) .calendar-sheet {
 	.profile-data-screen .profile-data-block,
 	.profile-data-screen .profile-section,
 	.passports-screen .passports-toolbar,
+	.dev-screen .dev-toolbar,
 	.passports-screen .passports-status,
 	.passports-screen .passports-empty,
 	.passports-screen .passports-stack {
@@ -2702,6 +2721,7 @@ html:not(.motion-disabled) .calendar-sheet {
 	.profile-data-screen .profile-data-block,
 	.profile-data-screen .profile-section,
 	.passports-screen .passports-toolbar,
+	.dev-screen .dev-toolbar,
 	.passports-screen .passports-status,
 	.passports-screen .passports-empty,
 	.passports-screen .passports-stack {
@@ -2884,8 +2904,12 @@ html:not(.motion-disabled) .calendar-sheet {
 		padding: 0;
 	}
 
+	.dev-screen .dev-content {
+		padding-inline: 0;
+	}
+
 	.home-desktop-sidebar,
-	.home-desktop-rail {
+	.desktop-rail {
 		display: flex;
 		flex-direction: column;
 		gap: 24px;
@@ -2898,7 +2922,7 @@ html:not(.motion-disabled) .calendar-sheet {
 		padding-left: 0;
 	}
 
-	.home-desktop-rail {
+	.desktop-rail {
 		border-left: 1px solid rgb(0 29 71 / 0.16);
 		padding-right: 0;
 	}
@@ -2998,7 +3022,7 @@ html:not(.motion-disabled) .calendar-sheet {
 		display: none;
 	}
 
-	.home-desktop-notifications {
+	.desktop-rail-notifications {
 		display: grid;
 		gap: 16px;
 	}
