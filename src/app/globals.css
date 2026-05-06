@@ -1495,6 +1495,16 @@ html:not(.motion-disabled) .visa-progress-trip::after {
 	color: var(--ink);
 }
 
+.visa-personal-field.is-invalid .profile-data-input,
+.visa-personal-field.is-invalid .review-file-field {
+	border-color: rgb(217 48 37 / 0.64);
+	box-shadow: 0 0 0 4px rgb(217 48 37 / 0.08);
+}
+
+.visa-personal-field.is-invalid label {
+	color: #d93025;
+}
+
 .visa-personal-inline-button {
 	margin-top: 0;
 }
@@ -1717,6 +1727,13 @@ html:not(.motion-disabled) .visa-progress-trip::after {
 .profile-data-input:focus-within {
 	border-color: rgb(0 102 245 / 0.48);
 	box-shadow: 0 0 0 4px rgb(0 102 245 / 0.09);
+}
+
+.visa-personal-field.is-invalid .profile-data-input,
+.visa-personal-field.is-invalid .review-file-field,
+.visa-personal-field.is-invalid .profile-data-input:focus-within {
+	border-color: rgb(217 48 37 / 0.64);
+	box-shadow: 0 0 0 4px rgb(217 48 37 / 0.08);
 }
 
 .profile-data-input input,
@@ -2791,6 +2808,14 @@ html:not(.motion-disabled) .calendar-sheet {
 		background: #0a8a3e;
 	}
 
+	.desktop-visa-chrome .visa-desktop-step.is-error {
+		color: #d93025;
+	}
+
+	.desktop-visa-chrome .visa-desktop-step.is-error i {
+		background: #d93025;
+	}
+
 	.desktop-visa-chrome .visa-desktop-step span {
 		display: block;
 		max-width: 234px;
@@ -3745,6 +3770,11 @@ html:not(.motion-disabled) .calendar-sheet {
 	background: #fff;
 	border: 1px solid rgb(0 29 71 / 0.16);
 	border-radius: 12px;
+}
+
+.visa-personal-field.is-invalid .review-file-field {
+	border-color: rgb(217 48 37 / 0.64);
+	box-shadow: 0 0 0 4px rgb(217 48 37 / 0.08);
 }
 
 .review-file-row {
