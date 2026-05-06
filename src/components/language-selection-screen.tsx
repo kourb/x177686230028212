@@ -3400,8 +3400,12 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 	const email = auth?.user?.email ?? 'alex.german@gmail.com'
 	const fullName = resolveUserProfile()?.displayName ?? t('homeDefaultName')
 	const nameParts = fullName.split(' ')
-	const firstName = nameParts[0] ?? 'Aleks'
-	const lastName = nameParts[1] ?? 'German'
+	const [firstName, setFirstName] = useState(nameParts[0] ?? '')
+	const [lastName, setLastName] = useState(nameParts[1] ?? '')
+	const originalFirst = nameParts[0] ?? ''
+	const originalLast = nameParts[1] ?? ''
+	const hasNameChanges = firstName !== originalFirst || lastName !== originalLast
+	const [isSaveBusy, setIsSaveBusy] = useState(false)
 	const [isLocaleOpen, setIsLocaleOpen] = useState(false)
 	const [isDeleteDrawerOpen, setIsDeleteDrawerOpen] = useState(false)
 	const [isLogoutBusy, setIsLogoutBusy] = useState(false)
@@ -3421,6 +3425,13 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 		document.addEventListener('pointerdown', onPointerDown)
 		return () => document.removeEventListener('pointerdown', onPointerDown)
 	}, [isLocaleOpen])
+
+	// Save updated first/last name to backend profile state.
+	const saveName = async () => {
+		setIsSaveBusy(true)
+		await saveProfileToBackend(firstName, lastName)
+		setIsSaveBusy(false)
+	}
 
 	// Revoke auth sessions when possible and always reset local login state.
 	const logout = async () => {
@@ -3483,18 +3494,22 @@ function ProfileDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile
 
 					<div className="profile-data-field">
 						<label>{t('profileDataFirstName')}</label>
-						<div className="profile-data-input">{firstName}</div>
+						<div className="profile-data-input"><input onChange={(e) => setFirstName(e.target.value)} type="text" value={firstName} /></div>
 					</div>
 
 					<div className="profile-data-field">
 						<label>{t('profileDataLastName')}</label>
-						<div className="profile-data-input">{lastName}</div>
+						<div className="profile-data-input"><input onChange={(e) => setLastName(e.target.value)} type="text" value={lastName} /></div>
 					</div>
 
 					<div className="profile-data-field">
 						<label>{t('emailLabel')}</label>
 						<div className="profile-data-input">{email}</div>
 					</div>
+
+					{hasNameChanges ? (
+						<button className="profile-save-button" disabled={isSaveBusy} onClick={saveName} type="button">{'Сохранить'}</button>
+					) : null}
 				</section>
 
 				<section className="profile-section" aria-label={t('profileSectionExtra')}>
