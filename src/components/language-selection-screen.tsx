@@ -3733,6 +3733,7 @@ function EntryFlow () {
 		setSelectedVisaPassport(found)
 		setPassportDraft(found)
 		setReviewPassport(found)
+		setPassportFlowMode('visa-create')
 		navigate('home', 'passports-step-one')
 	}
 
@@ -3966,21 +3967,18 @@ function EntryFlow () {
 
 	// Save current passport draft and route according to active passport flow.
 	const savePassportDraft = async () => {
-		setPassportsError('')
+		if(passportFlowMode === 'visa-create') {
+			setSelectedVisaPassport(passportDraft)
+			setReviewPassport(passportDraft)
+			navigate('home', 'visa-personal-one')
+			return
+		}
 
+		setPassportsError('')
 		try {
 			const saved = await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
 			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
 			await loadPassports()
-			if(passportFlowMode === 'visa-create') {
-				const passport = mapPassportDto(saved)
-				setSelectedVisaPassport(passport)
-				setPassportDraft(passport)
-				setReviewPassport(passport)
-				navigate('home', 'visa-personal-one')
-				return
-			}
-
 			navigate('home', 'passports-list')
 		} catch (error) {
 			setPassportsError(error instanceof Error ? error.message : 'Failed to save passport')
