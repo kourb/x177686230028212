@@ -3754,12 +3754,12 @@ function EntryFlow () {
 	}
 
 	const visaPassportComplete = Boolean(reviewPassport.firstName && reviewPassport.lastName && reviewPassport.passportNumber)
-	const visaPersonalComplete = Boolean(reviewPersonal.birthPlaceValue && reviewPersonal.emailValue && reviewPersonal.phoneValue)
-	const visaTripComplete = Boolean(reviewTrip.dateValue && reviewTrip.exitDateValue && reviewTrip.purposeValue)
-	const visaDocsComplete = Boolean(reviewDocs.hotelValue || reviewDocs.ticketsValue || reviewDocs.insuranceValue)
+	const visaPersonalComplete = Boolean(reviewPersonal.birthPlaceValue && reviewPersonal.maritalValue && reviewPersonal.professionValue && reviewPersonal.employerValue && reviewPersonal.workAddressValue && reviewPersonal.residenceAddressValue && reviewPersonal.phoneValue && reviewPersonal.emailValue)
+	const visaTripComplete = Boolean(reviewTrip.purposeValue && reviewTrip.dateValue && reviewTrip.exitDateValue && reviewTrip.residenceCountryValue && reviewTrip.prevVisasValue)
+	const visaDocsComplete = Boolean(reviewDocs.hotelFile || reviewDocs.flightsFile || reviewDocs.insuranceFile)
 	const visaChoiceComplete = Boolean(selectedVisaCitizenship && selectedVisaResidence && selectedVisaDestinationLabel && selectedVisaType)
 	const visaPhotoComplete = Boolean(visaPhotoDataUrl)
-	const visaReviewComplete = visaChoiceComplete && visaPassportComplete && visaPersonalComplete && visaTripComplete && visaPhotoComplete
+	const visaReviewComplete = visaChoiceComplete && visaPassportComplete && visaPersonalComplete && visaTripComplete && visaDocsComplete && visaPhotoComplete
 	const visaSubmitted = Boolean(activeDraftId && (activeDraftStatus === 'checking' || activeDraftStatus === 'ready' || activeDraftStatus === 'error' || activeTab === 'visa-check' || activeTab === 'visa-verified' || activeTab === 'visa-rejected'))
 	const isVisaDesktopFlow = activeTab.startsWith('visa-') || activeTab === 'passport-camera' || activeTab === 'passport-recognition' || (activeTab.startsWith('passports') && (passportListMode === 'visa' || passportFlowMode === 'visa-create'))
 	const activeVisaStep = activeTab === 'visa-start' || activeTab === 'visa-type'
@@ -3787,7 +3787,7 @@ function EntryFlow () {
 		{ label: 'Выбор гражданства, направления и типа визы', tab: 'visa-start', active: activeVisaStep === 0, completed: visaChoiceComplete },
 		{ label: 'Заполнение паспортных данных', tab: 'visa-passport', active: activeVisaStep === 1, completed: visaPassportComplete },
 		{ label: 'Заполнение личных данных', tab: 'visa-personal-one', active: activeVisaStep === 2, completed: visaPersonalComplete },
-		{ label: 'Заполнение данных о поездке', tab: 'visa-trip', active: activeVisaStep === 3, completed: visaTripComplete || visaDocsComplete },
+		{ label: 'Заполнение данных о поездке', tab: 'visa-trip', active: activeVisaStep === 3, completed: visaTripComplete && visaDocsComplete },
 		{ label: 'Добавление фотографии для визы', tab: 'visa-photo', active: activeVisaStep === 4, completed: visaPhotoComplete },
 		{ label: 'Проверка всех заполненных данных', tab: 'visa-review-passport', active: activeVisaStep === 5, completed: visaReviewComplete },
 		{ label: 'Добавление заявителей на визу', tab: 'visa-applicants', active: activeVisaStep === 6, completed: currentApplicants.length > 0 },

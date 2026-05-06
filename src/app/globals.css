@@ -2905,6 +2905,12 @@ html:not(.motion-disabled) .calendar-sheet {
 		transform: translateX(-50%);
 	}
 
+	.app-content:has(.desktop-visa-chrome) > .passports-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-visa-chrome) > .passports-screen > .desktop-rail,
+	.app-content:has(.desktop-visa-chrome) > .passport-camera-screen > .desktop-rail {
+		display: none;
+	}
+
 	.app-content:has(.desktop-global-chrome) > section {
 		grid-column: 2;
 		grid-row: 1;
