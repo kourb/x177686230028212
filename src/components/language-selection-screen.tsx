@@ -1337,6 +1337,14 @@ function DesktopSidebar ({ active, onOpenDocuments, onOpenHome, onOpenProfile }:
 	</aside>
 }
 
+// Render global desktop chrome around all signed-in screens.
+function DesktopGlobalChrome ({ active, onOpenDocuments, onOpenHome, onOpenProfile }: { active: HomeRootTab, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void }) {
+	return <div className="desktop-global-chrome" aria-hidden={false}>
+		<DesktopSidebar active={active} onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+		<DesktopRail />
+	</div>
+}
+
 // Render bottom tabbar with an animated marker that survives screen remounts.
 function HomeTabbar ({ active, onOpenHome, onOpenDocuments, onOpenProfile }: { active: HomeRootTab, onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfile: () => void }) {
 	const index = active === 'home' ? 0 : active === 'documents' ? 1 : 2
@@ -3414,6 +3422,7 @@ function EntryFlow () {
 	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
 	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
 	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
+	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab.startsWith('passports') ? 'profile' : 'home'
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -3983,6 +3992,7 @@ function EntryFlow () {
 											: activeTab === 'passports-review'
 											? <PassportReviewScreen actionLabel={passportFlowMode === 'edit' ? t('passportEdit') : t('passportAddButton')} draft={passportDraft} onBack={() => goBack('passports-step-two')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onSave={savePassportDraft} />
 											: <PassportEditScreen draft={passportDraft} onBack={() => goBack('passports-list')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onChange={updatePassportDraftField} onSave={savePassportDraft} />}
+			{step === 'home' ? <DesktopGlobalChrome active={desktopActiveTab} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} /> : null}
 		</>
 	)
 }

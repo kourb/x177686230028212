@@ -528,6 +528,10 @@ body {
 	display: none;
 }
 
+.desktop-global-chrome {
+	display: none;
+}
+
 .home-scroll {
 	overflow-y: auto;
 	padding-bottom: 12px;
@@ -2659,6 +2663,132 @@ html:not(.motion-disabled) .calendar-sheet {
 		overflow: hidden;
 	}
 
+	.app-content:has(.desktop-global-chrome) {
+		width: 100%;
+		height: 100dvh;
+		max-height: none;
+		display: grid;
+		grid-template-columns: minmax(248px, 302px) minmax(560px, 668px) minmax(248px, 302px);
+		justify-content: center;
+		align-items: start;
+		overflow: hidden;
+		background: #fff;
+	}
+
+	.desktop-global-chrome {
+		display: contents;
+	}
+
+	.desktop-global-chrome .home-desktop-sidebar,
+	.desktop-global-chrome .desktop-rail {
+		display: flex;
+		flex-direction: column;
+		gap: 24px;
+		padding: 32px;
+		min-width: 0;
+		height: min(895px, 100dvh);
+		grid-row: 1;
+	}
+
+	.desktop-global-chrome .home-desktop-sidebar {
+		grid-column: 1;
+		border-right: 1px solid rgb(0 29 71 / 0.16);
+		padding-left: 0;
+	}
+
+	.desktop-global-chrome .desktop-rail {
+		grid-column: 3;
+		border-left: 1px solid rgb(0 29 71 / 0.16);
+		padding-right: 0;
+	}
+
+	.app-content:has(.desktop-global-chrome) > section {
+		grid-column: 2;
+		grid-row: 1;
+		width: min(668px, calc(100vw - 560px));
+		height: min(895px, 100dvh);
+		margin: 0;
+		justify-self: center;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .visa-screen,
+	.app-content:has(.desktop-global-chrome) > .documents-screen,
+	.app-content:has(.desktop-global-chrome) > .profile-screen,
+	.app-content:has(.desktop-global-chrome) > .profile-data-screen,
+	.app-content:has(.desktop-global-chrome) > .passports-screen,
+	.app-content:has(.desktop-global-chrome) > .dev-screen {
+		display: grid;
+		grid-template-columns: 1fr;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .home-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .home-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .documents-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .documents-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .profile-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .profile-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .profile-data-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .profile-data-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .passports-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .passports-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .dev-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .dev-screen > .desktop-rail {
+		display: none;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .home-screen .home-scroll,
+	.app-content:has(.desktop-global-chrome) > .documents-screen .documents-scroll,
+	.app-content:has(.desktop-global-chrome) > .profile-screen .profile-scroll,
+	.app-content:has(.desktop-global-chrome) > .profile-data-screen .profile-data-scroll,
+	.app-content:has(.desktop-global-chrome) > .passports-screen .passports-scroll,
+	.app-content:has(.desktop-global-chrome) > .dev-screen .dev-scroll,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-scroll {
+		width: 100%;
+		height: 100%;
+		padding: 32px;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .home-screen .home-desktop-breadcrumbs {
+		display: flex;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .home-screen .home-hero-wrap,
+	.app-content:has(.desktop-global-chrome) > .home-screen .home-copy,
+	.app-content:has(.desktop-global-chrome) > .home-screen .home-cta,
+	.app-content:has(.desktop-global-chrome) > .documents-screen .documents-top-copy,
+	.app-content:has(.desktop-global-chrome) > .profile-screen .profile-header,
+	.app-content:has(.desktop-global-chrome) > .profile-screen .profile-section,
+	.app-content:has(.desktop-global-chrome) > .profile-data-screen .profile-data-block,
+	.app-content:has(.desktop-global-chrome) > .profile-data-screen .profile-section,
+	.app-content:has(.desktop-global-chrome) > .passports-screen .passports-toolbar,
+	.app-content:has(.desktop-global-chrome) > .passports-screen .passports-empty,
+	.app-content:has(.desktop-global-chrome) > .passports-screen .passports-stack,
+	.app-content:has(.desktop-global-chrome) > .dev-screen .dev-toolbar,
+	.app-content:has(.desktop-global-chrome) > .dev-screen .dev-content,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-toolbar,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-form,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-passport-rules,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-passport-actions,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-bottom {
+		width: 100%;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-bottom {
+		padding: 0 32px 32px;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .visa-screen .passport-primary,
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-secondary-button {
+		width: 100%;
+		margin: 0;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-toolbar-controls {
+		padding: 0;
+	}
+
 	.home-screen {
 		width: min(1272px, 100vw - 64px);
 		height: min(895px, 100dvh);
@@ -2906,6 +3036,12 @@ html:not(.motion-disabled) .calendar-sheet {
 
 	.dev-screen .dev-content {
 		padding-inline: 0;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .home-screen {
+		display: grid;
+		grid-template-columns: 1fr;
+		grid-template-rows: 1fr auto;
 	}
 
 	.home-desktop-sidebar,
