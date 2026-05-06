@@ -165,9 +165,9 @@ type StatusLogEntryDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support'
 
-const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit']
+const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support']
 
 type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
 
@@ -1394,7 +1394,7 @@ function typingDelay (text: string) {
 }
 
 // Render support chat widget with randomized Big Smoke script.
-function SupportChat ({ onClose }: { onClose: () => void }) {
+function SupportChat ({ onClose, embed }: { onClose: () => void, embed?: boolean }) {
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [input, setInput] = useState('')
 	const [joined, setJoined] = useState(false)
@@ -1450,17 +1450,28 @@ function SupportChat ({ onClose }: { onClose: () => void }) {
 	}
 
 	return (
-		<div className="support-chat">
-			<header className="support-chat-header">
-				{joined ? <Image alt={BIG_SMOKE.name} className="support-chat-avatar" height={36} src={BIG_SMOKE.avatar} unoptimized width={36} /> : <div className="support-chat-avatar-placeholder" />}
-				<div className="support-chat-meta">
-					{joined ? <b>{BIG_SMOKE.name}</b> : <b>{'Поддержка'}</b>}
-					<span>{isTyping ? 'набирает сообщение...' : joined ? 'онлайн' : 'подключается...'}</span>
-				</div>
-				<button className="support-chat-close" onClick={onClose} type="button">{'✕'}</button>
-			</header>
+		<div className={embed ? 'support-chat is-embed' : 'support-chat'}>
+			{embed ? null : (
+				<header className="support-chat-header">
+					{joined ? <Image alt={BIG_SMOKE.name} className="support-chat-avatar" height={36} src={BIG_SMOKE.avatar} unoptimized width={36} /> : <div className="support-chat-avatar-placeholder" />}
+					<div className="support-chat-meta">
+						{joined ? <b>{BIG_SMOKE.name}</b> : <b>{'Поддержка'}</b>}
+						<span>{isTyping ? 'набирает сообщение...' : joined ? 'онлайн' : 'подключается...'}</span>
+					</div>
+					<button className="support-chat-close" onClick={onClose} type="button">{'✕'}</button>
+				</header>
+			)}
 
 			<div className="support-chat-body">
+				{embed ? (
+					<div className="support-chat-operator-row">
+						{joined ? <Image alt={BIG_SMOKE.name} className="support-chat-avatar" height={40} src={BIG_SMOKE.avatar} unoptimized width={40} /> : <div className="support-chat-avatar-placeholder" style={{ width: 40, height: 40 }} />}
+						<div className="support-chat-meta">
+							{joined ? <b>{BIG_SMOKE.name}</b> : <b>{'Поддержка'}</b>}
+							<span>{isTyping ? 'набирает сообщение...' : joined ? 'онлайн' : 'подключается...'}</span>
+						</div>
+					</div>
+				) : null}
 				{joined ? <p className="support-chat-system">{'Оператор присоединился'}</p> : <p className="support-chat-system">{'Ищем оператора...'}</p>}
 				{messages.map((msg) => (
 					<div className={`support-chat-msg is-${msg.from}`} key={msg.id}>
@@ -1484,6 +1495,61 @@ function SupportChat ({ onClose }: { onClose: () => void }) {
 				<button className="support-chat-send" onClick={send} type="button">{'→'}</button>
 			</div>
 		</div>
+	)
+}
+
+const FAQ_ITEMS = [
+	{ q: 'Сколько времени занимает оформление визы?', a: 'В среднем 5–15 рабочих дней. Зависит от страны назначения и загруженности консульства.' },
+	{ q: 'Какие документы нужны для шенгенской визы?', a: 'Загранпаспорт, фото, бронирование отеля и авиабилетов, медицинская страховка, справка с работы или выписка с банковского счёта.' },
+	{ q: 'Можно ли подать заявку онлайн?', a: 'Заполнить анкету и загрузить документы можно онлайн. Биометрию и оригиналы нужно предоставить лично в визовом центре.' },
+	{ q: 'Что делать если визу отказали?', a: 'Можно подать апелляцию или подать заявку повторно, устранив причину отказа. Причина отказа указывается в уведомлении.' },
+	{ q: 'Как долго действует шенгенская виза?', a: 'Обычно 30–90 дней. Многократные визы выдаются на срок до 5 лет при наличии хорошей визовой истории.' },
+]
+
+// Render support screen with FAQ and Chat tabs.
+function SupportScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: { onBack: () => void, onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfile: () => void }) {
+	const [tab, setTab] = useState<'faq' | 'chat'>('faq')
+	const [openFaq, setOpenFaq] = useState<number | null>(null)
+
+	return (
+		<section aria-label="Support" className="support-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+
+			<div className="support-scroll">
+				<header className="support-toolbar">
+					<button aria-label="Назад" className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<h2>{'Помощь'}</h2>
+				</header>
+
+				<div className="support-tabs">
+					<button className={`support-tab${tab === 'faq' ? ' is-active' : ''}`} onClick={() => setTab('faq')} type="button">{'FAQ'}</button>
+					<button className={`support-tab${tab === 'chat' ? ' is-active' : ''}`} onClick={() => setTab('chat')} type="button">{'Support'}</button>
+				</div>
+
+				{tab === 'faq' ? (
+					<div className="support-faq">
+						{FAQ_ITEMS.map((item, i) => (
+							<div className={`support-faq-item${openFaq === i ? ' is-open' : ''}`} key={i}>
+								<button className="support-faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)} type="button">
+									<span>{item.q}</span>
+									<Image alt="" className={`support-faq-chevron${openFaq === i ? ' is-open' : ''}`} height={20} src="/assets/icon-chevron-right.svg" unoptimized width={20} />
+								</button>
+								{openFaq === i ? <p className="support-faq-a">{item.a}</p> : null}
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="support-chat-embed">
+						<SupportChat onClose={() => setTab('faq')} embed />
+					</div>
+				)}
+			</div>
+
+			<DesktopRail />
+			<HomeTabbar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+		</section>
 	)
 }
 
@@ -1904,7 +1970,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 }
 
 // Render profile/settings screen from Figma node 562:10062.
-function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpenDeveloper, onOpenPassports }: { onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void }) {
+function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpenDeveloper, onOpenPassports, onOpenSupport }: { onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfileData: () => void, onOpenDeveloper: () => void, onOpenPassports: () => void, onOpenSupport: () => void }) {
 	const { t } = useI18n()
 
 	return (
@@ -1957,13 +2023,13 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
 						</button>
 
-						<button className="profile-row" type="button">
-							<span className="profile-row-left">
-								<Image alt="Support" className="profile-row-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
-								<b>{t('profileItemHelp')}</b>
-							</span>
-							<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
-						</button>
+					<button className="profile-row" onClick={onOpenSupport} type="button">
+						<span className="profile-row-left">
+							<Image alt="Support" className="profile-row-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
+							<b>{t('profileItemHelp')}</b>
+						</span>
+						<Image alt="Chevron" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+					</button>
 
 						<button className="profile-row" onClick={onOpenDeveloper} type="button">
 							<span className="profile-row-left">
@@ -3783,7 +3849,7 @@ function EntryFlow () {
 	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
 	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
 	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
-	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab.startsWith('passports') ? 'profile' : 'home'
+	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'support' || activeTab.startsWith('passports') ? 'profile' : 'home'
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -4406,13 +4472,15 @@ function EntryFlow () {
 						: activeTab === 'visa-documents-ready'
 							? <VisaDocumentsReadyScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('documents')} onContinue={() => navigate('home', 'documents')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'profile'
-								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} />
+								? <ProfileScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfileData={() => navigate('home', 'profile-data')} onOpenDeveloper={() => navigate('home', 'developer-mode')} onOpenPassports={openPassportsList} onOpenSupport={() => navigate('home', 'support')} />
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
 									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onOpenData={() => navigate('home', 'developer-data')} />
 								: activeTab === 'developer-data'
 								? <DeveloperDataScreen onBack={() => goBack('developer-mode')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onClearDrafts={() => { setSavedDrafts(persistLocalDrafts([])); setActiveDraftId(null) }} />
+								: activeTab === 'support'
+								? <SupportScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 									: activeTab === 'passports-step-one'

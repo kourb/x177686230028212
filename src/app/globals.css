@@ -1691,6 +1691,142 @@ html:not(.motion-disabled) .visa-progress-trip::after {
 	color: #f50d00;
 }
 
+.support-screen {
+	position: relative;
+	height: 100%;
+	display: grid;
+	grid-template-rows: 1fr auto;
+	background: #fff;
+	overflow: hidden;
+}
+
+.support-scroll {
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
+.support-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 16px 16px 12px;
+}
+
+.support-toolbar h2 {
+	margin: 0;
+	font-size: 17px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+}
+
+.support-tabs {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	height: 56px;
+	border-bottom: 1px solid rgb(0 29 71 / 0.1);
+	padding: 0 16px;
+}
+
+.support-tab {
+	all: unset;
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 17px;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	font-weight: 400;
+	color: rgb(0 29 71 / 0.52);
+	cursor: pointer;
+}
+
+.support-tab.is-active {
+	color: var(--ink);
+}
+
+.support-tab.is-active::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	height: 2px;
+	background: var(--ink);
+}
+
+.support-faq {
+	display: grid;
+	align-content: start;
+	padding: 8px 0;
+	overflow-y: auto;
+	flex: 1;
+}
+
+.support-faq-item {
+	border-bottom: 1px solid rgb(0 29 71 / 0.08);
+}
+
+.support-faq-q {
+	all: unset;
+	width: 100%;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 14px 16px;
+	font-size: 15px;
+	font-weight: 500;
+	color: var(--ink);
+	cursor: pointer;
+	line-height: 1.4;
+}
+
+.support-faq-chevron {
+	flex-shrink: 0;
+	transition: transform 0.2s;
+}
+
+.support-faq-chevron.is-open {
+	transform: rotate(90deg);
+}
+
+.support-faq-a {
+	margin: 0;
+	padding: 0 16px 14px;
+	font-size: 14px;
+	line-height: 1.5;
+	color: rgb(0 29 71 / 0.64);
+}
+
+.support-chat-embed {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.support-chat.is-embed {
+	position: static;
+	width: auto;
+	height: 100%;
+	box-shadow: none;
+	border: none;
+	border-radius: 0;
+}
+
+.support-chat-operator-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 14px;
+	border-bottom: 1px solid rgb(0 29 71 / 0.08);
+	flex-shrink: 0;
+}
+
 .profile-save-button {
 	all: unset;
 	width: 100%;
@@ -3141,7 +3277,8 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .profile-screen,
 	.app-content:has(.desktop-global-chrome) > .profile-data-screen,
 	.app-content:has(.desktop-global-chrome) > .passports-screen,
-	.app-content:has(.desktop-global-chrome) > .dev-screen {
+	.app-content:has(.desktop-global-chrome) > .dev-screen,
+	.app-content:has(.desktop-global-chrome) > .support-screen {
 		display: grid;
 		grid-template-columns: 1fr;
 	}
@@ -3157,7 +3294,9 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .passports-screen > .home-desktop-sidebar,
 	.app-content:has(.desktop-global-chrome) > .passports-screen > .desktop-rail,
 	.app-content:has(.desktop-global-chrome) > .dev-screen > .home-desktop-sidebar,
-	.app-content:has(.desktop-global-chrome) > .dev-screen > .desktop-rail {
+	.app-content:has(.desktop-global-chrome) > .dev-screen > .desktop-rail,
+	.app-content:has(.desktop-global-chrome) > .support-screen > .home-desktop-sidebar,
+	.app-content:has(.desktop-global-chrome) > .support-screen > .desktop-rail {
 		display: none;
 	}
 
@@ -3167,7 +3306,8 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .profile-data-screen .profile-data-scroll,
 	.app-content:has(.desktop-global-chrome) > .passports-screen .passports-scroll,
 	.app-content:has(.desktop-global-chrome) > .dev-screen .dev-scroll,
-	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-scroll {
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-scroll,
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-scroll {
 		width: 100%;
 		height: 100%;
 		padding: 32px;
@@ -3196,8 +3336,29 @@ html:not(.motion-disabled) .calendar-sheet {
 	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-form,
 	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-passport-rules,
 	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-passport-actions,
-	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-bottom {
+	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-bottom,
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-toolbar,
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-tabs,
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-faq,
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-chat-embed {
 		width: 100%;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-scroll {
+		padding: 32px;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-toolbar {
+		padding: 0 0 12px;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .support-screen .support-tabs {
+		padding: 0;
+		margin: 0 0 0;
+	}
+
+	.app-content:has(.desktop-global-chrome) > .support-screen .home-tabbar {
+		display: none;
 	}
 
 	.app-content:has(.desktop-global-chrome) > .visa-screen .visa-bottom {
