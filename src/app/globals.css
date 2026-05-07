@@ -2812,6 +2812,80 @@ html:not(.motion-disabled) .calendar-sheet {
 	color: #cb2431;
 }
 
+.dev-api-group {
+	border: 1px solid rgb(0 29 71 / 0.12);
+	border-radius: 12px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.dev-api-row {
+	border-bottom: 1px solid rgb(0 29 71 / 0.08);
+}
+
+.dev-api-row:last-child {
+	border-bottom: none;
+}
+
+.dev-api-row-header {
+	all: unset;
+	width: 100%;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 12px 14px;
+	cursor: pointer;
+}
+
+.dev-api-row-header code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+	font-size: 13px;
+	color: #0066FF;
+}
+
+.dev-api-chevron {
+	font-size: 18px;
+	color: rgb(0 29 71 / 0.4);
+	line-height: 1;
+	transition: transform 0.15s;
+	flex-shrink: 0;
+	transform: rotate(0deg);
+}
+
+.dev-api-chevron.is-open {
+	transform: rotate(90deg);
+}
+
+.dev-api-row-body {
+	padding: 0 14px 12px;
+	display: grid;
+	gap: 8px;
+}
+
+.dev-api-row-body pre {
+	margin: 0;
+	max-height: 360px;
+	overflow: auto;
+	white-space: pre;
+	font-size: 11px;
+	line-height: 1.35;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+	color: var(--ink);
+	background: rgb(0 29 71 / 0.03);
+	border-radius: 8px;
+	padding: 10px;
+}
+
+.dev-api-reload {
+	all: unset;
+	font-size: 12px;
+	color: #0066FF;
+	cursor: pointer;
+	padding: 4px 0;
+}
+
 .dev-json-block {
 	border: 1px solid rgb(0 29 71 / 0.12);
 	border-radius: 12px;

@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
+import { COUNTRY_OPTIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
@@ -122,6 +122,8 @@ type CountryDto = {
 	id: number | string
 	code: string
 	name: string
+	isSchengen: boolean
+	consularFee?: number | string | null
 }
 
 type VisaTypeDto = {
@@ -165,11 +167,11 @@ type StatusLogEntryDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'developer-api' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings'
 
-const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings']
+const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'developer-api', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings']
 
-type VisaDestinationCode = 'italy' | 'france' | 'spain' | 'hungary' | 'greece'
+type VisaDestinationCode = string
 
 type VisaTypeCode = 'type-c' | 'type-d'
 
@@ -213,80 +215,37 @@ type VisaTypeDetail = {
 	consularFee: string
 }
 
-const VISA_DESTINATION_OPTIONS: { code: VisaDestinationCode, labelKey: 'visaDestinationItaly' | 'visaDestinationFrance' | 'visaDestinationSpain' | 'visaDestinationHungary' | 'visaDestinationGreece', flagSrc: string }[] = [
-	{ code: 'italy', labelKey: 'visaDestinationItaly', flagSrc: '/assets/flag-italy.svg' },
-	{ code: 'france', labelKey: 'visaDestinationFrance', flagSrc: '/assets/flag-france.svg' },
-	{ code: 'spain', labelKey: 'visaDestinationSpain', flagSrc: '/assets/flag-spain.svg' },
-	{ code: 'hungary', labelKey: 'visaDestinationHungary', flagSrc: '/assets/flag-hungary.svg' },
-	{ code: 'greece', labelKey: 'visaDestinationGreece', flagSrc: '/assets/flag-greece.svg' },
-]
-
-const VISA_DESTINATION_VISA_TEXT: Record<LocaleCode, Record<VisaDestinationCode, string>> = {
-	ru: {
-		italy: 'в Италию',
-		france: 'во Францию',
-		spain: 'в Испанию',
-		hungary: 'в Венгрию',
-		greece: 'в Грецию',
-	},
-	en: {
-		italy: 'to Italy',
-		france: 'to France',
-		spain: 'to Spain',
-		hungary: 'to Hungary',
-		greece: 'to Greece',
-	},
-	de: {
-		italy: 'fur Italien',
-		france: 'fur Frankreich',
-		spain: 'fur Spanien',
-		hungary: 'fur Ungarn',
-		greece: 'fur Griechenland',
-	},
-	fr: {
-		italy: 'pour l Italie',
-		france: 'pour la France',
-		spain: 'pour l Espagne',
-		hungary: 'pour la Hongrie',
-		greece: 'pour la Grece',
-	},
-	es: {
-		italy: 'para Italia',
-		france: 'para Francia',
-		spain: 'para Espana',
-		hungary: 'para Hungria',
-		greece: 'para Grecia',
-	},
-	it: {
-		italy: 'per Italia',
-		france: 'per Francia',
-		spain: 'per Spagna',
-		hungary: 'per Ungheria',
-		greece: 'per Grecia',
-	},
+// Flag asset paths keyed by ISO 3166-1 alpha-3 country code.
+const SCHENGEN_FLAG_ASSETS: Record<string, string> = {
+	ITA: '/assets/flag-italy.svg',
+	FRA: '/assets/flag-france.svg',
+	ESP: '/assets/flag-spain.svg',
+	HUN: '/assets/flag-hungary.svg',
+	GRC: '/assets/flag-greece.svg',
 }
 
-const VISA_TYPE_DETAILS: Record<VisaDestinationCode, Record<VisaTypeCode, VisaTypeDetail>> = {
-	italy: {
-		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
-		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
-	},
-	france: {
-		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
-		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
-	},
-	spain: {
-		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
-		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
-	},
-	hungary: {
-		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
-		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
-	},
-	greece: {
-		'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
-		'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
-	},
+// Localized preposition for visa title, keyed by ISO alpha-3 destination code.
+const VISA_DESTINATION_VISA_TEXT: Record<LocaleCode, Record<string, string>> = {
+	ru: { ITA: 'в Италию', FRA: 'во Францию', ESP: 'в Испанию', HUN: 'в Венгрию', GRC: 'в Грецию' },
+	en: { ITA: 'to Italy', FRA: 'to France', ESP: 'to Spain', HUN: 'to Hungary', GRC: 'to Greece' },
+	de: { ITA: 'für Italien', FRA: 'für Frankreich', ESP: 'für Spanien', HUN: 'für Ungarn', GRC: 'für Griechenland' },
+	fr: { ITA: "pour l'Italie", FRA: 'pour la France', ESP: "pour l'Espagne", HUN: 'pour la Hongrie', GRC: 'pour la Grèce' },
+	es: { ITA: 'para Italia', FRA: 'para Francia', ESP: 'para España', HUN: 'para Hungría', GRC: 'para Grecia' },
+	it: { ITA: 'per l\'Italia', FRA: 'per la Francia', ESP: 'per la Spagna', HUN: 'per l\'Ungheria', GRC: 'per la Grecia' },
+}
+
+// Default visa type details used as fallback for any Schengen destination.
+const DEFAULT_VISA_TYPE_DETAIL: Record<VisaTypeCode, VisaTypeDetail> = {
+	'type-c': { durationDays: 90, entryKey: 'single', consularFee: '8297.34₽' },
+	'type-d': { durationDays: 365, entryKey: 'multiple', consularFee: '12296.06₽' },
+}
+
+const VISA_TYPE_DETAILS: Record<string, Record<VisaTypeCode, VisaTypeDetail>> = {
+	ITA: DEFAULT_VISA_TYPE_DETAIL,
+	FRA: DEFAULT_VISA_TYPE_DETAIL,
+	ESP: DEFAULT_VISA_TYPE_DETAIL,
+	HUN: DEFAULT_VISA_TYPE_DETAIL,
+	GRC: DEFAULT_VISA_TYPE_DETAIL,
 }
 
 const VISA_WARNING_TEXT: Record<LocaleCode, { subtitle: string, duration: string, entry: Record<VisaTypeDetail['entryKey'], string>, fee: string, confirm: string }> = {
@@ -363,27 +322,23 @@ let lastHomeRootTabIndex = 0
 let lastVisaTripProgress = 0
 
 // Compose visa type title for the selected destination country.
-function resolveVisaTypeTitle (locale: LocaleCode, destination: VisaDestinationCode, type: 'C' | 'D') {
-	if(locale === 'ru') return `Шенгенская виза ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Тип ${type})`
-	if(locale === 'en') return `Schengen visa ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Type ${type})`
-	if(locale === 'de') return `Schengen-Visum ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Typ ${type})`
-	if(locale === 'fr') return `Visa Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Type ${type})`
-	if(locale === 'es') return `Visado Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Tipo ${type})`
-	return `Visto Schengen ${VISA_DESTINATION_VISA_TEXT[locale][destination]} (Tipo ${type})`
-}
-
-// Compose Russian visa title from selected destination database label.
-function resolveVisaTitleRu (destinationLabel: string, type: VisaTypeCode) {
-	if(!destinationLabel.trim()) return `Шенгенская виза (Тип ${type === 'type-c' ? 'C' : 'D'})`
-	return `Шенгенская виза ${VISA_COUNTRY_FORMS[destinationLabel] ?? `в ${destinationLabel}`} (Тип ${type === 'type-c' ? 'C' : 'D'})`
+// Compose localized visa type title; falls back to generic if destination preposition is unknown.
+function resolveVisaTypeTitle (locale: LocaleCode, destination: string, type: 'C' | 'D') {
+	const prep = VISA_DESTINATION_VISA_TEXT[locale]?.[destination]
+	if(locale === 'ru') return prep ? `Шенгенская виза ${prep} (Тип ${type})` : `Шенгенская виза (Тип ${type})`
+	if(locale === 'en') return prep ? `Schengen visa ${prep} (Type ${type})` : `Schengen visa (Type ${type})`
+	if(locale === 'de') return prep ? `Schengen-Visum ${prep} (Typ ${type})` : `Schengen-Visum (Typ ${type})`
+	if(locale === 'fr') return prep ? `Visa Schengen ${prep} (Type ${type})` : `Visa Schengen (Type ${type})`
+	if(locale === 'es') return prep ? `Visado Schengen ${prep} (Tipo ${type})` : `Visado Schengen (Tipo ${type})`
+	return prep ? `Visto Schengen ${prep} (Tipo ${type})` : `Visto Schengen (Tipo ${type})`
 }
 
 // Resolve visible application status label for documents list.
-function resolveDraftStatusLabel (status: VisaDraft['status']) {
-	if(status === 'checking') return 'На проверке'
-	if(status === 'ready') return 'Документы готовы'
-	if(status === 'error') return 'Требуются правки'
-	return 'Черновик'
+function resolveDraftStatusLabel (status: VisaDraft['status'], t: ReturnType<typeof useI18n>['t']) {
+	if(status === 'checking') return t('draftStatusChecking')
+	if(status === 'ready') return t('draftStatusReady')
+	if(status === 'error') return t('draftStatusError')
+	return t('draftStatusDraft')
 }
 
 let googleScriptPromise: Promise<void> | null = null
@@ -598,15 +553,18 @@ function createDocsDraft (fillTestValues = false) {
 	return { ...VISA_DOCS_TEXT['ru'], hotelFile: '', flightsFile: '', insuranceFile: '' }
 }
 
-// Resolve known backend country aliases across ISO and localized names.
-function resolveBackendCountryAliases (destination: VisaDestinationCode, label: string) {
-	return ({
-		italy: ['IT', 'ITA', 'Italy', 'Italia', 'Италия'],
-		france: ['FR', 'FRA', 'France', 'Франция'],
-		spain: ['ES', 'ESP', 'Spain', 'España', 'Испания'],
-		hungary: ['HU', 'HUN', 'Hungary', 'Венгрия'],
-		greece: ['GR', 'GRC', 'Greece', 'Греция'],
-	} as Record<VisaDestinationCode, string[]>)[destination].concat(label ? [label] : [])
+// Resolve backend country search aliases from cached reference or static fallback.
+function resolveBackendCountryAliases (destination: string, label: string) {
+	const country = refCache.countries?.find((c) => c.code === destination)
+	const fromCache = country ? [country.code, country.name] : []
+	const staticFallback: Record<string, string[]> = {
+		ITA: ['IT', 'ITA', 'Italy', 'Italia', 'Италия'],
+		FRA: ['FR', 'FRA', 'France', 'Франция'],
+		ESP: ['ES', 'ESP', 'Spain', 'España', 'Испания'],
+		HUN: ['HU', 'HUN', 'Hungary', 'Венгрия'],
+		GRC: ['GR', 'GRC', 'Greece', 'Греция'],
+	}
+	return [...new Set([...fromCache, ...(staticFallback[destination] ?? []), ...(label ? [label] : [])])]
 }
 
 // Map backend application status into visible draft status.
@@ -625,7 +583,7 @@ function mapApplicationDtoToDraft (dto: ApplicationDto, local?: VisaDraft): Visa
 		id: dto.publicId,
 		createdAt: Number(dto.createdAt) || Date.now(),
 		visaType: local?.visaType ?? (String(dto.visaTypeCode).toLowerCase().includes('d') ? 'type-d' : 'type-c'),
-		visaDestination: local?.visaDestination ?? (SCHENGEN_DESTINATIONS.find((item) => dto.countryName.toLowerCase().includes(item.label.toLowerCase()))?.code ?? 'italy'),
+		visaDestination: local?.visaDestination ?? (refCache.countries?.find((c) => c.isSchengen && dto.countryName.toLowerCase().includes(c.name.toLowerCase()))?.code ?? 'ITA'),
 		visaDestinationLabel: local?.visaDestinationLabel ?? dto.countryName,
 		status: backendStatus,
 		applicantCount: Number(dto.applicantCount) || local?.applicants.length || 0,
@@ -993,12 +951,33 @@ function useCountryOpts () {
 	return useSyncExternalStore(countryOptsStore.subscribe, countryOptsStore.getSnapshot)
 }
 
-// Load and cache full country name list from backend reference, then notify store.
+type SchengenChip = { code: string, name: string, flagSrc?: string }
+
+// Reactive store for Schengen destination chips, seeded from flag asset keys.
+const schengenChipsStore = (() => {
+	const seed: SchengenChip[] = Object.keys(SCHENGEN_FLAG_ASSETS).map((code) => ({ code, name: code, flagSrc: SCHENGEN_FLAG_ASSETS[code] }))
+	let chips: SchengenChip[] = seed
+	const subs = new Set<() => void>()
+	return {
+		subscribe: (cb: () => void) => { subs.add(cb); return () => { subs.delete(cb) } },
+		getSnapshot: () => chips,
+		set: (list: SchengenChip[]) => { chips = list; subs.forEach((cb) => cb()) },
+	}
+})()
+
+// Hook to access reactive Schengen destination chip list.
+function useSchengenChips () {
+	return useSyncExternalStore(schengenChipsStore.subscribe, schengenChipsStore.getSnapshot)
+}
+
+// Load and cache full country name list from backend reference, then notify stores.
 async function loadCountryOptions (): Promise<string[]> {
 	if(!refCache.countries) {
 		const countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
 		refCache.countries = countries
 		countryOptsStore.set(countries.map((item) => item.name))
+		const chips = countries.filter((c) => c.isSchengen).map((c) => ({ code: c.code, name: c.name, flagSrc: SCHENGEN_FLAG_ASSETS[c.code] }))
+		if(chips.length > 0) schengenChipsStore.set(chips)
 	}
 	return refCache.countries.map((item) => item.name)
 }
@@ -2066,6 +2045,7 @@ function ContinueButton ({ label, canContinue = true, className = 'passport-prim
 function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, selectedDestinationLabel, onBack, onHome, onContinue, canContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: string) => void }) {
 	const { t } = useI18n()
 	const countryOpts = useCountryOpts()
+	const schengenChips = useSchengenChips()
 	const [attempted, setAttempted] = useState(false)
 
 	return (
@@ -2097,10 +2077,10 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 						<div className="visa-popular">
 							<label>{t('visaPopularDestinations')}</label>
 							<div className="visa-chip-row">
-								{VISA_DESTINATION_OPTIONS.map((item) => (
-									<button className={`visa-chip${selectedDestination === item.code ? ' is-active' : ''}`} key={item.code} onClick={() => onSelectDestination(t(item.labelKey))} type="button">
-										<Image alt={t(item.labelKey)} className="visa-chip-flag" height={24} src={item.flagSrc} unoptimized width={24} />
-										<span>{t(item.labelKey)}</span>
+								{schengenChips.map((chip) => (
+									<button className={`visa-chip${selectedDestination === chip.code ? ' is-active' : ''}`} key={chip.code} onClick={() => onSelectDestination(chip.name)} type="button">
+										{chip.flagSrc ? <Image alt={chip.name} className="visa-chip-flag" height={24} src={chip.flagSrc} unoptimized width={24} /> : null}
+										<span>{chip.name}</span>
 									</button>
 								))}
 							</div>
@@ -2119,10 +2099,10 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 // Render visa type selection screen from Figma node 520:15444.
 function VisaTypeScreen ({ selectedDestination, selectedDestinationLabel, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, canContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, canContinue?: boolean, onCloseWarning: () => void, onConfirmWarning: () => void }) {
 	const { locale, t } = useI18n()
-	const selectedDetail = VISA_TYPE_DETAILS[selectedDestination][selectedType]
+	const selectedDetail = (VISA_TYPE_DETAILS[selectedDestination] ?? DEFAULT_VISA_TYPE_DETAIL)[selectedType]
 	const warningText = VISA_WARNING_TEXT[locale]
-	const typeCTitle = locale === 'ru' ? resolveVisaTitleRu(selectedDestinationLabel, 'type-c') : resolveVisaTypeTitle(locale, selectedDestination, 'C')
-	const typeDTitle = locale === 'ru' ? resolveVisaTitleRu(selectedDestinationLabel, 'type-d') : resolveVisaTypeTitle(locale, selectedDestination, 'D')
+	const typeCTitle = resolveVisaTypeTitle(locale, selectedDestination, 'C')
+	const typeDTitle = resolveVisaTypeTitle(locale, selectedDestination, 'D')
 	const selectedTitle = selectedType === 'type-c' ? typeCTitle : typeDTitle
 
 	return (
@@ -2254,7 +2234,7 @@ function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, 
 
 // Render documents and insurance screen from Figma node 521:20268.
 function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, onDeleteDraft }: { onOpenHome: () => void, onOpenProfile: () => void, drafts: VisaDraft[], onContinueDraft: (id: string) => void, onDeleteDraft: (id: string) => void }) {
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const [activeTab, setActiveTab] = useState<'visa' | 'insurance'>('visa')
 	const [deleteDraftId, setDeleteDraftId] = useState<string | null>(null)
 	const hasDrafts = drafts.length > 0
@@ -2284,20 +2264,20 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 						{activeTab === 'visa' ? <div className="documents-cards-group">
 							{drafts.map((draft, i) => {
 								const applicant = draft.applicants[0]
-								const title = applicant?.passport.fullName || draft.reviewPassport?.fullName || `Заявление #${i + 1}`
-								const passport = applicant?.passport.passportNumber || draft.reviewPassport?.passportNumber || 'Не указан'
-								return <article className="draft-card" key={draft.id}>
-									<div className="draft-card-info">
-										<span className={`draft-card-status is-${draft.status ?? 'draft'}`}>{resolveDraftStatusLabel(draft.status)}</span>
-										<div className="draft-card-copy">
-											<h2>{title}</h2>
-											<p>{`Номер загранпаспорта: ${passport}\n${resolveVisaTitleRu(draft.visaDestinationLabel ?? 'Италия', draft.visaType)}`}</p>
-										</div>
+							const title = applicant?.passport.fullName || draft.reviewPassport?.fullName || t('draftDefaultTitle').replace('{n}', String(i + 1))
+							const passport = applicant?.passport.passportNumber || draft.reviewPassport?.passportNumber || t('draftPassportUnset')
+							return <article className="draft-card" key={draft.id}>
+								<div className="draft-card-info">
+									<span className={`draft-card-status is-${draft.status ?? 'draft'}`}>{resolveDraftStatusLabel(draft.status, t)}</span>
+									<div className="draft-card-copy">
+										<h2>{title}</h2>
+										<p>{`${t('passportNumber')}: ${passport}\n${resolveVisaTypeTitle(locale, draft.visaDestination, draft.visaType === 'type-c' ? 'C' : 'D')}`}</p>
 									</div>
+								</div>
 
-									<div className="draft-card-actions">
-										<button className="draft-card-primary" onClick={() => onContinueDraft(draft.id)} type="button">{'К заявке'}</button>
-										<button className="draft-card-secondary" onClick={() => draft.status === 'ready' ? onContinueDraft(draft.id) : setDeleteDraftId(draft.id)} type="button">{draft.status === 'ready' ? 'Скачать PDF' : 'Удалить'}</button>
+								<div className="draft-card-actions">
+									<button className="draft-card-primary" onClick={() => onContinueDraft(draft.id)} type="button">{t('draftContinueButton')}</button>
+										<button className="draft-card-secondary" onClick={() => draft.status === 'ready' ? onContinueDraft(draft.id) : setDeleteDraftId(draft.id)} type="button">{draft.status === 'ready' ? t('downloadPdfButton') : t('deleteDraftButton')}</button>
 									</div>
 								</article>
 							})}
@@ -3158,8 +3138,8 @@ function VisaApplicantsScreen ({ applicants, visaTitle, isEditable, onBack, onHo
 						<div className="applicant-card" key={index}>
 							<div className="applicant-badge">{'100% заполнено'}</div>
 							<div className="applicant-info">
-								<span className="applicant-name">{applicant.passport.fullName || `${applicant.passport.firstName} ${applicant.passport.lastName}`.trim() || 'Заявитель'}</span>
-								<span className="applicant-detail">{`Номер загранпаспорта: ${applicant.passport.passportNumber || '—'}`}</span>
+								<span className="applicant-name">{applicant.passport.fullName || `${applicant.passport.firstName} ${applicant.passport.lastName}`.trim() || t('applicantDefaultName')}</span>
+								<span className="applicant-detail">{`${t('passportNumber')}: ${applicant.passport.passportNumber || '—'}`}</span>
 								<span className="applicant-detail">{visaLabel}</span>
 							</div>
 							{isEditable ? <div className="applicant-actions">
@@ -3180,14 +3160,14 @@ function VisaApplicantsScreen ({ applicants, visaTitle, isEditable, onBack, onHo
 							</button>
 						</div>
 					</div> : null}
-					{isEditable ? <button className="application-cancel-btn" onClick={() => setIsCancelOpen(true)} type="button">{'Отменить заявление'}</button> : null}
+					{isEditable ? <button className="application-cancel-btn" onClick={() => setIsCancelOpen(true)} type="button">{t('applicationCancelButton')}</button> : null}
 				</div>
 			</div>
 		<div className="visa-bottom">
 			<ContinueButton canContinue={canContinue} className="passport-primary" label={isEditable ? 'Сохранить и продолжить' : 'Продолжить'} onContinue={onContinue} />
 		</div>
 			{deleteIndex !== null ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить заявителя?" subtitle="Данные заявителя будут удалены из этого заявления." onCancel={() => setDeleteIndex(null)} onConfirm={deleteApplicant} /> : null}
-			{isCancelOpen ? <ConfirmDrawer confirmLabel="Отменить заявление" title="Отменить заявление?" subtitle="Черновик заявления и добавленные заявители будут удалены." onCancel={() => setIsCancelOpen(false)} onConfirm={onCancelApplication} /> : null}
+			{isCancelOpen ? <ConfirmDrawer confirmLabel={t('applicationCancelButton')} title={t('applicationCancelTitle')} subtitle={t('applicationCancelSubtitle')} onCancel={() => setIsCancelOpen(false)} onConfirm={onCancelApplication} /> : null}
 		</section>
 	)
 }
@@ -3218,7 +3198,7 @@ function ConfirmDrawer ({ title, subtitle, confirmLabel, onCancel, onConfirm }: 
 // Render Step 10 — final application summary and payment selection.
 function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, selectedPayment, onBack, onHome, onSelectPayment, onPay }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, visaTitle: string, selectedPayment: PaymentMethodCode, onBack: () => void, onHome: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onPay: () => void }) {
 	const { t } = useI18n()
-	const detail = VISA_TYPE_DETAILS[visaDestination][visaType]
+	const detail = (VISA_TYPE_DETAILS[visaDestination] ?? DEFAULT_VISA_TYPE_DETAIL)[visaType]
 	const methods: { code: PaymentMethodCode, title: string, subtitle: string, badge?: string }[] = [
 		{ code: 'sbp', title: 'Через СБП', subtitle: 'В приложении банка.', badge: 'Популярное' },
 		{ code: 'card-new', title: 'Новой картой', subtitle: 'Введите данные карты.', badge: 'МИР / Visa / MasterCard' },
@@ -3260,7 +3240,7 @@ function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, 
 						<h2>{'Заявители'}</h2>
 						{applicants.map((applicant, index) => (
 							<div className="payment-applicant" key={index}>
-								<span>{applicant.passport.fullName || `${applicant.passport.firstName} ${applicant.passport.lastName}`.trim() || 'Заявитель'}</span>
+								<span>{applicant.passport.fullName || `${applicant.passport.firstName} ${applicant.passport.lastName}`.trim() || t('applicantDefaultName')}</span>
 								<b>{applicant.passport.passportNumber || '—'}</b>
 							</div>
 						))}
@@ -3323,10 +3303,10 @@ function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome }: { applicant:
 				</header>
 
 				<section aria-label="Application status" className="visa-check-card">
-					<span className="visa-check-badge">{'На проверке'}</span>
-					<div className="visa-check-card-copy">
-						<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
-						<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
+				<span className="visa-check-badge">{t('draftStatusChecking')}</span>
+				<div className="visa-check-card-copy">
+					<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || t('applicantDefaultName')}</h2>
+					<p>{`${t('passportNumber')}: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
 					</div>
 				</section>
 
@@ -3367,24 +3347,17 @@ function VisaCheckResultScreen ({ applicant, visaTitle, isSuccess, onBack, onHom
 					</div>
 				</header>
 
-				<section aria-label="Application result" className={`visa-check-card${isSuccess ? ' is-success' : ' is-error'}`}>
-					<div className="visa-check-main">
-						<span className={`visa-check-badge${isSuccess ? ' is-success' : ' is-error'}`}>{isSuccess ? 'Проверка успешно пройдена' : 'Требуются правки'}</span>
-						<div className="visa-check-card-copy">
-							<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
-							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
-						</div>
+			<section aria-label="Application result" className={`visa-check-card${isSuccess ? ' is-success' : ' is-error'}`}>
+				<div className="visa-check-main">
+					<span className={`visa-check-badge${isSuccess ? ' is-success' : ' is-error'}`}>{isSuccess ? t('draftStatusReady') : t('draftStatusError')}</span>
+					<div className="visa-check-card-copy">
+						<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || t('applicantDefaultName')}</h2>
+						<p>{`${t('passportNumber')}: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
 					</div>
-					{isSuccess ? null : (
-						<div className="visa-check-errors">
-							<h3>{'Найденные ошибки'}</h3>
-							<p>{'Неверно заполненные поля\nв паспорте.\nСтраховка некорректно отображается.'}</p>
-							<button onClick={onEdit} type="button">{'Внести изменения'}</button>
-						</div>
-					)}
-				</section>
+				</div>
+			</section>
 
-				<div className="visa-check-actions">
+			<div className="visa-check-actions">
 					<button className={`visa-check-primary${isSuccess ? ' is-success' : ' is-disabled'}`} disabled={!isSuccess} onClick={onDownload} type="button">{'Получить готовую анкету'}</button>
 					<button className="visa-check-secondary" onClick={onHome} type="button">{isSuccess ? 'Вернуться на главную' : 'Вернуться на главную страницу'}</button>
 				</div>
@@ -3422,14 +3395,14 @@ function VisaDocumentsReadyScreen ({ applicant, visaTitle, onBack, onHome, onCon
 
 				<section aria-label="Ready document card" className="visa-ready-card">
 					<div className="visa-check-main">
-						<span className="visa-check-badge is-success">{'Готовая виза'}</span>
-						<div className="visa-check-card-copy">
-							<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || 'Заявитель'}</h2>
-							<p>{`Номер загранпаспорта: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
+					<span className="visa-check-badge is-success">{t('visaReadyBadge')}</span>
+					<div className="visa-check-card-copy">
+						<h2>{passport.fullName || `${passport.firstName} ${passport.lastName}`.trim() || t('applicantDefaultName')}</h2>
+						<p>{`${t('passportNumber')}: ${passport.passportNumber || '—'}\n${visaTitle}`}</p>
 						</div>
 					</div>
 					<div className="visa-ready-actions">
-						<button type="button">{'Скачать PDF'}</button>
+						<button type="button">{t('downloadPdfButton')}</button>
 						<button type="button">{'На почту'}</button>
 					</div>
 				</section>
@@ -3760,7 +3733,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onOpenDocuments, on
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onToggleAnimationsDisabled, onToggleFillTestValues, onOpenData }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onOpenData: () => void }) {
+function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onToggleAnimationsDisabled, onToggleFillTestValues, onOpenData, onOpenApi }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onOpenData: () => void, onOpenApi: () => void }) {
 	const { t } = useI18n()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
@@ -3820,15 +3793,22 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOp
 				</header>
 
 			<div className="dev-content">
-			<div className="profile-list">
-				<button className="profile-row" onClick={onOpenData} type="button">
-					<span className="profile-row-left">
-						<Image alt="Data" className="profile-row-icon" height={24} src="/assets/icon-settings-passport.svg" unoptimized width={24} />
-						<b>{'Данные'}</b>
-					</span>
-					<Image alt="" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
-				</button>
-			</div>
+		<div className="profile-list">
+			<button className="profile-row" onClick={onOpenData} type="button">
+				<span className="profile-row-left">
+					<Image alt="Data" className="profile-row-icon" height={24} src="/assets/icon-settings-passport.svg" unoptimized width={24} />
+					<b>{'Данные'}</b>
+				</span>
+				<Image alt="" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+			</button>
+			<button className="profile-row" onClick={onOpenApi} type="button">
+				<span className="profile-row-left">
+					<Image alt="API" className="profile-row-icon" height={24} src="/assets/icon-settings-support.svg" unoptimized width={24} />
+					<b>{'API'}</b>
+				</span>
+				<Image alt="" className="profile-row-chevron" height={24} src="/assets/icon-chevron-right.svg" unoptimized width={24} />
+			</button>
+		</div>
 
 			<div className="dev-card dev-switch-card">
 				<div>
@@ -3947,6 +3927,99 @@ function DeveloperDataScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfi
 			<DesktopRail />
 			{confirmOpen ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить все черновики?" subtitle="Все сохранённые черновики заявлений будут удалены без возможности восстановления." onCancel={() => setConfirmOpen(false)} onConfirm={() => { setConfirmOpen(false); onClearDrafts() }} /> : null}
 			{confirmResetOpen ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить все заявления?" subtitle="Все заявления на бэкенде будут безвозвратно удалены." onCancel={() => setConfirmResetOpen(false)} onConfirm={resetApplications} /> : null}
+		</section>
+	)
+}
+
+// API endpoint entry for the developer API explorer.
+type DevApiEntry = { label: string, path: string }
+
+const DEV_API_ENDPOINTS: { section: string, entries: DevApiEntry[] }[] = [
+	{
+		section: '/reference',
+		entries: [
+			{ label: '/countries', path: '/v1/app/reference/countries' },
+			{ label: '/countries?schengenOnly=true', path: '/v1/app/reference/countries?schengenOnly=true' },
+			{ label: '/visa-types', path: '/v1/app/reference/visa-types' },
+		],
+	},
+]
+
+// Collapsible row that fetches and displays raw API response on expand.
+function DevApiRow ({ label, path }: DevApiEntry) {
+	const [open, setOpen] = useState(false)
+	const [data, setData] = useState<unknown>(null)
+	const [loading, setLoading] = useState(false)
+	const [error, setError] = useState('')
+
+	const toggle = async () => {
+		if(!open && !data) {
+			setLoading(true)
+			setError('')
+			try {
+				const result = await authGet<unknown>(path)
+				setData(result)
+			} catch (e) {
+				setError(e instanceof Error ? e.message : 'Error')
+			} finally {
+				setLoading(false)
+			}
+		}
+		setOpen((v) => !v)
+	}
+
+	return (
+		<div className="dev-api-row">
+			<button className="dev-api-row-header" onClick={toggle} type="button">
+				<code>{label}</code>
+				<span className={`dev-api-chevron${open ? ' is-open' : ''}`}>{'›'}</span>
+			</button>
+			{open ? (
+				<div className="dev-api-row-body">
+					{loading ? <p className="dev-status">{'Loading...'}</p> : null}
+					{error ? <p className="dev-status is-error">{error}</p> : null}
+					{data ? <pre>{JSON.stringify(data, null, 2)}</pre> : null}
+					{data ? (
+						<button className="dev-api-reload" onClick={async () => {
+							setLoading(true)
+							setError('')
+							try { setData(await authGet<unknown>(path)) } catch (e) { setError(e instanceof Error ? e.message : 'Error') } finally { setLoading(false) }
+						}} type="button">{'↺ Reload'}</button>
+					) : null}
+				</div>
+			) : null}
+		</div>
+	)
+}
+
+// Render developer API explorer sub-screen.
+function DeveloperApiScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfile }: { onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void }) {
+	const { t } = useI18n()
+
+	return (
+		<section aria-label="Developer API" className="dev-screen">
+			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+			<div className="dev-scroll">
+				<header className="dev-toolbar">
+					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+					</button>
+					<h2>{'API'}</h2>
+				</header>
+				<div className="dev-content">
+					{DEV_API_ENDPOINTS.map((group) => (
+						<div key={group.section}>
+							<div className="dev-section-title">{group.section}</div>
+							<div className="dev-api-group">
+								{group.entries.map((entry) => (
+									<DevApiRow key={entry.path} label={entry.label} path={entry.path} />
+								))}
+							</div>
+						</div>
+					))}
+				</div>
+			</div>
+			<DesktopRail />
 		</section>
 	)
 }
@@ -4171,7 +4244,7 @@ function parseEntryRoute (fallbackStep: EntryStep, fallbackTab: HomeTab) {
 
 // Render onboarding-to-auth-to-home flow after splash.
 function EntryFlow () {
-	const { t } = useI18n()
+	const { t, locale } = useI18n()
 	const [{ step, tab: activeTab }, setNavigation] = useState(() => {
 		const fallbackStep = resolveInitialEntryStep()
 		const initial = parseEntryRoute(fallbackStep, 'home')
@@ -4189,7 +4262,7 @@ function EntryFlow () {
 	const [selectedVisaCitizenship, setSelectedVisaCitizenship] = useState('')
 	const [selectedVisaResidence, setSelectedVisaResidence] = useState('')
 	const [selectedVisaDestinationLabel, setSelectedVisaDestinationLabel] = useState('')
-	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('italy')
+	const [selectedVisaDestination, setSelectedVisaDestination] = useState<VisaDestinationCode>('ITA')
 	const [selectedVisaType, setSelectedVisaType] = useState<VisaTypeCode>('type-c')
 	const [isVisaWarningOpen, setIsVisaWarningOpen] = useState(false)
 	const [visaPhotoDataUrl, setVisaPhotoDataUrl] = useState('')
@@ -4209,10 +4282,10 @@ function EntryFlow () {
 	const [isDraftOpenedFromDocuments, setIsDraftOpenedFromDocuments] = useState(false)
 	const isPopNavigationRef = useRef(false)
 	const visaCheckRequestRef = useRef<string | null>(null)
-	const currentVisaTitle = resolveVisaTitleRu(selectedVisaDestinationLabel, selectedVisaType)
+	const currentVisaTitle = resolveVisaTypeTitle(locale, selectedVisaDestination, selectedVisaType === 'type-c' ? 'C' : 'D')
 	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
 	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
-	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'support' || activeTab === 'payment-history' || activeTab === 'notifications-settings' || activeTab.startsWith('passports') ? 'profile' : 'home'
+	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'developer-data' || activeTab === 'developer-api' || activeTab === 'support' || activeTab === 'payment-history' || activeTab === 'notifications-settings' || activeTab.startsWith('passports') ? 'profile' : 'home'
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -4459,10 +4532,10 @@ function EntryFlow () {
 		setSelectedVisaType(type)
 	}
 
-	// Select destination label and sync supported Schengen flow country when available.
+	// Select destination label and sync backend country code when available.
 	const selectVisaDestinationLabel = (value: string) => {
 		setSelectedVisaDestinationLabel(value)
-		const found = SCHENGEN_DESTINATIONS.find((item) => item.label === value)
+		const found = refCache.countries?.find((c) => c.isSchengen && c.name === value)
 		if(found) setSelectedVisaDestination(found.code)
 	}
 
@@ -4580,7 +4653,7 @@ function EntryFlow () {
 		visaCheckRequestRef.current = activeDraftId
 		let active = true
 		let timer = 0
-		addNotification('Заявка на визу проверяется', 'На проверке', true)
+		addNotification(t('notifCheckingTitle'), t('notifCheckingBody'), true)
 
 		const check = async () => {
 			const application = await loadBackendApplication(activeDraftId)
@@ -4588,12 +4661,12 @@ function EntryFlow () {
 			const status = mapApplicationStatus(application.status)
 			updateActiveDraftStatus(status)
 			if(status === 'error') {
-				addNotification('Заявка на визу отклонена', 'Отказ')
+				addNotification(t('draftStatusError'), t('draftStatusError'))
 				navigate('home', 'visa-rejected')
 				return
 			}
 			if(status === 'ready') {
-				addNotification('Виза одобрена и готова', 'Готовая виза')
+				addNotification(t('notifReadyTitle'), t('notifReadyBody'))
 				navigate('home', 'visa-verified')
 				return
 			}
@@ -4632,7 +4705,7 @@ function EntryFlow () {
 		setSelectedVisaCitizenship(fillTestValues ? 'Российская Федерация' : '')
 		setSelectedVisaResidence(fillTestValues ? 'Москва' : '')
 		setSelectedVisaDestinationLabel(fillTestValues ? 'Италия' : '')
-		setSelectedVisaDestination('italy')
+		setSelectedVisaDestination('ITA')
 		setSelectedVisaType('type-c')
 		setSelectedVisaPassport(null)
 		setPassportDraft(passport)
@@ -4647,7 +4720,7 @@ function EntryFlow () {
 			id,
 			createdAt: Date.now(),
 			visaType: 'type-c',
-			visaDestination: 'italy',
+			visaDestination: 'ITA',
 			visaDestinationLabel: fillTestValues ? 'Италия' : '',
 			status: 'draft',
 			applicantCount: 0,
@@ -4750,7 +4823,7 @@ function EntryFlow () {
 								setCurrentApplicants(draft.applicants)
 								setSelectedVisaType(draft.visaType)
 								setSelectedVisaDestination(draft.visaDestination)
-								setSelectedVisaDestinationLabel(draft.visaDestinationLabel ?? SCHENGEN_DESTINATIONS.find((item) => item.code === draft.visaDestination)?.label ?? 'Италия')
+								setSelectedVisaDestinationLabel(draft.visaDestinationLabel ?? refCache.countries?.find((c) => c.code === draft.visaDestination)?.name ?? '')
 					setSelectedVisaPassport(draft.selectedPassport ?? null)
 					if(draft.reviewPassport) setReviewPassport(draft.reviewPassport)
 					if(draft.reviewPersonal) setReviewPersonal(draft.reviewPersonal)
@@ -4848,9 +4921,11 @@ function EntryFlow () {
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
-									? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onOpenData={() => navigate('home', 'developer-data')} />
-								: activeTab === 'developer-data'
-								? <DeveloperDataScreen onBack={() => goBack('developer-mode')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onClearDrafts={() => { setSavedDrafts(persistLocalDrafts([])); setActiveDraftId(null) }} />
+? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onOpenData={() => navigate('home', 'developer-data')} onOpenApi={() => navigate('home', 'developer-api')} />
+							: activeTab === 'developer-data'
+							? <DeveloperDataScreen onBack={() => goBack('developer-mode')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onClearDrafts={() => { setSavedDrafts(persistLocalDrafts([])); setActiveDraftId(null) }} />
+							: activeTab === 'developer-api'
+							? <DeveloperApiScreen onBack={() => goBack('developer-mode')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
 								: activeTab === 'support'
 								? <SupportScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
 								: activeTab === 'payment-history'
