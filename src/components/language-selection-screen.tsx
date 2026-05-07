@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { COUNTRY_OPTIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
+import { COUNTRY_OPTIONS } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
@@ -2097,7 +2097,7 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 }
 
 // Render visa type selection screen from Figma node 520:15444.
-function VisaTypeScreen ({ selectedDestination, selectedDestinationLabel, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, canContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, canContinue?: boolean, onCloseWarning: () => void, onConfirmWarning: () => void }) {
+function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onBack, onHome, onSelectType, onContinue, canContinue, onCloseWarning, onConfirmWarning }: { selectedDestination: VisaDestinationCode, selectedDestinationLabel?: string, selectedType: VisaTypeCode, isWarningOpen: boolean, onBack: () => void, onHome: () => void, onSelectType: (type: VisaTypeCode) => void, onContinue: () => void, canContinue?: boolean, onCloseWarning: () => void, onConfirmWarning: () => void }) {
 	const { locale, t } = useI18n()
 	const selectedDetail = (VISA_TYPE_DETAILS[selectedDestination] ?? DEFAULT_VISA_TYPE_DETAIL)[selectedType]
 	const warningText = VISA_WARNING_TEXT[locale]
@@ -3324,7 +3324,7 @@ function VisaCheckScreen ({ applicant, visaTitle, onBack, onHome }: { applicant:
 }
 
 // Render final verification outcome screen after application checks complete.
-function VisaCheckResultScreen ({ applicant, visaTitle, isSuccess, onBack, onHome, onDownload, onEdit }: { applicant: VisaApplicant | null, visaTitle: string, isSuccess: boolean, onBack: () => void, onHome: () => void, onDownload: () => void, onEdit: () => void }) {
+function VisaCheckResultScreen ({ applicant, visaTitle, isSuccess, onBack, onHome, onDownload }: { applicant: VisaApplicant | null, visaTitle: string, isSuccess: boolean, onBack: () => void, onHome: () => void, onDownload: () => void, onEdit?: () => void }) {
 	const { t } = useI18n()
 	const passport = applicant?.passport ?? createPassportDraft()
 
