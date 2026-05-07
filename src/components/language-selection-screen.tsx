@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { COUNTRY_OPTIONS, DESTINATION_COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
+import { COUNTRY_OPTIONS, SCHENGEN_DESTINATIONS, VISA_COUNTRY_FORMS } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
@@ -534,14 +534,14 @@ function mapPassportDto (dto: PassportDto): PassportEntry {
 		fullName: `${dto.firstName} ${dto.lastName}`.trim().toUpperCase(),
 		passportNumber: dto.passportNumber,
 		visaLabel: 'Шенгенская виза в Италию (Тип C)',
-		citizenship: dto.citizenship ?? 'Российская Федерация',
+		citizenship: resolveCountryName(dto.citizenship) || 'Российская Федерация',
 		firstName: dto.firstName,
 		lastName: dto.lastName,
 		birthDate: formatPassportDate(dto.birthDate),
 		gender,
 		issueDate: formatPassportDate(dto.issueDate),
 		expiryDate: formatPassportDate(dto.expiryDate),
-		issuedBy: dto.issuingAuthority ?? 'Российская Федерация',
+		issuedBy: resolveCountryName(dto.issuingAuthority) || 'Российская Федерация',
 	}
 }
 
@@ -672,12 +672,12 @@ function mapPassportDraftToPayload (draft: PassportEntry) {
 		middleName: null,
 		birthDate: toApiPassportDate(draft.birthDate),
 		gender: draft.gender === 'Женский' ? 2 : 1,
-		citizenship: draft.citizenship,
+		citizenship: resolveCountryCode(draft.citizenship),
 		passportSeries: null,
 		passportNumber: draft.passportNumber,
 		issueDate: toApiPassportDate(draft.issueDate),
 		expiryDate: toApiPassportDate(draft.expiryDate),
-		issuingAuthority: draft.issuedBy,
+		issuingAuthority: resolveCountryCode(draft.issuedBy),
 		isPrimary: false,
 	}
 }
@@ -976,6 +976,43 @@ async function saveProfileToBackend (firstName: string, lastName: string) {
 
 // In-memory cache for reference data (countries + visa-types per countryId).
 const refCache: { countries?: CountryDto[], visaTypes: Record<string, VisaTypeDto[]> } = { visaTypes: {} }
+
+// Reactive store for country name options, shared across all screens.
+const countryOptsStore = (() => {
+	let options: string[] = COUNTRY_OPTIONS
+	const subs = new Set<() => void>()
+	return {
+		subscribe: (cb: () => void) => { subs.add(cb); return () => { subs.delete(cb) } },
+		getSnapshot: () => options,
+		set: (names: string[]) => { options = names; subs.forEach((cb) => cb()) },
+	}
+})()
+
+// Hook to access reactive country options list.
+function useCountryOpts () {
+	return useSyncExternalStore(countryOptsStore.subscribe, countryOptsStore.getSnapshot)
+}
+
+// Load and cache full country name list from backend reference, then notify store.
+async function loadCountryOptions (): Promise<string[]> {
+	if(!refCache.countries) {
+		const countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
+		refCache.countries = countries
+		countryOptsStore.set(countries.map((item) => item.name))
+	}
+	return refCache.countries.map((item) => item.name)
+}
+
+// Convert display name to ISO 3166-1 alpha-3 code for backend passport fields.
+function resolveCountryCode (name: string): string {
+	return refCache.countries?.find((item) => item.name === name)?.code ?? name
+}
+
+// Convert ISO 3166-1 alpha-3 code from backend to display name for UI.
+function resolveCountryName (code: string | null | undefined): string {
+	if(!code) return ''
+	return refCache.countries?.find((item) => item.code === code)?.name ?? code
+}
 
 // Resolve backend country and visa type IDs from public reference data.
 async function resolveApplicationRefs (destination: VisaDestinationCode, label: string, type: VisaTypeCode) {
@@ -2028,6 +2065,7 @@ function ContinueButton ({ label, canContinue = true, className = 'passport-prim
 
 function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, selectedDestinationLabel, onBack, onHome, onContinue, canContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: string) => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 	const [attempted, setAttempted] = useState(false)
 
 	return (
@@ -2051,9 +2089,9 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 				</header>
 
 				<div className="visa-form">
-				<LivingField icon="search" label={t('visaCitizenship')} onChange={onSelectCitizenship} options={COUNTRY_OPTIONS} required showError={attempted} value={selectedCitizenship} />
-				<LivingField icon="search" label={t('visaResidence')} onChange={onSelectResidence} options={CITY_OPTIONS} required showError={attempted} value={selectedResidence} />
-				<LivingField icon="search" label={t('visaDestination')} onChange={onSelectDestination} options={DESTINATION_COUNTRY_OPTIONS} required showError={attempted} value={selectedDestinationLabel} />
+			<LivingField icon="search" label={t('visaCitizenship')} onChange={onSelectCitizenship} options={countryOpts} required showError={attempted} value={selectedCitizenship} />
+			<LivingField icon="search" label={t('visaResidence')} onChange={onSelectResidence} options={CITY_OPTIONS} required showError={attempted} value={selectedResidence} />
+			<LivingField icon="search" label={t('visaDestination')} onChange={onSelectDestination} options={countryOpts} required showError={attempted} value={selectedDestinationLabel} />
 
 					{selectedDestinationLabel ? null : (
 						<div className="visa-popular">
@@ -2656,6 +2694,7 @@ function CalendarSheet ({ value, onSelect, onClose }: { value: string, onSelect:
 // Render trip data form from Figma node 520:15649.
 function VisaTripScreen ({ trip, onBack, onHome, onContinue, canContinue, onChange }: { trip: TripData, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onChange: (field: keyof TripData, value: string) => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 	const copy = trip
 	const [attempted, setAttempted] = useState(false)
 
@@ -2684,7 +2723,7 @@ function VisaTripScreen ({ trip, onBack, onHome, onContinue, canContinue, onChan
 					<LivingField icon="chevron" label={copy.purpose} onChange={(v) => onChange('purposeValue', v)} options={PURPOSE_OPTIONS} required showError={attempted} value={copy.purposeValue} />
 					<LivingField icon="calendar" label={copy.entryDate} onChange={(v) => onChange('dateValue', v)} required showError={attempted} value={copy.dateValue} />
 					<LivingField icon="calendar" label={copy.exitDate} onChange={(v) => onChange('exitDateValue', v)} required showError={attempted} value={copy.exitDateValue} />
-					<LivingField icon="search" label={copy.residenceCountry} onChange={(v) => onChange('residenceCountryValue', v)} options={COUNTRY_OPTIONS} required showError={attempted} value={copy.residenceCountryValue} />
+					<LivingField icon="search" label={copy.residenceCountry} onChange={(v) => onChange('residenceCountryValue', v)} options={countryOpts} required showError={attempted} value={copy.residenceCountryValue} />
 					<LivingField icon="chevron" label={copy.prevVisas} onChange={(v) => onChange('prevVisasValue', v)} options={YES_NO_OPTIONS} required showError={attempted} value={copy.prevVisasValue} />
 				</div>
 
@@ -2913,6 +2952,7 @@ function ReviewFileField ({ label, filename, viewLabel, replaceLabel }: { label:
 // Render Step 8.1 — passport data review from Figma node 592:8395.
 function VisaReviewPassportScreen ({ passport, onBack, onHome, onContinue, canContinue, onChange }: { passport: PassportEntry, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onChange: (field: keyof PassportEntry, value: string) => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 	const [attempted, setAttempted] = useState(false)
 	return (
 		<section aria-label="Review passport" className="visa-screen">
@@ -2933,7 +2973,7 @@ function VisaReviewPassportScreen ({ passport, onBack, onHome, onContinue, canCo
 					</div>
 				</header>
 				<div className="visa-personal-form">
-					<ReviewField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={COUNTRY_OPTIONS} required showError={attempted} value={passport.citizenship} />
+					<ReviewField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={countryOpts} required showError={attempted} value={passport.citizenship} />
 					<ReviewField label={t('profileDataFirstName')} onChange={(v) => onChange('firstName', v)} required showError={attempted} value={passport.firstName} />
 					<ReviewField label={t('profileDataLastName')} onChange={(v) => onChange('lastName', v)} required showError={attempted} value={passport.lastName} />
 					<ReviewField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} required showError={attempted} value={passport.birthDate} />
@@ -2994,6 +3034,7 @@ function VisaReviewPersonalScreen ({ personal, onBack, onHome, onContinue, canCo
 // Render Step 8.3 — trip data review from Figma node 592:8445.
 function VisaReviewTripScreen ({ trip, docs, onBack, onHome, onContinue, canContinue, onTripChange }: { trip: typeof VISA_TRIP_TEXT[LocaleCode], docs: typeof VISA_DOCS_TEXT[LocaleCode], onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onTripChange: (field: keyof typeof VISA_TRIP_TEXT[LocaleCode], value: string) => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 	const [attempted, setAttempted] = useState(false)
 	return (
 		<section aria-label="Review trip" className="visa-screen">
@@ -3017,7 +3058,7 @@ function VisaReviewTripScreen ({ trip, docs, onBack, onHome, onContinue, canCont
 					<ReviewField icon="chevron" label={trip.purpose} onChange={(v) => onTripChange('purposeValue', v)} options={PURPOSE_OPTIONS} required showError={attempted} value={trip.purposeValue} />
 					<ReviewField icon="calendar" label={trip.entryDate} onChange={(v) => onTripChange('dateValue', v)} required showError={attempted} value={trip.dateValue} />
 					<ReviewField icon="calendar" label={trip.exitDate} onChange={(v) => onTripChange('exitDateValue', v)} required showError={attempted} value={trip.exitDateValue} />
-					<ReviewField icon="search" label={trip.residenceCountry} onChange={(v) => onTripChange('residenceCountryValue', v)} options={COUNTRY_OPTIONS} required showError={attempted} value={trip.residenceCountryValue} />
+					<ReviewField icon="search" label={trip.residenceCountry} onChange={(v) => onTripChange('residenceCountryValue', v)} options={countryOpts} required showError={attempted} value={trip.residenceCountryValue} />
 					<ReviewField icon="chevron" label={trip.prevVisas} onChange={(v) => onTripChange('prevVisasValue', v)} options={YES_NO_OPTIONS} required showError={attempted} value={trip.prevVisasValue} />
 					<ReviewFileField filename={docs.hotelFile} label={docs.hotel} replaceLabel={'Заменить бронирование отеля'} viewLabel={'Посмотреть'} />
 					<ReviewFileField filename={docs.flightsFile} label={docs.flights} replaceLabel={'Заменить бронирование авиабилетов'} viewLabel={'Посмотреть'} />
@@ -3551,6 +3592,7 @@ function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, 
 // Render passport form first step from Figma node 521:20487.
 function PassportStepOneScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 	const [attempted, setAttempted] = useState(false)
 
 	return (
@@ -3573,7 +3615,7 @@ function PassportStepOneScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 				</div>
 
 				<div className="passport-fields">
-					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={COUNTRY_OPTIONS} required showError={attempted} value={draft.citizenship} />
+					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={countryOpts} required showError={attempted} value={draft.citizenship} />
 					<div className={`passport-field-row${attempted && !draft.firstName ? ' is-invalid' : ''}`}><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
 					<div className={`passport-field-row${attempted && !draft.lastName ? ' is-invalid' : ''}`}><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
 					<LivingField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} required showError={attempted} value={draft.birthDate} />
@@ -3591,6 +3633,7 @@ function PassportStepOneScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 // Render passport form second step from Figma node 521:20499.
 function PassportStepTwoScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onNext, onChange }: { draft: PassportEntry, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onNext: () => void, onChange: (field: keyof PassportEntry, value: string) => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 	const [attempted, setAttempted] = useState(false)
 
 	return (
@@ -3616,7 +3659,7 @@ function PassportStepTwoScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 					<div className={`passport-field-row${attempted && !draft.passportNumber ? ' is-invalid' : ''}`}><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
 					<LivingField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} required showError={attempted} value={draft.issueDate} />
 					<LivingField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} required showError={attempted} value={draft.expiryDate} />
-					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} options={COUNTRY_OPTIONS} required showError={attempted} value={draft.issuedBy} />
+					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} options={countryOpts} required showError={attempted} value={draft.issuedBy} />
 				</div>
 
 				<ContinueButton canContinue={Boolean(draft.passportNumber && draft.issueDate && draft.expiryDate && draft.issuedBy)} className="passport-primary" label={t('authContinue')} onAttempt={() => setAttempted(true)} onContinue={onNext} />
@@ -3630,6 +3673,7 @@ function PassportStepTwoScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 // Render single-screen passport edit form with immediate save action.
 function PassportEditScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onChange, onSave }: { draft: PassportEntry, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onChange: (field: keyof PassportEntry, value: string) => void, onSave: () => void }) {
 	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
 
 	return (
 		<section aria-label="Passport edit" className="passports-screen">
@@ -3651,7 +3695,7 @@ function PassportEditScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpe
 				</div>
 
 				<div className="passport-fields">
-					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={COUNTRY_OPTIONS} value={draft.citizenship} />
+					<LivingField icon="search" label={t('passportCitizenship')} onChange={(v) => onChange('citizenship', v)} options={countryOpts} value={draft.citizenship} />
 					<div className="passport-field-row"><label>{t('profileDataFirstName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('firstName', event.target.value)} type="text" value={draft.firstName} /></div></div>
 					<div className="passport-field-row"><label>{t('profileDataLastName')}</label><div className="profile-data-input"><input onChange={(event) => onChange('lastName', event.target.value)} type="text" value={draft.lastName} /></div></div>
 					<LivingField icon="calendar" label={t('passportBirthDate')} onChange={(v) => onChange('birthDate', v)} value={draft.birthDate} />
@@ -3659,7 +3703,7 @@ function PassportEditScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpe
 					<div className="passport-field-row"><label>{t('passportNumber')}</label><div className="profile-data-input"><input onChange={(event) => onChange('passportNumber', event.target.value)} type="text" value={draft.passportNumber} /></div></div>
 					<LivingField icon="calendar" label={t('passportIssueDate')} onChange={(v) => onChange('issueDate', v)} value={draft.issueDate} />
 					<LivingField icon="calendar" label={t('passportExpiryDate')} onChange={(v) => onChange('expiryDate', v)} value={draft.expiryDate} />
-					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} options={COUNTRY_OPTIONS} value={draft.issuedBy} />
+					<LivingField icon="search" label={t('passportIssuedBy')} onChange={(v) => onChange('issuedBy', v)} options={countryOpts} value={draft.issuedBy} />
 				</div>
 
 				<button className="passport-primary" onClick={onSave} type="button">{t('passportSaveButton')}</button>
@@ -4357,12 +4401,13 @@ function EntryFlow () {
 		navigate('onboarding', 'home', 'replace')
 	}
 
-	// Load saved passports list from backend API.
+	// Load saved passports list from backend API, ensuring country cache is warm for name resolution.
 	const loadPassports = async () => {
 		setIsPassportsLoading(true)
 		setPassportsError('')
 
 		try {
+			await loadCountryOptions()
 			const list = await authGet<PassportDto[]>('/v1/app/passports')
 			setPassports((list ?? []).map((item) => mapPassportDto(item)))
 		} catch (error) {
@@ -4497,6 +4542,11 @@ function EntryFlow () {
 		if(!isVisaDesktopFlow) return
 		setVisitedVisaTabs((current) => current[activeTab] ? current : { ...current, [activeTab]: true })
 	}, [isVisaDesktopFlow, activeTab])
+
+	useEffect(() => {
+		if(step !== 'home') return
+		loadCountryOptions().catch(() => {})
+	}, [step])
 
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'passports-list') return
