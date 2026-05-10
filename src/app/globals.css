@@ -5261,7 +5261,7 @@ html:not(.motion-disabled) .calendar-sheet {
 
 .payment-detail-grid span,
 .payment-applicant b,
-.payment-method-copy span,
+.payment-method-copy span:not(.payment-method-badge),
 .payment-row span {
 	font-size: 17px;
 	line-height: 1.4;
@@ -5354,6 +5354,18 @@ html:not(.motion-disabled) .calendar-sheet {
 	letter-spacing: -0.02em;
 	font-weight: 400;
 	color: #fff;
+}
+
+.payment-paid-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 16px;
+	border-radius: 12px;
+	background: rgb(0 200 83 / 0.08);
+	color: #00a846;
+	font-size: 17px;
+	font-weight: 500;
 }
 
 .payment-radio {

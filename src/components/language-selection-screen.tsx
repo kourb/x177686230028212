@@ -3415,7 +3415,7 @@ function ConfirmDrawer ({ title, subtitle, confirmLabel, onCancel, onConfirm }: 
 }
 
 // Render Step 10 — final application summary and payment selection.
-function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, selectedPayment, onBack, onHome, onSelectPayment, onPay }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, visaTitle: string, selectedPayment: PaymentMethodCode, onBack: () => void, onHome: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onPay: () => void }) {
+function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, selectedPayment, paid, onBack, onHome, onSelectPayment, onPay, onContinue }: { applicants: VisaApplicant[], visaType: VisaTypeCode, visaDestination: VisaDestinationCode, visaTitle: string, selectedPayment: PaymentMethodCode, paid?: boolean, onBack: () => void, onHome: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onPay: () => void, onContinue: () => void }) {
 	const { t } = useI18n()
 	const detail = (VISA_TYPE_DETAILS[visaDestination] ?? DEFAULT_VISA_TYPE_DETAIL)[visaType]
 	const methods: { code: PaymentMethodCode, title: string, subtitle: string, badge?: string }[] = [
@@ -3466,7 +3466,14 @@ function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, 
 					</div>
 				</section>
 
-				<section aria-label="Payment method" className="payment-methods">
+			{paid
+				? <section aria-label="Payment status" className="payment-methods">
+					<div className="payment-paid-status">
+						<svg fill="none" height="24" viewBox="0 0 24 24" width="24"><circle cx="12" cy="12" fill="#00a846" r="12"/><path d="M7 12.5l3.5 3.5 6.5-7" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/></svg>
+						<span>{'Оплачено'}</span>
+					</div>
+				</section>
+				: <section aria-label="Payment method" className="payment-methods">
 					<h2>{'Способ оплаты'}</h2>
 					<div className="payment-method-list">
 						{methods.map((method) => (
@@ -3481,18 +3488,22 @@ function VisaPaymentScreen ({ applicants, visaType, visaDestination, visaTitle, 
 						))}
 					</div>
 				</section>
+			}
 
-				<section aria-label="Payment composition" className="payment-composition-card">
-					<h2>{'Состав платежа'}</h2>
-					<div className="payment-row">
-						<span>{`Сервисный сбор × ${Math.max(applicants.length, 1)}`}</span>
-						<b>{'1358.28₽'}</b>
-					</div>
-				</section>
-			</div>
-			<div className="visa-bottom">
-				<button className="passport-primary" onClick={onPay} type="button">{'Отправить и оплатить 1358.28₽'}</button>
-			</div>
+			<section aria-label="Payment composition" className="payment-composition-card">
+				<h2>{'Состав платежа'}</h2>
+				<div className="payment-row">
+					<span>{`Сервисный сбор × ${Math.max(applicants.length, 1)}`}</span>
+					<b>{'1358.28₽'}</b>
+				</div>
+			</section>
+		</div>
+		<div className="visa-bottom">
+			{paid
+				? <button className="passport-primary" onClick={onContinue} type="button">{'Продолжить'}</button>
+				: <button className="passport-primary" onClick={onPay} type="button">{'Отправить и оплатить 1358.28₽'}</button>
+			}
+		</div>
 		</section>
 	)
 }
@@ -4505,6 +4516,7 @@ function EntryFlow () {
 	const visaCheckRequestRef = useRef<string | null>(null)
 	const currentVisaTitle = resolveVisaTypeTitle(locale, selectedVisaDestination, selectedVisaType === 'type-c' ? 'C' : 'D')
 	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
+	const activeDraftPaid = activeDraftId ? Boolean(savedDrafts.find((draft) => draft.id === activeDraftId)?.paid) : false
 	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
 	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'developer-data' || activeTab === 'developer-api' || activeTab === 'support' || activeTab === 'payment-history' || activeTab === 'notifications-settings' || activeTab.startsWith('passports') ? 'profile' : 'home'
 
@@ -4878,7 +4890,7 @@ function EntryFlow () {
 		{ label: 'Проверка данных о поездке', tab: 'visa-review-trip', active: activeTab === 'visa-review-trip', completed: Boolean(submittedVisaTabs['visa-review-trip'] && visaReviewTripComplete), invalid: Boolean(submittedVisaTabs['visa-review-trip'] && !visaReviewTripComplete) },
 		{ label: 'Проверка фото', tab: 'visa-review-photo', active: activeTab === 'visa-review-photo', completed: Boolean(submittedVisaTabs['visa-review-photo'] && visaReviewPhotoComplete), invalid: Boolean(submittedVisaTabs['visa-review-photo'] && !visaReviewPhotoComplete) },
 		{ label: 'Добавление заявителей на визу', tab: 'visa-applicants', active: activeTab === 'visa-applicants', completed: Boolean(submittedVisaTabs['visa-applicants'] && visaApplicantsComplete), invalid: Boolean(submittedVisaTabs['visa-applicants'] && !visaApplicantsComplete) },
-		{ label: 'Отправка заполненных данных на проверку', tab: 'visa-payment', active: activeTab === 'visa-payment', completed: Boolean(visitedVisaTabs['visa-payment'] && visaSubmitted), invalid: false },
+		{ label: 'Отправка заполненных данных на проверку', tab: 'visa-payment', active: activeTab === 'visa-payment', completed: Boolean(activeDraftPaid || (visitedVisaTabs['visa-payment'] && visaSubmitted)), invalid: false },
 		{ label: 'Проверка заявки модератором', tab: 'visa-check', active: activeTab === 'visa-check', completed: Boolean(visitedVisaTabs['visa-check'] && visaSubmitted), invalid: false, pending: activeDraftStatus === 'checking' },
 		...(activeDraftStatus === 'ready' ? [
 			{ label: 'Проверка успешно пройдена', tab: 'visa-verified' as const, active: activeTab === 'visa-verified', completed: Boolean(visitedVisaTabs['visa-verified']), invalid: false },
@@ -5201,7 +5213,7 @@ function EntryFlow () {
 								onContinue={() => { markTabSubmitted('visa-applicants'); if(isActiveDraftEditable) saveCurrentApplication(); else navigate('home', 'documents') }}
 							/>
 							: activeTab === 'visa-payment'
-								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={payAndSubmitApplication} onSelectPayment={setSelectedPayment} />
+								? <VisaPaymentScreen applicants={currentApplicants} paid={activeDraftPaid} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onContinue={() => navigate('home', 'visa-check')} onHome={() => navigate('home', 'home')} onPay={payAndSubmitApplication} onSelectPayment={setSelectedPayment} />
 						: activeTab === 'visa-check'
 							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
