@@ -167,6 +167,24 @@ type StatusLogEntryDto = {
 	createdAt: number | string
 }
 
+type ApplicantDto = {
+	publicId: string
+	passportId: number | string
+	isPrimary: boolean
+	sortOrder?: number | string
+	schengenFields?: {
+		birthPlace?: string | null
+		occupation?: string | null
+		employerName?: string | null
+		employerAddress?: string | null
+		residenceAddress?: string | null
+		phone?: string | null
+		email?: string | null
+		previousSchengenVisas?: string | null
+		countriesLast3Years?: string | null
+	} | null
+}
+
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
 type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'developer-api' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings'
@@ -614,6 +632,15 @@ function mapApplicationDtoToDraft (dto: ApplicationDto, local?: VisaDraft): Visa
 		status: backendStatus,
 		applicantCount: Number(dto.applicantCount) || local?.applicants.length || 0,
 		applicants: local?.applicants ?? [],
+		selectedPassport: local?.selectedPassport,
+		reviewPassport: local?.reviewPassport,
+		reviewPersonal: local?.reviewPersonal,
+		reviewTrip: local?.reviewTrip,
+		reviewDocs: local?.reviewDocs,
+		photoDataUrl: local?.photoDataUrl,
+		paid: local?.paid,
+		paidAt: local?.paidAt,
+		paymentId: local?.paymentId,
 	}
 }
 
@@ -681,6 +708,19 @@ function resolveAuthPayload () {
 // Persist refreshed auth payload when API issues new token pair.
 function setAuthPayload (payload: AuthTokenResponse) {
 	window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload))
+}
+
+// Singleton refresh promise — prevents parallel requests from each firing their own refresh.
+let refreshInFlight: Promise<AuthTokenResponse | null> | null = null
+
+// Refresh access token once; concurrent callers share the same in-flight request.
+async function refreshAccessToken (refreshToken: string): Promise<AuthTokenResponse | null> {
+	if(refreshInFlight) return refreshInFlight
+	refreshInFlight = authPost<AuthTokenResponse>('/v1/app/auth/refresh', { refreshToken, device: resolveDeviceInfo() })
+		.then((result) => { if(result) setAuthPayload(result); return result })
+		.catch(() => null)
+		.finally(() => { refreshInFlight = null })
+	return refreshInFlight
 }
 
 // Resolve persisted visa drafts without touching storage during SSR.
@@ -859,15 +899,8 @@ async function authPostAuthorized<T> (path: string, payload: Record<string, unkn
 
 	let { response, body } = await requestPost(authPayload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
-		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
-			refreshToken: authPayload.refreshToken,
-			device: resolveDeviceInfo(),
-		})
-
-		if(refreshed) {
-			setAuthPayload(refreshed)
-			;({ response, body } = await requestPost(refreshed.accessToken))
-		}
+		const refreshed = await refreshAccessToken(authPayload.refreshToken)
+		if(refreshed) ;({ response, body } = await requestPost(refreshed.accessToken))
 	}
 
 	if(response.status === 401) {
@@ -895,8 +928,8 @@ async function authPut<T> (path: string, payload: Record<string, unknown>) {
 
 	let { response, body } = await requestPut(authPayload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
-		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', { refreshToken: authPayload.refreshToken, device: resolveDeviceInfo() })
-		if(refreshed) { setAuthPayload(refreshed); ;({ response, body } = await requestPut(refreshed.accessToken)) }
+		const refreshed = await refreshAccessToken(authPayload.refreshToken)
+		if(refreshed) ;({ response, body } = await requestPut(refreshed.accessToken))
 	}
 	if(!response.ok) throw new Error(body.error?.message ?? 'State update failed')
 	return body.data
@@ -925,14 +958,8 @@ async function authDeletePath (path: AuthDeletePath | AuthDeleteDynamicPath) {
 
 	let { response, body } = await requestDelete(payload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(payload)) {
-		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
-			refreshToken: payload.refreshToken,
-			device: resolveDeviceInfo(),
-		})
-		if(refreshed) {
-			setAuthPayload(refreshed)
-			;({ response, body } = await requestDelete(refreshed.accessToken))
-		}
+		const refreshed = await refreshAccessToken(payload.refreshToken)
+		if(refreshed) ;({ response, body } = await requestDelete(refreshed.accessToken))
 	}
 
 	if(response.status === 401) {
@@ -961,14 +988,8 @@ async function authGet<T> (path: string) {
 
 	let { response, body } = await requestGet(payload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(payload)) {
-		const refreshed = await authPost<AuthTokenResponse>('/v1/app/auth/refresh', {
-			refreshToken: payload.refreshToken,
-			device: resolveDeviceInfo(),
-		})
-		if(refreshed) {
-			setAuthPayload(refreshed)
-			;({ response, body } = await requestGet(refreshed.accessToken))
-		}
+		const refreshed = await refreshAccessToken(payload.refreshToken)
+		if(refreshed) ;({ response, body } = await requestGet(refreshed.accessToken))
 	}
 
 	if(response.status === 401) {
@@ -1110,11 +1131,47 @@ async function resolveApplicationRefs (destination: VisaDestinationCode, label: 
 	return { countryId: country.id, visaTypeId: visaType.id }
 }
 
-// Load backend applications and merge local UI-only details.
-async function loadBackendDrafts () {
+// Map backend applicant DTO into UI VisaApplicant using loaded passports list.
+function mapApplicantDtoToVisaApplicant (dto: ApplicantDto, passports: PassportEntry[]): VisaApplicant {
+	const passport = passports.find((p) => String(p.backendId) === String(dto.passportId)) ?? createPassportDraft()
+	const personal = createPersonalDraft()
+	const trip = createTripDraft()
+	if(dto.schengenFields) {
+		const s = dto.schengenFields
+		if(s.birthPlace) personal.birthPlaceValue = s.birthPlace
+		if(s.occupation) personal.professionValue = s.occupation
+		if(s.employerName) personal.employerValue = s.employerName
+		if(s.employerAddress) personal.workAddressValue = s.employerAddress
+		if(s.residenceAddress) personal.residenceAddressValue = s.residenceAddress
+		if(s.phone) personal.phoneValue = s.phone
+		if(s.email) personal.emailValue = s.email
+		if(s.previousSchengenVisas) trip.prevVisasValue = s.previousSchengenVisas
+		if(s.countriesLast3Years) trip.residenceCountryValue = s.countriesLast3Years
+	}
+	return { backendApplicantId: dto.publicId, passport, personal, trip, docs: createDocsDraft(), photoDataUrl: '' }
+}
+
+// Load backend applications and merge local UI-only details; fetch applicants for apps missing local data.
+async function loadBackendDrafts (passports: PassportEntry[] = []) {
 	const response = await authGet<ApplicationListResponse>('/v1/app/applications?pageSize=50')
 	const localDrafts = resolveSavedDrafts()
-	const backendDrafts = response.items.map((item) => mapApplicationDtoToDraft(item, localDrafts.find((draft) => draft.id === item.publicId)))
+	const backendDrafts = await Promise.all(response.items.map(async (item) => {
+		const local = localDrafts.find((draft) => draft.id === item.publicId)
+		const draft = mapApplicationDtoToDraft(item, local)
+		// No local applicants — fetch from backend (cross-client restore).
+		if(!local?.applicants?.length && passports.length) {
+			try {
+				const result = await authGet<{ items: ApplicantDto[] }>(`/v1/app/applications/${item.publicId}/applicants`)
+				const items = Array.isArray(result) ? result : result?.items ?? []
+				if(items.length) {
+					const applicants = items.map((a) => mapApplicantDtoToVisaApplicant(a, passports))
+					const primary = applicants.find((_, i) => items[i]?.isPrimary) ?? applicants[0]
+					return { ...draft, applicants, reviewPassport: primary?.passport, reviewPersonal: primary?.personal, reviewTrip: primary?.trip }
+				}
+			} catch {}
+		}
+		return draft
+	}))
 	return [...backendDrafts, ...localDrafts.filter((draft) => !backendDrafts.some((item) => item.id === draft.id))]
 }
 
@@ -4519,7 +4576,14 @@ function EntryFlow () {
 	// Refresh document-list applications from backend and local UI cache.
 	const refreshBackendDrafts = async () => {
 		try {
-			setSavedDrafts(persistLocalDrafts(await loadBackendDrafts()))
+			let knownPassports = passports
+			if(!knownPassports.length) {
+				await loadCountryOptions()
+				const list = await authGet<PassportDto[]>('/v1/app/passports')
+				knownPassports = (list ?? []).map((item) => mapPassportDto(item))
+				setPassports(knownPassports)
+			}
+			setSavedDrafts(persistLocalDrafts(await loadBackendDrafts(knownPassports)))
 		} catch {}
 	}
 
@@ -4580,11 +4644,15 @@ function EntryFlow () {
 		const backendDraft = shouldCreateBackend ? await createBackendDraft(selectedVisaDestination, selectedVisaDestinationLabel, selectedVisaType) : null
 		const id = backendDraft?.publicId ?? localId
 		if(!shouldCreateBackend && savedDrafts.find((draft) => draft.id === id)?.status === 'checking') await returnBackendApplicationToDraft(id)
-		const normalizedApplicants = currentApplicants.map((applicant) => {
+		const normalizedApplicants = await Promise.all(currentApplicants.map(async (applicant) => {
 			if(applicant.passport.backendId) return applicant
 			const found = passports.find((item) => item.id === applicant.passport.id || item.passportNumber === applicant.passport.passportNumber) ?? (selectedVisaPassport?.backendId ? selectedVisaPassport : null)
-			return found ? { ...applicant, passport: found } : applicant
-		})
+			if(found) return { ...applicant, passport: found }
+			// Passport was entered manually without saving — persist it now before creating applicant.
+			const saved = mapPassportDto(await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(applicant.passport)))
+			setPassports((prev) => [...prev, saved])
+			return { ...applicant, passport: saved }
+		}))
 		const applicants = await syncBackendApplicants(id, normalizedApplicants)
 		await autoSaveBackendDraft(id, applicants)
 		setCurrentApplicants(applicants)
