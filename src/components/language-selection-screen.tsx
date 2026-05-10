@@ -16,6 +16,7 @@ const USER_PROFILE_STORAGE_KEY = 'visa-assistent-user-profile'
 const VISA_DRAFTS_STORAGE_KEY = 'visa-drafts'
 const ANIMATIONS_DISABLED_STORAGE_KEY = 'visa-animations-disabled'
 const FILL_TEST_VALUES_STORAGE_KEY = 'visa-fill-test-values'
+const SCHENGEN_COUNTRIES_STORAGE_KEY = 'visa-schengen-countries'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
@@ -223,6 +224,15 @@ const SCHENGEN_FLAG_ASSETS: Record<string, string> = {
 	HUN: '/assets/flag-hungary.svg',
 	GRC: '/assets/flag-greece.svg',
 }
+
+const SCHENGEN_CHIP_I18N: Record<string, string> = {
+	ITA: 'visaDestinationItaly',
+	FRA: 'visaDestinationFrance',
+	ESP: 'visaDestinationSpain',
+	HUN: 'visaDestinationHungary',
+	GRC: 'visaDestinationGreece',
+}
+
 
 // Localized preposition for visa title, keyed by ISO alpha-3 destination code.
 const VISA_DESTINATION_VISA_TEXT: Record<LocaleCode, Record<string, string>> = {
@@ -932,8 +942,8 @@ async function saveProfileToBackend (firstName: string, lastName: string) {
 	await authPut('/v1/app/state/profile', { value: JSON.stringify({ firstName, lastName }) })
 }
 
-// In-memory cache for reference data (countries + visa-types per countryId).
-const refCache: { countries?: CountryDto[], visaTypes: Record<string, VisaTypeDto[]> } = { visaTypes: {} }
+// In-memory cache for reference data (countries + schengen subset + visa-types per countryId).
+const refCache: { countries?: CountryDto[], schengenCountries?: CountryDto[], visaTypes: Record<string, VisaTypeDto[]> } = { visaTypes: {} }
 
 // Reactive store for country name options, shared across all screens.
 const countryOptsStore = (() => {
@@ -970,13 +980,49 @@ function useSchengenChips () {
 	return useSyncExternalStore(schengenChipsStore.subscribe, schengenChipsStore.getSnapshot)
 }
 
+// Reactive store for Schengen-only destination country names, persisted via localStorage.
+const destinationOptsStore = (() => {
+	let options: string[] = []
+	const subs = new Set<() => void>()
+	return {
+		subscribe: (cb: () => void) => { subs.add(cb); return () => { subs.delete(cb) } },
+		getSnapshot: () => options,
+		set: (names: string[]) => { options = names; subs.forEach((cb) => cb()) },
+	}
+})()
+
+// Hook to access reactive Schengen destination options list.
+function useDestinationOpts () {
+	return useSyncExternalStore(destinationOptsStore.subscribe, destinationOptsStore.getSnapshot)
+}
+
+// Load and cache Schengen-only country list; persists to localStorage for instant cold-start.
+async function loadDestinationOptions (): Promise<void> {
+	if(refCache.schengenCountries) return
+
+	const stored = typeof window !== 'undefined' ? window.localStorage.getItem(SCHENGEN_COUNTRIES_STORAGE_KEY) : null
+	if(stored) {
+		try {
+			const parsed = JSON.parse(stored) as CountryDto[]
+			refCache.schengenCountries = parsed
+			destinationOptsStore.set(parsed.map((c) => c.name))
+			return
+		} catch {}
+	}
+
+	const countries = await authGet<CountryDto[]>('/v1/app/reference/countries?schengenOnly=true')
+	refCache.schengenCountries = countries
+	try { window.localStorage.setItem(SCHENGEN_COUNTRIES_STORAGE_KEY, JSON.stringify(countries)) } catch {}
+	destinationOptsStore.set(countries.map((c) => c.name))
+}
+
 // Load and cache full country name list from backend reference, then notify stores.
 async function loadCountryOptions (): Promise<string[]> {
 	if(!refCache.countries) {
 		const countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
 		refCache.countries = countries
 		countryOptsStore.set(countries.map((item) => item.name))
-		const chips = countries.filter((c) => c.isSchengen).map((c) => ({ code: c.code, name: c.name, flagSrc: SCHENGEN_FLAG_ASSETS[c.code] }))
+		const chips = countries.filter((c) => c.isSchengen && SCHENGEN_FLAG_ASSETS[c.code]).map((c) => ({ code: c.code, name: c.name, flagSrc: SCHENGEN_FLAG_ASSETS[c.code] }))
 		if(chips.length > 0) schengenChipsStore.set(chips)
 	}
 	return refCache.countries.map((item) => item.name)
@@ -2042,9 +2088,10 @@ function ContinueButton ({ label, canContinue = true, className = 'passport-prim
 	return <button className={`${className}${shaking ? ' is-shaking' : ''}`} onClick={handleClick} type="button">{label}</button>
 }
 
-function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, selectedDestinationLabel, onBack, onHome, onContinue, canContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: string) => void }) {
+function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDestination, selectedDestinationLabel, onBack, onHome, onContinue, canContinue, onSelectCitizenship, onSelectResidence, onSelectDestination }: { selectedCitizenship: string, selectedResidence: string, selectedDestination: VisaDestinationCode, selectedDestinationLabel: string, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onSelectCitizenship: (value: string) => void, onSelectResidence: (value: string) => void, onSelectDestination: (destination: string, code?: string) => void }) {
 	const { t } = useI18n()
 	const countryOpts = useCountryOpts()
+	const destinationOpts = useDestinationOpts()
 	const schengenChips = useSchengenChips()
 	const [attempted, setAttempted] = useState(false)
 
@@ -2071,21 +2118,22 @@ function VisaStartScreen ({ selectedCitizenship, selectedResidence, selectedDest
 				<div className="visa-form">
 			<LivingField icon="search" label={t('visaCitizenship')} onChange={onSelectCitizenship} options={countryOpts} required showError={attempted} value={selectedCitizenship} />
 			<LivingField icon="search" label={t('visaResidence')} onChange={onSelectResidence} options={CITY_OPTIONS} required showError={attempted} value={selectedResidence} />
-			<LivingField icon="search" label={t('visaDestination')} onChange={onSelectDestination} options={countryOpts} required showError={attempted} value={selectedDestinationLabel} />
+			<LivingField icon="search" label={t('visaDestination')} onChange={onSelectDestination} options={destinationOpts} required showError={attempted} value={selectedDestinationLabel} />
 
-					{selectedDestinationLabel ? null : (
-						<div className="visa-popular">
-							<label>{t('visaPopularDestinations')}</label>
-							<div className="visa-chip-row">
-								{schengenChips.map((chip) => (
-									<button className={`visa-chip${selectedDestination === chip.code ? ' is-active' : ''}`} key={chip.code} onClick={() => onSelectDestination(chip.name)} type="button">
-										{chip.flagSrc ? <Image alt={chip.name} className="visa-chip-flag" height={24} src={chip.flagSrc} unoptimized width={24} /> : null}
-										<span>{chip.name}</span>
+				<div className="visa-popular">
+						<label>{t('visaPopularDestinations')}</label>
+						<div className="visa-chip-row">
+							{schengenChips.map((chip) => {
+								const label = t((SCHENGEN_CHIP_I18N[chip.code] ?? chip.code) as Parameters<typeof t>[0])
+								return (
+									<button className={`visa-chip${selectedDestination === chip.code ? ' is-active' : ''}`} key={chip.code} onClick={() => onSelectDestination(label, chip.code)} type="button">
+										{chip.flagSrc ? <Image alt={label} className="visa-chip-flag" height={24} src={chip.flagSrc} unoptimized width={24} /> : null}
+										<span>{label}</span>
 									</button>
-								))}
-							</div>
+								)
+							})}
 						</div>
-					)}
+					</div>
 				</div>
 			</div>
 
@@ -4532,10 +4580,11 @@ function EntryFlow () {
 		setSelectedVisaType(type)
 	}
 
-	// Select destination label and sync backend country code when available.
-	const selectVisaDestinationLabel = (value: string) => {
+	// Select destination label and sync backend country code from schengen cache.
+	const selectVisaDestinationLabel = (value: string, code?: string) => {
 		setSelectedVisaDestinationLabel(value)
-		const found = refCache.countries?.find((c) => c.isSchengen && c.name === value)
+		if(code) { setSelectedVisaDestination(code); return }
+		const found = refCache.schengenCountries?.find((c) => c.name === value) ?? refCache.countries?.find((c) => c.isSchengen && c.name === value)
 		if(found) setSelectedVisaDestination(found.code)
 	}
 
@@ -4619,6 +4668,7 @@ function EntryFlow () {
 	useEffect(() => {
 		if(step !== 'home') return
 		loadCountryOptions().catch(() => {})
+		loadDestinationOptions().catch(() => {})
 	}, [step])
 
 	useEffect(() => {
