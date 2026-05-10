@@ -17,6 +17,7 @@ const VISA_DRAFTS_STORAGE_KEY = 'visa-drafts'
 const ANIMATIONS_DISABLED_STORAGE_KEY = 'visa-animations-disabled'
 const FILL_TEST_VALUES_STORAGE_KEY = 'visa-fill-test-values'
 const SCHENGEN_COUNTRIES_STORAGE_KEY = 'visa-schengen-countries'
+const PAYMENT_HISTORY_STORAGE_KEY_PREFIX = 'visa-payment-history-'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const AUTH_PROXY_BASE_URL = process.env.NEXT_PUBLIC_AUTH_PROXY_BASE_URL ?? 'http://localhost:8787'
 const AUTH_USE_PROXY = process.env.NEXT_PUBLIC_AUTH_USE_PROXY === '1' || (process.env.NEXT_PUBLIC_AUTH_USE_PROXY !== '0' && process.env.NODE_ENV === 'development')
@@ -208,6 +209,21 @@ type VisaDraft = {
 	reviewTrip?: typeof VISA_TRIP_TEXT['ru']
 	reviewDocs?: typeof VISA_DOCS_TEXT['ru']
 	photoDataUrl?: string
+	paid?: boolean
+	paidAt?: number
+	paymentId?: string
+}
+
+type PaymentRecord = {
+	id: string
+	createdAt: number
+	method: PaymentMethodCode
+	amount: number
+	currency: string
+	status: 'succeeded' | 'pending' | 'failed'
+	applicationId: string
+	visaTitle: string
+	applicantCount: number
 }
 
 type VisaTypeDetail = {
@@ -267,22 +283,22 @@ const VISA_WARNING_TEXT: Record<LocaleCode, { subtitle: string, duration: string
 	it: { subtitle: 'Consulta le condizioni aggiuntive del visto.', duration: 'Periodo di validita', entry: { single: 'Ingresso singolo', multiple: 'Ingressi multipli' }, fee: 'Tassa consolare', confirm: 'Conferma' },
 }
 
-const VISA_PASSPORT_TEXT: Record<LocaleCode, { title: string, subtitle: string, before: string, rules: string[], add: string, saved: string }> = {
-	ru: { title: 'Загрузка паспорта', subtitle: 'Автоматически заполним данные, необходимые для оформления визы.', before: 'Перед загрузкой документа:', rules: ['Загрузите страницу с вашей фотографией и именем (полный разворот).', 'Убедитесь в том, что загранпаспорт не просрочен и не поврежден.', 'Изображение должно быть четким и хорошо читаемым. Без бликов, пальцев в кадре и размытия.'], add: 'Добавить паспорт', saved: 'Выбрать сохраненный паспорт' },
-	en: { title: 'Passport upload', subtitle: 'We will automatically fill in the data needed for the visa application.', before: 'Before uploading the document:', rules: ['Upload the page with your photo and name (full spread).', 'Make sure your passport is not expired or damaged.', 'The image must be sharp and readable, without glare, fingers in frame, or blur.'], add: 'Add passport', saved: 'Choose saved passport' },
-	de: { title: 'Pass hochladen', subtitle: 'Wir fullen die fur den Visumantrag erforderlichen Daten automatisch aus.', before: 'Vor dem Hochladen des Dokuments:', rules: ['Laden Sie die Seite mit Foto und Namen hoch (ganze Doppelseite).', 'Stellen Sie sicher, dass der Reisepass nicht abgelaufen oder beschadigt ist.', 'Das Bild muss scharf und gut lesbar sein, ohne Spiegelungen, Finger im Bild oder Unscharfe.'], add: 'Pass hinzufugen', saved: 'Gespeicherten Pass auswahlen' },
-	fr: { title: 'Telechargement du passeport', subtitle: 'Nous remplirons automatiquement les donnees necessaires a la demande de visa.', before: 'Avant de telecharger le document:', rules: ['Telechargez la page avec votre photo et votre nom (double page complete).', 'Assurez-vous que le passeport n est pas expire ni endommage.', 'L image doit etre nette et lisible, sans reflets, doigts dans le cadre ni flou.'], add: 'Ajouter un passeport', saved: 'Choisir un passeport enregistre' },
-	es: { title: 'Carga de pasaporte', subtitle: 'Completaremos automaticamente los datos necesarios para la solicitud de visado.', before: 'Antes de cargar el documento:', rules: ['Carga la pagina con tu foto y nombre (doble pagina completa).', 'Asegurate de que el pasaporte no este vencido ni danado.', 'La imagen debe ser nitida y legible, sin reflejos, dedos en el encuadre ni desenfoque.'], add: 'Agregar pasaporte', saved: 'Elegir pasaporte guardado' },
-	it: { title: 'Caricamento passaporto', subtitle: 'Compileremo automaticamente i dati necessari per la richiesta del visto.', before: 'Prima di caricare il documento:', rules: ['Carica la pagina con foto e nome (doppia pagina completa).', 'Assicurati che il passaporto non sia scaduto o danneggiato.', 'L immagine deve essere nitida e leggibile, senza riflessi, dita nell inquadratura o sfocature.'], add: 'Aggiungi passaporto', saved: 'Scegli passaporto salvato' },
+const VISA_PASSPORT_TEXT: Record<LocaleCode, { title: string, subtitle: string, before: string, rules: string[], photo: string, saved: string, manual: string }> = {
+	ru: { title: 'Загрузка паспорта', subtitle: 'Автоматически заполним данные, необходимые для оформления визы.', before: 'Перед загрузкой документа:', rules: ['Загрузите страницу с вашей фотографией и именем (полный разворот).', 'Убедитесь в том, что загранпаспорт не просрочен и не поврежден.', 'Изображение должно быть четким и хорошо читаемым. Без бликов, пальцев в кадре и размытия.'], photo: 'Фотография паспорта', saved: 'Выбрать сохраненный паспорт', manual: 'Заполнить данные паспорта' },
+	en: { title: 'Passport upload', subtitle: 'We will automatically fill in the data needed for the visa application.', before: 'Before uploading the document:', rules: ['Upload the page with your photo and name (full spread).', 'Make sure your passport is not expired or damaged.', 'The image must be sharp and readable, without glare, fingers in frame, or blur.'], photo: 'Passport photo', saved: 'Choose saved passport', manual: 'Fill passport data' },
+	de: { title: 'Pass hochladen', subtitle: 'Wir fullen die fur den Visumantrag erforderlichen Daten automatisch aus.', before: 'Vor dem Hochladen des Dokuments:', rules: ['Laden Sie die Seite mit Foto und Namen hoch (ganze Doppelseite).', 'Stellen Sie sicher, dass der Reisepass nicht abgelaufen oder beschadigt ist.', 'Das Bild muss scharf und gut lesbar sein, ohne Spiegelungen, Finger im Bild oder Unscharfe.'], photo: 'Passfoto', saved: 'Gespeicherten Pass auswahlen', manual: 'Passdaten eingeben' },
+	fr: { title: 'Telechargement du passeport', subtitle: 'Nous remplirons automatiquement les donnees necessaires a la demande de visa.', before: 'Avant de telecharger le document:', rules: ['Telechargez la page avec votre photo et votre nom (double page complete).', 'Assurez-vous que le passeport n est pas expire ni endommage.', 'L image doit etre nette et lisible, sans reflets, doigts dans le cadre ni flou.'], photo: 'Photo du passeport', saved: 'Choisir un passeport enregistre', manual: 'Saisir les donnees du passeport' },
+	es: { title: 'Carga de pasaporte', subtitle: 'Completaremos automaticamente los datos necesarios para la solicitud de visado.', before: 'Antes de cargar el documento:', rules: ['Carga la pagina con tu foto y nombre (doble pagina completa).', 'Asegurate de que el pasaporte no este vencido ni danado.', 'La imagen debe ser nitida y legible, sin reflejos, dedos en el encuadre ni desenfoque.'], photo: 'Foto del pasaporte', saved: 'Elegir pasaporte guardado', manual: 'Completar datos del pasaporte' },
+	it: { title: 'Caricamento passaporto', subtitle: 'Compileremo automaticamente i dati necessari per la richiesta del visto.', before: 'Prima di caricare il documento:', rules: ['Carica la pagina con foto e nome (doppia pagina completa).', 'Assicurati che il passaporto non sia scaduto o danneggiato.', 'L immagine deve essere nitida e leggibile, senza riflessi, dita nell inquadratura o sfocature.'], photo: 'Foto del passaporto', saved: 'Scegli passaporto salvato', manual: 'Compila dati del passaporto' },
 }
 
-const PASSPORT_SCAN_TEXT: Record<LocaleCode, { cameraHint: string, checkingTitle: string, checkingSubtitle: string, searching: string }> = {
-	ru: { cameraHint: 'Поместите обе страницы в рамку — ничего не должно обрезаться.', checkingTitle: 'Проверяем данные', checkingSubtitle: 'Убедимся, что все заполнено корректно. Это займет всего несколько секунд.', searching: 'Ищем данные...' },
-	en: { cameraHint: 'Place both pages inside the frame so nothing is cut off.', checkingTitle: 'Checking data', checkingSubtitle: 'We will make sure everything is filled in correctly. This will only take a few seconds.', searching: 'Looking for data...' },
-	de: { cameraHint: 'Platzieren Sie beide Seiten im Rahmen, damit nichts abgeschnitten wird.', checkingTitle: 'Daten werden gepruft', checkingSubtitle: 'Wir stellen sicher, dass alles korrekt ausgefullt ist. Das dauert nur wenige Sekunden.', searching: 'Daten werden gesucht...' },
-	fr: { cameraHint: 'Placez les deux pages dans le cadre afin que rien ne soit coupe.', checkingTitle: 'Verification des donnees', checkingSubtitle: 'Nous verifierons que tout est correctement rempli. Cela ne prendra que quelques secondes.', searching: 'Recherche des donnees...' },
-	es: { cameraHint: 'Coloca ambas paginas dentro del marco para que no se corte nada.', checkingTitle: 'Comprobando datos', checkingSubtitle: 'Nos aseguraremos de que todo este completado correctamente. Solo tardara unos segundos.', searching: 'Buscando datos...' },
-	it: { cameraHint: 'Posiziona entrambe le pagine nella cornice, senza tagliare nulla.', checkingTitle: 'Verifica dei dati', checkingSubtitle: 'Controlleremo che tutto sia compilato correttamente. Serviranno solo pochi secondi.', searching: 'Ricerca dati...' },
+const PASSPORT_SCAN_TEXT: Record<LocaleCode, { dialogTitle: string, cameraHint: string, checkingTitle: string, checkingSubtitle: string, searching: string }> = {
+	ru: { dialogTitle: 'Сделать фотографию', cameraHint: 'Поместите обе страницы в рамку — ничего не должно обрезаться.', checkingTitle: 'Проверяем данные', checkingSubtitle: 'Убедимся, что все заполнено корректно. Это займет всего несколько секунд.', searching: 'Ищем данные...' },
+	en: { dialogTitle: 'Take a photo', cameraHint: 'Place both pages inside the frame so nothing is cut off.', checkingTitle: 'Checking data', checkingSubtitle: 'We will make sure everything is filled in correctly. This will only take a few seconds.', searching: 'Looking for data...' },
+	de: { dialogTitle: 'Foto aufnehmen', cameraHint: 'Platzieren Sie beide Seiten im Rahmen, damit nichts abgeschnitten wird.', checkingTitle: 'Daten werden gepruft', checkingSubtitle: 'Wir stellen sicher, dass alles korrekt ausgefullt ist. Das dauert nur wenige Sekunden.', searching: 'Daten werden gesucht...' },
+	fr: { dialogTitle: 'Prendre une photo', cameraHint: 'Placez les deux pages dans le cadre afin que rien ne soit coupe.', checkingTitle: 'Verification des donnees', checkingSubtitle: 'Nous verifierons que tout est correctement rempli. Cela ne prendra que quelques secondes.', searching: 'Recherche des donnees...' },
+	es: { dialogTitle: 'Tomar una foto', cameraHint: 'Coloca ambas paginas dentro del marco para que no se corte nada.', checkingTitle: 'Comprobando datos', checkingSubtitle: 'Nos aseguraremos de que todo este completado correctamente. Solo tardara unos segundos.', searching: 'Buscando datos...' },
+	it: { dialogTitle: 'Scattare una foto', cameraHint: 'Posiziona entrambe le pagine nella cornice, senza tagliare nulla.', checkingTitle: 'Verifica dei dati', checkingSubtitle: 'Controlleremo che tutto sia compilato correttamente. Serviranno solo pochi secondi.', searching: 'Ricerca dati...' },
 }
 
 const VISA_PERSONAL_TEXT: Record<LocaleCode, { title: string, subtitle: string, birthPlace: string, birthPlaceValue: string, marital: string, maritalValue: string, profession: string, professionValue: string, employer: string, employerValue: string, workAddress: string, workAddressValue: string, residenceAddress: string, residenceAddressValue: string, phone: string, phoneValue: string, email: string, emailValue: string }> = {
@@ -676,6 +692,46 @@ function resolveSavedDrafts () {
 	} catch {
 		return []
 	}
+}
+
+// Resolve per-user localStorage key for payment history (guest fallback before auth).
+function paymentHistoryKey () {
+	try {
+		const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+		const uid = raw ? (JSON.parse(raw) as AuthTokenResponse).user?.userId : undefined
+		return `${PAYMENT_HISTORY_STORAGE_KEY_PREFIX}${uid ?? 'guest'}`
+	} catch { return `${PAYMENT_HISTORY_STORAGE_KEY_PREFIX}guest` }
+}
+
+// Read persisted payment history list for current user.
+function loadPaymentHistory (): PaymentRecord[] {
+	if(typeof window === 'undefined') return []
+	try { return JSON.parse(window.localStorage.getItem(paymentHistoryKey()) ?? '[]') as PaymentRecord[] } catch { return [] }
+}
+
+// Persist payment record at the head of history list.
+function appendPaymentRecord (record: PaymentRecord) {
+	if(typeof window === 'undefined') return
+	const next = [record, ...loadPaymentHistory()]
+	try { window.localStorage.setItem(paymentHistoryKey(), JSON.stringify(next)) } catch {}
+}
+
+// Process payment via configured provider; currently local stub, real /v1/app/payments wiring is pending.
+async function processPayment (input: { applicationId: string, method: PaymentMethodCode, amount: number, currency: string, visaTitle: string, applicantCount: number }): Promise<PaymentRecord> {
+	// TODO: replace with `authPost('/v1/app/payments', { applicationId, method, amount, currency })` once provider is connected.
+	const record: PaymentRecord = {
+		id: `pay-${Date.now()}`,
+		createdAt: Date.now(),
+		method: input.method,
+		amount: input.amount,
+		currency: input.currency,
+		status: 'succeeded',
+		applicationId: input.applicationId,
+		visaTitle: input.visaTitle,
+		applicantCount: input.applicantCount,
+	}
+	appendPaymentRecord(record)
+	return record
 }
 
 // Resolve developer-selected reduced motion preference.
@@ -1743,7 +1799,27 @@ function SupportChat ({ onClose, embed, rootRef }: { onClose: () => void, embed?
 }
 
 // Render payment history screen.
+// Display names for payment method codes used in the history list.
+const PAYMENT_METHOD_LABELS: Record<PaymentMethodCode, string> = {
+	'sbp': 'СБП',
+	'card-new': 'Банковская карта',
+	'card-saved': 'Сохраненная карта',
+	'yoomoney': 'ЮMoney',
+	'sberpay': 'SberPay',
+}
+
+// Format payment record creation date as compact RU date string.
+function formatPaymentDate (timestamp: number) {
+	return new Date(timestamp).toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 function PaymentHistoryScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProfile }: { onBack: () => void, onOpenHome: () => void, onOpenDocuments: () => void, onOpenProfile: () => void }) {
+	const [records, setRecords] = useState<PaymentRecord[]>([])
+
+	useEffect(() => {
+		setRecords(loadPaymentHistory())
+	}, [])
+
 	return (
 		<section aria-label="Payment history" className="simple-settings-screen">
 			<DesktopSidebar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
@@ -1754,9 +1830,23 @@ function PaymentHistoryScreen ({ onBack, onOpenHome, onOpenDocuments, onOpenProf
 					</button>
 					<h2>{'История платежей'}</h2>
 				</header>
-				<div className="simple-settings-empty">
-					<p>{'Нет истории платежей'}</p>
-				</div>
+				{records.length === 0 ? (
+					<div className="simple-settings-empty">
+						<p>{'Нет истории платежей'}</p>
+					</div>
+				) : (
+					<ul className="payment-history-list">
+						{records.map((record) => (
+							<li className="payment-history-row" key={record.id}>
+								<div className="payment-history-main">
+									<strong>{record.visaTitle}</strong>
+									<span>{`${PAYMENT_METHOD_LABELS[record.method]} · ${formatPaymentDate(record.createdAt)}`}</span>
+								</div>
+								<b>{`${record.amount.toFixed(2)} ₽`}</b>
+							</li>
+						))}
+					</ul>
+				)}
 			</div>
 			<DesktopRail />
 			<HomeTabbar active="profile" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
@@ -1805,6 +1895,15 @@ function NotificationsSettingsScreen ({ onBack, onOpenHome, onOpenDocuments, onO
 		setPushPermission(result)
 	}
 
+	// Fire a test notification: adds in-app entry and browser push if granted.
+	const sendTestNotification = () => {
+		const text = 'Тестовое уведомление: всё работает'
+		addNotification(text, 'Тест')
+		if(typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+			try { new Notification('Visa Assistant', { body: text, icon: '/assets/icon-tab-home-active.svg' }) } catch {}
+		}
+	}
+
 	const pushLabel = pushPermission === 'granted' ? 'Включены' : pushPermission === 'denied' ? 'Заблокированы в браузере' : 'Не включены'
 	const pushCanRequest = pushPermission === 'default'
 
@@ -1848,6 +1947,10 @@ function NotificationsSettingsScreen ({ onBack, onOpenHome, onOpenDocuments, onO
 							</label>
 						))}
 					</div>
+				</div>
+
+				<div className="notif-settings-group">
+					<button className="notif-settings-test-button" onClick={sendTestNotification} type="button">{'Отправить тестовое уведомление'}</button>
 				</div>
 			</div>
 			<DesktopRail />
@@ -2232,7 +2335,7 @@ function VisaTypeScreen ({ selectedDestination, selectedType, isWarningOpen, onB
 }
 
 // Render passport upload entry screen from Figma node 520:15466.
-function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, onSelectSaved }: { selectedPassport: PassportEntry | null, onBack: () => void, onHome: () => void, onAddPassport: () => void, onSelectSaved: () => void }) {
+function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, onSelectSaved, onManualFill }: { selectedPassport: PassportEntry | null, onBack: () => void, onHome: () => void, onAddPassport: () => void, onSelectSaved: () => void, onManualFill: () => void }) {
 	const { locale, t } = useI18n()
 	const copy = VISA_PASSPORT_TEXT[locale]
 
@@ -2272,8 +2375,9 @@ function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, 
 				</article> : null}
 
 				<div className="visa-passport-actions">
-					<button className="passport-primary" onClick={onAddPassport} type="button">{copy.add}</button>
+					<button className="passport-primary" onClick={onAddPassport} type="button">{copy.photo}</button>
 					<button className="visa-secondary-button" onClick={onSelectSaved} type="button">{copy.saved}</button>
+					<button className="visa-secondary-button" onClick={onManualFill} type="button">{copy.manual}</button>
 				</div>
 			</div>
 		</section>
@@ -2482,6 +2586,11 @@ function PassportCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCa
 			<button aria-label={t('profileDataBack')} className="passport-camera-back" onClick={onBack} type="button">
 				<Image alt="Back" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 			</button>
+
+			<header className="passport-camera-header">
+				<h2>{PASSPORT_SCAN_TEXT[locale].dialogTitle}</h2>
+				<button aria-label={t('notificationsClose')} className="passport-camera-header-close" onClick={onBack} type="button" />
+			</header>
 
 			<div className="passport-camera-frame" role="presentation">
 				<i />
@@ -2820,7 +2929,7 @@ function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () =
 
 // Render fullscreen camera screen from Figma node 520:15990.
 function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCapture: (dataUrl: string) => void }) {
-	const { locale } = useI18n()
+	const { locale, t } = useI18n()
 	const copy = VISA_PHOTO_TEXT[locale]
 	const videoRef = useRef<HTMLVideoElement | null>(null)
 	const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -2882,6 +2991,11 @@ function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onC
 					<polyline points="15 18 9 12 15 6" />
 				</svg>
 			</button>
+
+			<header className="visa-photo-camera-header">
+				<h2>{copy.camera}</h2>
+				<button aria-label={t('notificationsClose')} className="visa-photo-camera-header-close" onClick={onBack} type="button" />
+			</header>
 
 			{/* Hint text */}
 			<p className="visa-photo-camera-hint">{copy.cameraHint}</p>
@@ -3579,13 +3693,15 @@ function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, 
 							</article>
 						))}
 
-						<button className="passport-add-card" onClick={onAdd} type="button">
-							<span>{t('passportAddHint')}</span>
-							<p>{`${t('passportNumberLabel')}: 650000001\n${t('passportAddSubhint')}`}</p>
-							<i>
-								<Image alt="Plus" height={24} src="/assets/icon-plus.svg" unoptimized width={24} />
-							</i>
-						</button>
+						{isSelectionMode ? null : (
+							<button className="passport-add-card" onClick={onAdd} type="button">
+								<span>{t('passportAddHint')}</span>
+								<p>{`${t('passportNumberLabel')}: 650000001\n${t('passportAddSubhint')}`}</p>
+								<i>
+									<Image alt="Plus" height={24} src="/assets/icon-plus.svg" unoptimized width={24} />
+								</i>
+							</button>
+						)}
 					</div>
 				) : null}
 
@@ -3596,11 +3712,11 @@ function PassportsListScreen ({ passports, selectedPassportId, isSelectionMode, 
 						</div>
 
 						<div className="passports-empty-copy">
-							<h2>{t('passportEmptyTitle')}</h2>
-							<p>{t('passportEmptySubtitle')}</p>
+							<h2>{isSelectionMode ? t('passportNoneSavedTitle') : t('passportEmptyTitle')}</h2>
+							<p>{isSelectionMode ? t('passportNoneSavedSubtitle') : t('passportEmptySubtitle')}</p>
 						</div>
 
-						<button className="passport-primary" onClick={onAdd} type="button">{t('passportAddButton')}</button>
+						{isSelectionMode ? null : <button className="passport-primary" onClick={onAdd} type="button">{t('passportAddButton')}</button>}
 					</div>
 				) : null}
 			</div>
@@ -3625,7 +3741,7 @@ function PassportStepOneScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
 						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 					</button>
-					<button aria-label="Home" className="profile-data-icon-button" type="button">
+					<button aria-label="Home" className="profile-data-icon-button" onClick={onOpenHome} type="button">
 						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 					</button>
 				</header>
@@ -3666,7 +3782,7 @@ function PassportStepTwoScreen ({ draft, onBack, onOpenDocuments, onOpenHome, on
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
 						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 					</button>
-					<button aria-label="Home" className="profile-data-icon-button" type="button">
+					<button aria-label="Home" className="profile-data-icon-button" onClick={onOpenHome} type="button">
 						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 					</button>
 				</header>
@@ -3705,7 +3821,7 @@ function PassportEditScreen ({ draft, onBack, onOpenDocuments, onOpenHome, onOpe
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
 						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 					</button>
-					<button aria-label="Home" className="profile-data-icon-button" type="button">
+					<button aria-label="Home" className="profile-data-icon-button" onClick={onOpenHome} type="button">
 						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 					</button>
 				</header>
@@ -3748,7 +3864,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onOpenDocuments, on
 					<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
 						<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 					</button>
-					<button aria-label="Home" className="profile-data-icon-button" type="button">
+					<button aria-label="Home" className="profile-data-icon-button" onClick={onOpenHome} type="button">
 						<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
 					</button>
 				</header>
@@ -4368,23 +4484,29 @@ function EntryFlow () {
 		return drafts
 	}
 
-	// Build cache draft from current in-progress visa UI state.
-	const buildCurrentDraftCache = (id = activeDraftId ?? `local-${Date.now()}`): VisaDraft => ({
-		id,
-		createdAt: savedDrafts.find((draft) => draft.id === id)?.createdAt ?? Date.now(),
-		visaType: selectedVisaType,
-		visaDestination: selectedVisaDestination,
-		visaDestinationLabel: selectedVisaDestinationLabel,
-		status: savedDrafts.find((draft) => draft.id === id)?.status ?? 'draft',
-		applicantCount: currentApplicants.length,
-		applicants: currentApplicants,
-		selectedPassport: selectedVisaPassport,
-		reviewPassport,
-		reviewPersonal,
-		reviewTrip,
-		reviewDocs,
-		photoDataUrl: visaPhotoDataUrl,
-	})
+	// Build cache draft from current in-progress visa UI state, preserving payment fields from existing entry.
+	const buildCurrentDraftCache = (id = activeDraftId ?? `local-${Date.now()}`): VisaDraft => {
+		const existing = savedDrafts.find((draft) => draft.id === id)
+		return {
+			id,
+			createdAt: existing?.createdAt ?? Date.now(),
+			visaType: selectedVisaType,
+			visaDestination: selectedVisaDestination,
+			visaDestinationLabel: selectedVisaDestinationLabel,
+			status: existing?.status ?? 'draft',
+			applicantCount: currentApplicants.length,
+			applicants: currentApplicants,
+			selectedPassport: selectedVisaPassport,
+			reviewPassport,
+			reviewPersonal,
+			reviewTrip,
+			reviewDocs,
+			photoDataUrl: visaPhotoDataUrl,
+			paid: existing?.paid,
+			paidAt: existing?.paidAt,
+			paymentId: existing?.paymentId,
+		}
+	}
 
 	// Store in-progress visa state locally before backend draft exists.
 	const persistCurrentDraftCache = (id = activeDraftId ?? `local-${Date.now()}`) => {
@@ -4408,6 +4530,29 @@ function EntryFlow () {
 			const next = prev.map((draft) => draft.id === activeDraftId ? { ...draft, status } : draft)
 			return persistLocalDrafts(next)
 		})
+	}
+
+	// Mark current draft as paid and persist locally for skip-on-revisit.
+	const markCurrentDraftPaid = (paymentId: string) => {
+		if(!activeDraftId) return
+		setSavedDrafts((prev) => persistLocalDrafts(prev.map((draft) => draft.id === activeDraftId ? { ...draft, paid: true, paidAt: Date.now(), paymentId } : draft)))
+	}
+
+	// Process payment via provider (stub for now), persist record, then run backend self-check.
+	const payAndSubmitApplication = async () => {
+		const draft = savedDrafts.find((item) => item.id === activeDraftId)
+		if(activeDraftId && !draft?.paid) {
+			const record = await processPayment({
+				applicationId: activeDraftId,
+				method: selectedPayment,
+				amount: 1358.28,
+				currency: 'RUB',
+				visaTitle: currentVisaTitle,
+				applicantCount: currentApplicants.length,
+			})
+			markCurrentDraftPaid(record.id)
+		}
+		await sendApplicationToBackendCheck()
 	}
 
 	// Submit application to backend self-check before showing waiting UI.
@@ -4444,6 +4589,7 @@ function EntryFlow () {
 		await autoSaveBackendDraft(id, applicants)
 		setCurrentApplicants(applicants)
 		setIsDraftOpenedFromDocuments(false)
+		const existing = savedDrafts.find((item) => item.id === localId) ?? savedDrafts.find((item) => item.id === id)
 		const draft: VisaDraft = {
 			id,
 			createdAt: backendDraft ? Number(backendDraft.createdAt) || Date.now() : Date.now(),
@@ -4459,10 +4605,18 @@ function EntryFlow () {
 			reviewTrip,
 			reviewDocs,
 			photoDataUrl: visaPhotoDataUrl,
+			paid: existing?.paid,
+			paidAt: existing?.paidAt,
+			paymentId: existing?.paymentId,
 		}
 		setSavedDrafts((prev) => persistLocalDrafts(prev.filter((item) => item.id !== localId).some((item) => item.id === id) ? prev.filter((item) => item.id !== localId).map((item) => item.id === id ? draft : item) : [...prev.filter((item) => item.id !== localId), draft]))
 		setActiveDraftId(id)
 		await refreshBackendDrafts()
+
+		if(draft.paid) {
+			await sendApplicationToBackendCheck()
+			return
+		}
 		navigate('home', 'visa-payment')
 	}
 
@@ -4550,6 +4704,13 @@ function EntryFlow () {
 		setPassportFlowMode('visa-create')
 		setPassportDraft(createPassportDraft(fillTestValues))
 		navigate('home', 'passport-camera')
+	}
+
+	// Open manual passport form (skip camera) and select the result for the visa application.
+	const openVisaPassportManual = () => {
+		setPassportFlowMode('visa-create')
+		setPassportDraft(createPassportDraft(fillTestValues))
+		navigate('home', 'passports-step-one')
 	}
 
 	// Open passports list and request latest backend records.
@@ -4698,6 +4859,14 @@ function EntryFlow () {
 		return () => window.clearTimeout(timer)
 	}, [step, activeTab])
 
+	// Skip payment screen entirely when the active draft is already paid.
+	useEffect(() => {
+		if(step !== 'home' || activeTab !== 'visa-payment' || !activeDraftId) return
+		const draft = savedDrafts.find((item) => item.id === activeDraftId)
+		if(draft?.paid) sendApplicationToBackendCheck()
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [step, activeTab, activeDraftId])
+
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'visa-check' || !activeDraftId || visaCheckRequestRef.current === activeDraftId) return
 		visaCheckRequestRef.current = activeDraftId
@@ -4818,14 +4987,21 @@ function EntryFlow () {
 
 	// Save current passport draft and route according to active passport flow.
 	const savePassportDraft = async () => {
+		setPassportsError('')
+
 		if(passportFlowMode === 'visa-create') {
-			setSelectedVisaPassport(passportDraft)
-			setReviewPassport(passportDraft)
-			navigate('home', 'visa-personal-one')
+			try {
+				const saved = mapPassportDto(await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(passportDraft)))
+				setPassports((prev) => [...prev, saved])
+				setSelectedVisaPassport(saved)
+				setReviewPassport(saved)
+				navigate('home', 'visa-personal-one')
+			} catch (error) {
+				setPassportsError(error instanceof Error ? error.message : 'Failed to save passport')
+			}
 			return
 		}
 
-		setPassportsError('')
 		try {
 			await authPostAuthorized<PassportDto>('/v1/app/passports', mapPassportDraftToPayload(passportDraft))
 			if(passportFlowMode === 'edit' && !passportDraft.id.startsWith('draft-')) await authDeletePath(`/v1/app/passports/${passportDraft.id}`)
@@ -4905,7 +5081,7 @@ function EntryFlow () {
 							navigate('home', 'visa-passport')
 						}} onContinue={() => setIsVisaWarningOpen(true)} onHome={() => navigate('home', 'home')} onSelectType={selectVisaType} />
 							: activeTab === 'visa-passport'
-								? <VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => goBack('visa-type')} onHome={() => navigate('home', 'home')} onSelectSaved={openVisaPassportsList} />
+								? <VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => goBack('visa-type')} onHome={() => navigate('home', 'home')} onManualFill={openVisaPassportManual} onSelectSaved={openVisaPassportsList} />
 							: activeTab === 'passport-camera'
 								? <PassportCameraScreen onBack={() => goBack('visa-passport')} onCapture={() => navigate('home', 'passport-recognition')} />
 							: activeTab === 'passport-recognition'
@@ -4957,7 +5133,7 @@ function EntryFlow () {
 								onContinue={() => { markTabSubmitted('visa-applicants'); if(isActiveDraftEditable) saveCurrentApplication(); else navigate('home', 'documents') }}
 							/>
 							: activeTab === 'visa-payment'
-								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={sendApplicationToBackendCheck} onSelectPayment={setSelectedPayment} />
+								? <VisaPaymentScreen applicants={currentApplicants} selectedPayment={selectedPayment} visaDestination={selectedVisaDestination} visaTitle={currentVisaTitle} visaType={selectedVisaType} onBack={() => goBack('visa-applicants')} onHome={() => navigate('home', 'home')} onPay={payAndSubmitApplication} onSelectPayment={setSelectedPayment} />
 						: activeTab === 'visa-check'
 							? <VisaCheckScreen applicant={currentApplicants[0] ?? null} visaTitle={currentVisaTitle} onBack={() => goBack('visa-payment')} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-verified'
