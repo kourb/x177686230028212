@@ -1273,8 +1273,9 @@ html:not(.motion-disabled) .visa-progress-trip::after {
 }
 
 .passport-camera-screen {
-	position: relative;
-	height: 100%;
+	position: absolute;
+	inset: 0;
+	z-index: 10;
 	overflow: hidden;
 	background: #000;
 }
@@ -3830,47 +3831,53 @@ html:not(.motion-disabled) .calendar-sheet {
 	.passport-camera-screen .passport-camera-close,
 	.passport-camera-screen .passport-camera-flash { display: none; }
 
-	/* visa-photo-camera specifics */
-	.visa-photo-camera-screen .visa-photo-camera-overlay {
-		position: absolute;
-		inset: 0;
+	/* visa-photo-camera specifics — mirror passport-camera frame */
+	.visa-photo-camera-screen .visa-photo-camera-frame {
+		top: 108px;
+		left: 44px;
+		right: 44px;
+		height: 368px;
+		border: 4px solid #fff;
+		border-radius: 12px;
+		box-sizing: border-box;
+		box-shadow: none;
 		background: transparent;
+		z-index: 3;
+	}
+	.visa-photo-camera-screen .visa-photo-camera-frame i { width: 40px; height: 40px; }
+	.visa-photo-camera-screen .visa-photo-camera-frame i:nth-child(1) { top: -10px; left: -10px; }
+	.visa-photo-camera-screen .visa-photo-camera-frame i:nth-child(2) { top: -10px; right: -10px; }
+	.visa-photo-camera-screen .visa-photo-camera-frame i:nth-child(3) { bottom: -10px; left: -10px; }
+	.visa-photo-camera-screen .visa-photo-camera-frame i:nth-child(4) { bottom: -10px; right: -10px; }
+	.visa-photo-camera-screen p { bottom: 144px; left: 32px; right: 32px; text-align: center; z-index: 4; }
+	.visa-photo-camera-screen .visa-photo-camera-controls {
+		position: absolute;
+		left: 50%; bottom: 32px; right: auto;
+		transform: translateX(-50%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-radius: 0;
+		z-index: 4;
 	}
-	.visa-photo-camera-screen .visa-photo-camera-cutout {
-		width: 516px;
-		height: 368px;
-		border-radius: 12px;
-		border: 4px solid #fff;
-		box-shadow: none;
-		background: transparent;
-		box-sizing: border-box;
+	.visa-photo-camera-screen .visa-photo-camera-close,
+	.visa-photo-camera-screen .visa-photo-camera-flash { display: none; }
+	.visa-photo-camera-screen .visa-photo-camera-shutter {
+		all: unset;
+		position: relative;
+		cursor: pointer;
+		width: 72px;
+		height: 72px;
+		border-radius: 50%;
+		box-shadow: inset 0 0 0 8px #fff;
 	}
-	.visa-photo-camera-screen .visa-photo-camera-corners {
+	.visa-photo-camera-screen .visa-photo-camera-shutter:disabled { opacity: 0.45; }
+	.visa-photo-camera-screen .visa-photo-camera-shutter::after {
+		content: '';
 		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: 516px;
-		height: 368px;
+		inset: 18px;
+		border-radius: 50%;
+		background: #fff;
 	}
-	.visa-photo-camera-screen .visa-photo-camera-hint {
-		position: absolute;
-		bottom: 112px;
-		left: 32px;
-		right: 32px;
-		top: auto;
-	}
-	.visa-photo-camera-screen .visa-photo-camera-controls {
-		position: absolute;
-		bottom: 32px;
-		left: 0; right: 0; top: auto;
-		gap: 0;
-	}
-	.visa-photo-camera-screen .visa-photo-camera-controls > span { display: none; }
 
 	.app-content:has(.desktop-global-chrome) > section {
 		grid-column: 2;
@@ -4526,28 +4533,6 @@ html:not(.motion-disabled) .calendar-sheet {
 
 /* ─── Visa Photo upload screen (Step 7.1) ─── */
 
-.visa-photo-frame {
-	position: relative;
-	margin: 0 16px;
-	height: 380px;
-	border: 4px solid var(--ink);
-	border-radius: 12px;
-	background: transparent;
-}
-
-.visa-photo-frame i {
-	position: absolute;
-	width: 32px;
-	height: 32px;
-	border-color: var(--fill-blue, #001D47);
-	border-style: solid;
-}
-
-.visa-photo-frame i:nth-child(1) { top: -10px; left: -10px; border-width: 4px 0 0 4px; border-radius: 12px 0 0; }
-.visa-photo-frame i:nth-child(2) { top: -10px; right: -10px; border-width: 4px 4px 0 0; border-radius: 0 12px 0 0; }
-.visa-photo-frame i:nth-child(3) { bottom: -10px; left: -10px; border-width: 0 0 4px 4px; border-radius: 0 0 0 12px; }
-.visa-photo-frame i:nth-child(4) { bottom: -10px; right: -10px; border-width: 0 4px 4px 0; border-radius: 0 0 12px; }
-
 .visa-photo-reqs {
 	padding: 0 16px;
 	display: grid;
@@ -4596,18 +4581,19 @@ html:not(.motion-disabled) .calendar-sheet {
 	clip-path: inset(50%) !important;
 }
 
-/* ─── Visa Photo camera screen (520:15990) ─── */
+/* ─── Visa Photo camera screen (520:15990) — mobile only, desktop styles override in @media (min-width: 1180px) ─── */
+
+@media (max-width: 1179px) {
 
 .visa-photo-camera-screen {
 	position: absolute;
 	inset: 0;
-	background: #000;
-	overflow: hidden;
 	z-index: 10;
+	overflow: hidden;
+	background: #000;
 }
 
 .visa-photo-camera-dialog { display: contents; }
-.visa-photo-camera-header { display: none; }
 
 .visa-photo-camera-video {
 	position: absolute;
@@ -4617,155 +4603,178 @@ html:not(.motion-disabled) .calendar-sheet {
 	object-fit: cover;
 }
 
-.visa-photo-camera-canvas {
-	display: none;
-}
+.visa-photo-camera-canvas { display: none; }
 
-.visa-photo-camera-overlay {
+.visa-photo-camera-screen::after {
+	content: '';
 	position: absolute;
 	inset: 0;
-	background: rgb(0 8 20 / 0.8);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.visa-photo-camera-cutout {
-	width: min(346px, 86%);
-	height: min(445px, calc(100% - 260px));
-	border-radius: 12px;
-	background: transparent;
-	box-shadow: 0 0 0 9999px rgb(0 8 20 / 0.8);
-}
-
-.visa-photo-camera-corners {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: min(346px, 86%);
-	height: min(445px, calc(100% - 260px));
-	transform: translate(-50%, -50%);
+	background: rgb(0 8 20 / 0.48);
 	pointer-events: none;
 }
 
-.visa-photo-camera-corners i {
+.visa-photo-camera-back {
+	all: unset;
+	position: absolute;
+	top: 62px;
+	left: 8px;
+	z-index: 3;
+	width: 40px;
+	height: 40px;
+	display: grid;
+	place-items: center;
+	filter: brightness(0) invert(1);
+	cursor: pointer;
+}
+
+.visa-photo-camera-frame {
+	position: absolute;
+	top: 112px;
+	left: 28px;
+	right: 28px;
+	height: min(491px, calc(100% - 318px));
+	border: 4px solid #fff;
+	border-radius: 12px;
+	z-index: 2;
+}
+
+.visa-photo-camera-frame i {
 	position: absolute;
 	width: 40px;
 	height: 40px;
 	border-color: #fff;
 	border-style: solid;
-	border-width: 0;
 }
 
-.visa-photo-camera-corners .tl {
-	top: -10px;
-	left: -10px;
-	border-top-width: 4px;
-	border-left-width: 4px;
-	border-radius: 12px 0 0 0;
+.visa-photo-camera-frame i:nth-child(1) {
+	top: -14px;
+	left: -14px;
+	border-width: 4px 0 0 4px;
+	border-radius: 12px 0 0;
 }
 
-.visa-photo-camera-corners .tr {
-	top: -10px;
-	right: -10px;
-	border-top-width: 4px;
-	border-right-width: 4px;
+.visa-photo-camera-frame i:nth-child(2) {
+	top: -14px;
+	right: -14px;
+	border-width: 4px 4px 0 0;
 	border-radius: 0 12px 0 0;
 }
 
-.visa-photo-camera-corners .bl {
-	bottom: -10px;
-	left: -10px;
-	border-bottom-width: 4px;
-	border-left-width: 4px;
+.visa-photo-camera-frame i:nth-child(3) {
+	bottom: -14px;
+	left: -14px;
+	border-width: 0 0 4px 4px;
 	border-radius: 0 0 0 12px;
 }
 
-.visa-photo-camera-corners .br {
-	bottom: -10px;
-	right: -10px;
-	border-bottom-width: 4px;
-	border-right-width: 4px;
-	border-radius: 0 0 12px 0;
+.visa-photo-camera-frame i:nth-child(4) {
+	right: -14px;
+	bottom: -14px;
+	border-width: 0 4px 4px 0;
+	border-radius: 0 0 12px;
 }
 
-.visa-photo-camera-back {
+.visa-photo-camera-screen p {
 	position: absolute;
-	top: 16px;
-	left: 8px;
-	width: 40px;
-	height: 40px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 8px;
-}
-
-.visa-photo-camera-hint {
-	position: absolute;
-	bottom: 140px;
+	bottom: 142px;
 	left: 16px;
 	right: 16px;
 	margin: 0;
 	font-size: 17px;
-	font-weight: 400;
 	line-height: 1.4;
-	color: #fff;
-	text-align: center;
+	font-weight: 400;
 	letter-spacing: -0.02em;
+	text-align: center;
+	color: #fff;
+	z-index: 3;
+}
+
+.visa-photo-camera-error {
+	position: absolute;
+	left: 16px;
+	right: 16px;
+	bottom: 112px;
+	z-index: 3;
+	padding: 8px 12px;
+	border-radius: 12px;
+	background: rgb(0 0 0 / 0.56);
+	font-size: 14px;
+	line-height: 1.35;
+	font-weight: 500;
+	text-align: center;
+	color: #ffb4b4;
 }
 
 .visa-photo-camera-controls {
 	position: absolute;
-	bottom: 52px;
-	left: 0;
-	right: 0;
+	left: 61px;
+	right: 61px;
+	bottom: 58px;
+	z-index: 3;
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	gap: 64px;
+	justify-content: space-between;
 }
+
+.visa-photo-camera-close,
+.visa-photo-camera-flash,
+.visa-photo-camera-shutter {
+	all: unset;
+	position: relative;
+	cursor: pointer;
+}
+
+.visa-photo-camera-close,
+.visa-photo-camera-flash {
+	width: 40px;
+	height: 40px;
+}
+
+.visa-photo-camera-close::before,
+.visa-photo-camera-close::after {
+	content: '';
+	position: absolute;
+	top: 19px;
+	left: 9px;
+	width: 22px;
+	height: 4px;
+	border-radius: 999px;
+	background: #fff;
+}
+
+.visa-photo-camera-close::before { transform: rotate(45deg); }
+.visa-photo-camera-close::after { transform: rotate(-45deg); }
 
 .visa-photo-camera-shutter {
 	width: 72px;
 	height: 72px;
 	border-radius: 50%;
-	border: 3px solid rgba(255 255 255 / 0.6);
-	background: none;
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 0;
+	box-shadow: inset 0 0 0 8px #fff;
 }
 
-.visa-photo-camera-shutter span {
-	width: 54px;
-	height: 54px;
+.visa-photo-camera-shutter:disabled { opacity: 0.45; }
+
+.visa-photo-camera-shutter::after {
+	content: '';
+	position: absolute;
+	inset: 18px;
 	border-radius: 50%;
 	background: #fff;
-	display: block;
 }
 
-.visa-photo-camera-shutter:disabled {
-	opacity: 0.4;
-}
+.visa-photo-camera-header { display: none; }
 
-.visa-photo-camera-error {
+.visa-photo-camera-flash::before {
+	content: '';
 	position: absolute;
-	bottom: 80px;
-	left: 16px;
-	right: 16px;
-	margin: 0;
-	font-size: 15px;
-	color: #ff4444;
-	text-align: center;
-	background: rgba(0 0 0 / 0.6);
-	padding: 8px 12px;
-	border-radius: 8px;
+	top: 6px;
+	left: 13px;
+	width: 14px;
+	height: 28px;
+	background: #fff;
+	clip-path: polygon(55% 0, 100% 0, 65% 38%, 100% 38%, 30% 100%, 45% 52%, 0 52%);
+}
+
 }
 
 /* ─── Visa Photo check screen (Step 7.2) ─── */

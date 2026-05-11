@@ -38,8 +38,9 @@ type GoogleWindow = Window & {
 	google?: {
 		accounts?: {
 			id?: {
-				initialize: (options: { client_id: string, callback: (response: GoogleCredentialResponse) => void, auto_select: boolean, cancel_on_tap_outside: boolean }) => void
+				initialize: (options: { client_id: string, callback: (response: GoogleCredentialResponse) => void, auto_select: boolean, cancel_on_tap_outside: boolean, ux_mode?: 'popup' | 'redirect' }) => void
 				prompt: (listener?: (notification: { isNotDisplayed: () => boolean, isSkippedMoment: () => boolean }) => void) => void
+				renderButton: (host: HTMLElement, options: { type?: string, theme?: string, size?: string, text?: string, shape?: string, logo_alignment?: string }) => void
 			}
 		}
 	}
@@ -824,7 +825,7 @@ function loadGoogleScript () {
 	return googleScriptPromise
 }
 
-// Request Google ID token via Google Identity Services.
+// Request Google ID token: render official Google button in a centered modal and wait for user click.
 function requestGoogleIdToken (clientId: string) {
 	return new Promise<string>((resolve, reject) => {
 		const google = (window as GoogleWindow).google?.accounts?.id
@@ -834,16 +835,39 @@ function requestGoogleIdToken (clientId: string) {
 		}
 
 		let done = false
+
+		const backdrop = document.createElement('div')
+		backdrop.style.cssText = 'position:fixed;inset:0;background:rgb(0 0 0 / 0.5);display:flex;align-items:center;justify-content:center;z-index:100000;'
+		const card = document.createElement('div')
+		card.style.cssText = 'background:#fff;padding:32px;border-radius:16px;box-shadow:0 24px 80px rgb(0 0 0 / 0.3);display:flex;flex-direction:column;gap:16px;align-items:center;min-width:320px;'
+		const title = document.createElement('div')
+		title.textContent = 'Войдите через Google'
+		title.style.cssText = 'font-size:18px;font-weight:600;color:#001d47;'
+		const buttonHost = document.createElement('div')
+		const cancel = document.createElement('button')
+		cancel.textContent = 'Отмена'
+		cancel.style.cssText = 'all:unset;cursor:pointer;font-size:14px;color:#001d47;opacity:0.6;margin-top:8px;'
+		card.append(title, buttonHost, cancel)
+		backdrop.appendChild(card)
+
+		const cleanup = () => { if(backdrop.parentNode) backdrop.parentNode.removeChild(backdrop) }
 		const finish = (callback: () => void) => {
 			if(done) return
 			done = true
+			cleanup()
 			callback()
 		}
+
+		cancel.addEventListener('click', () => finish(() => reject(new Error('Google sign-in cancelled'))))
+		backdrop.addEventListener('click', (event) => {
+			if(event.target === backdrop) finish(() => reject(new Error('Google sign-in cancelled')))
+		})
 
 		google.initialize({
 			client_id: clientId,
 			auto_select: false,
-			cancel_on_tap_outside: true,
+			cancel_on_tap_outside: false,
+			ux_mode: 'popup',
 			callback: (response) => {
 				if(response.credential) {
 					finish(() => resolve(response.credential as string))
@@ -854,11 +878,8 @@ function requestGoogleIdToken (clientId: string) {
 			},
 		})
 
-		google.prompt((notification) => {
-			if(notification.isNotDisplayed() || notification.isSkippedMoment()) {
-				finish(() => reject(new Error('Google sign-in prompt was skipped')))
-			}
-		})
+		document.body.appendChild(backdrop)
+		google.renderButton(buttonHost, { type: 'standard', theme: 'filled_blue', size: 'large', text: 'continue_with', shape: 'rectangular', logo_alignment: 'left' })
 	})
 }
 
@@ -2986,13 +3007,6 @@ function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () =
 					</div>
 				</header>
 
-				<div className="visa-photo-frame" role="presentation">
-					<i />
-					<i />
-					<i />
-					<i />
-				</div>
-
 				<div className="visa-photo-reqs">
 					<h2>{copy.reqTitle}</h2>
 					<ul>
@@ -3059,26 +3073,12 @@ function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onC
 	}
 
 	const screen = (
-		<section aria-label="Camera" className="visa-photo-camera-screen">
+		<section aria-label="Visa photo camera" className="visa-photo-camera-screen">
 			<div className="visa-photo-camera-dialog">
 				<video autoPlay className="visa-photo-camera-video" muted playsInline ref={videoRef} />
 				<canvas className="visa-photo-camera-canvas" ref={canvasRef} />
-
-				{/* Dark overlay with face cutout */}
-				<div aria-hidden className="visa-photo-camera-overlay">
-					<div className="visa-photo-camera-cutout" />
-				</div>
-
-				{/* Corner markers */}
-				<div aria-hidden className="visa-photo-camera-corners">
-					<i className="tl" /><i className="tr" /><i className="bl" /><i className="br" />
-				</div>
-
-				{/* Back button */}
-				<button aria-label="Back" className="visa-photo-camera-back" onClick={onBack} type="button">
-					<svg fill="none" height="24" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24">
-						<polyline points="15 18 9 12 15 6" />
-					</svg>
+				<button aria-label={t('profileDataBack')} className="visa-photo-camera-back" onClick={onBack} type="button">
+					<Image alt="Back" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
 				</button>
 
 				<header className="visa-photo-camera-header">
@@ -3086,21 +3086,21 @@ function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onC
 					<button aria-label={t('notificationsClose')} className="visa-photo-camera-header-close" onClick={onBack} type="button" />
 				</header>
 
-				{/* Hint text */}
-				<p className="visa-photo-camera-hint">{copy.cameraHint}</p>
+				<div className="visa-photo-camera-frame" role="presentation">
+					<i />
+					<i />
+					<i />
+					<i />
+				</div>
 
-				{/* Camera controls */}
-				{error ? (
-					<p className="visa-photo-camera-error">{error}</p>
-				) : (
-					<div className="visa-photo-camera-controls">
-						<span />
-						<button aria-label="Capture" className="visa-photo-camera-shutter" disabled={!isReady} onClick={capture} type="button">
-							<span />
-						</button>
-						<span />
-					</div>
-				)}
+				<p>{copy.cameraHint}</p>
+				{error ? <strong className="visa-photo-camera-error">{error}</strong> : null}
+
+				<div className="visa-photo-camera-controls">
+					<button aria-label={t('notificationsClose')} className="visa-photo-camera-close" onClick={onBack} type="button" />
+					<button aria-label="Capture" className="visa-photo-camera-shutter" disabled={!isReady} onClick={capture} type="button" />
+					<button aria-label="Flash" className="visa-photo-camera-flash" type="button" />
+				</div>
 			</div>
 		</section>
 	)
