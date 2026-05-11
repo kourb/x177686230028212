@@ -5186,13 +5186,12 @@ function EntryFlow () {
 							? <VisaReviewTripScreen canContinue={visaReviewTripComplete} docs={reviewDocs} trip={reviewTrip} onBack={() => goBack('visa-review-personal')} onContinue={() => { markTabSubmitted('visa-review-trip'); navigate('home', 'visa-review-photo') }} onHome={() => navigate('home', 'home')} onTripChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-photo'
 						? <VisaReviewPhotoScreen photoDataUrl={visaPhotoDataUrl} onBack={() => goBack('visa-review-trip')} onContinue={() => {
-							const applicant: VisaApplicant = { passport: reviewPassport, personal: reviewPersonal, trip: reviewTrip, docs: reviewDocs, photoDataUrl: visaPhotoDataUrl }
-							if (editingApplicantIndex !== null) {
-								setCurrentApplicants((prev) => prev.map((a, i) => i === editingApplicantIndex ? applicant : a))
-								setEditingApplicantIndex(null)
-							} else {
-								setCurrentApplicants((prev) => [...prev, applicant])
-							}
+						const applicant: VisaApplicant = { passport: reviewPassport, personal: reviewPersonal, trip: reviewTrip, docs: reviewDocs, photoDataUrl: visaPhotoDataUrl }
+						if (editingApplicantIndex !== null) {
+							setCurrentApplicants((prev) => prev.map((a, i) => i === editingApplicantIndex ? applicant : a))
+						} else {
+							setCurrentApplicants((prev) => { setEditingApplicantIndex(prev.length); return [...prev, applicant] })
+						}
 							markTabSubmitted('visa-review-photo')
 							navigate('home', 'visa-applicants')
 						}} onHome={() => navigate('home', 'home')} onReplace={() => { setAfterPhotoCheckTab('visa-review-photo'); navigate('home', 'visa-photo') }} />
