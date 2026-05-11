@@ -2986,6 +2986,13 @@ function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () =
 					</div>
 				</header>
 
+				<div className="visa-photo-frame" role="presentation">
+					<i />
+					<i />
+					<i />
+					<i />
+				</div>
+
 				<div className="visa-photo-reqs">
 					<h2>{copy.reqTitle}</h2>
 					<ul>
@@ -2999,8 +3006,8 @@ function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () =
 
 				<div className="visa-photo-actions">
 					<input accept="image/*" className="visa-photo-file-input" onChange={handleFileChange} ref={fileInputRef} type="file" />
-					<button className="passport-primary" onClick={() => fileInputRef.current?.click()} type="button">{copy.upload}</button>
-					<button className="visa-secondary-button" onClick={onCamera} type="button">{copy.camera}</button>
+					<button className="passport-primary" onClick={onCamera} type="button">{copy.camera}</button>
+					<button className="visa-secondary-button" onClick={() => fileInputRef.current?.click()} type="button">{copy.upload}</button>
 				</div>
 			</div>
 		</section>
