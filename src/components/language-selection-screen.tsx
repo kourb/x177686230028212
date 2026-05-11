@@ -5193,7 +5193,7 @@ function EntryFlow () {
 							: activeTab === 'visa-passport'
 								? <VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => goBack('visa-type')} onHome={() => navigate('home', 'home')} onManualFill={openVisaPassportManual} onSelectSaved={openVisaPassportsList} />
 							: activeTab === 'passport-camera'
-								? <PassportCameraScreen onBack={() => goBack('visa-passport')} onCapture={() => navigate('home', 'passport-recognition')} />
+								? <><VisaPassportScreen selectedPassport={selectedVisaPassport} onAddPassport={openVisaPassportAdd} onBack={() => goBack('visa-type')} onHome={() => navigate('home', 'home')} onManualFill={openVisaPassportManual} onSelectSaved={openVisaPassportsList} /><PassportCameraScreen onBack={() => goBack('visa-passport')} onCapture={() => navigate('home', 'passport-recognition')} /></>
 							: activeTab === 'passport-recognition'
 								? <PassportRecognitionScreen onBack={() => goBack('passport-camera')} />
 							: activeTab === 'visa-personal-one'
@@ -5207,7 +5207,7 @@ function EntryFlow () {
 						: activeTab === 'visa-photo'
 							? <VisaPhotoScreen onBack={() => goBack('visa-docs')} onCamera={() => navigate('home', 'visa-photo-camera')} onHome={() => navigate('home', 'home')} onUpload={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
 						: activeTab === 'visa-photo-camera'
-							? <VisaPhotoCameraScreen onBack={() => goBack('visa-photo')} onCapture={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
+							? <><VisaPhotoScreen onBack={() => goBack('visa-docs')} onCamera={() => navigate('home', 'visa-photo-camera')} onHome={() => navigate('home', 'home')} onUpload={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} /><VisaPhotoCameraScreen onBack={() => goBack('visa-photo')} onCapture={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} /></>
 						: activeTab === 'visa-photo-check'
 							? <VisaPhotoCheckScreen photoDataUrl={visaPhotoDataUrl} onBack={() => goBack('visa-photo')} onDone={() => { if (afterPhotoCheckTab === 'visa-review-passport') setReviewPassport({ ...(selectedVisaPassport ?? passportDraft) }); markTabSubmitted('visa-photo'); navigate('home', afterPhotoCheckTab) }} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-review-passport'
