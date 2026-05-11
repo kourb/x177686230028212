@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
-import { COUNTRY_OPTIONS } from '@/data/countries'
+import { COUNTRY_OPTIONS, COUNTRY_CODE_MAP } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
 import { PROFESSION_OPTIONS } from '@/data/professions'
@@ -1087,7 +1087,7 @@ async function loadDestinationOptions (): Promise<void> {
 		} catch {}
 	}
 
-	const countries = await authGet<CountryDto[]>('/v1/app/reference/countries?schengenOnly=true')
+	const countries = await authGet<CountryDto[]>('/v1/app/reference/countries?schengenOnly=true&locale=ru')
 	refCache.schengenCountries = countries
 	try { window.localStorage.setItem(SCHENGEN_COUNTRIES_STORAGE_KEY, JSON.stringify(countries)) } catch {}
 	destinationOptsStore.set(countries.map((c) => c.name))
@@ -1096,7 +1096,7 @@ async function loadDestinationOptions (): Promise<void> {
 // Load and cache full country name list from backend reference, then notify stores.
 async function loadCountryOptions (): Promise<string[]> {
 	if(!refCache.countries) {
-		const countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
+		const countries = await authGet<CountryDto[]>('/v1/app/reference/countries?locale=ru')
 		refCache.countries = countries
 		countryOptsStore.set(countries.map((item) => item.name))
 		const chips = countries.filter((c) => c.isSchengen && SCHENGEN_FLAG_ASSETS[c.code]).map((c) => ({ code: c.code, name: c.name, flagSrc: SCHENGEN_FLAG_ASSETS[c.code] }))
@@ -1107,6 +1107,12 @@ async function loadCountryOptions (): Promise<string[]> {
 
 // Convert display name to ISO 3166-1 alpha-3 code for backend passport fields.
 function resolveCountryCode (name: string): string {
+	if(!name) return name
+	// Static map first — always reliable regardless of backend locale.
+	if(COUNTRY_CODE_MAP[name]) return COUNTRY_CODE_MAP[name]
+	// Already a 3-letter ISO code.
+	if(/^[A-Z]{3}$/.test(name)) return name
+	// Backend cache fallback.
 	return refCache.countries?.find((item) => item.name === name)?.code ?? name
 }
 
@@ -1118,7 +1124,7 @@ function resolveCountryName (code: string | null | undefined): string {
 
 // Resolve backend country and visa type IDs from public reference data.
 async function resolveApplicationRefs (destination: VisaDestinationCode, label: string, type: VisaTypeCode) {
-	if(!refCache.countries) refCache.countries = await authGet<CountryDto[]>('/v1/app/reference/countries')
+	if(!refCache.countries) refCache.countries = await authGet<CountryDto[]>('/v1/app/reference/countries?locale=ru')
 	const aliases = resolveBackendCountryAliases(destination, label).map((item) => item.toLowerCase())
 	const country = refCache.countries.find((item) => aliases.includes(item.code.toLowerCase()) || aliases.includes(item.name.toLowerCase())) ?? refCache.countries.find((item) => aliases.some((alias) => item.name.toLowerCase().includes(alias)))
 	if(!country) throw new Error('Visa country is unavailable in backend reference')
@@ -3272,7 +3278,7 @@ function VisaReviewTripScreen ({ trip, docs, onBack, onHome, onContinue, canCont
 }
 
 // Render Step 8.4 — photo review from Figma node 520:15771.
-function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onReplace }: { photoDataUrl: string, onBack: () => void, onHome: () => void, onContinue: () => void, onReplace: () => void }) {
+function VisaReviewPhotoScreen ({ photoDataUrl, error, onBack, onHome, onContinue, onReplace }: { photoDataUrl: string, error?: string, onBack: () => void, onHome: () => void, onContinue: () => void, onReplace: () => void }) {
 	const { t } = useI18n()
 	const [showPhoto, setShowPhoto] = useState(false)
 	return (
@@ -3315,8 +3321,9 @@ function VisaReviewPhotoScreen ({ photoDataUrl, onBack, onHome, onContinue, onRe
 					) : null}
 				</div>
 			</div>
-			<div className="visa-bottom">
-				<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
+		<div className="visa-bottom">
+			{error ? <p className="visa-form-error">{error}</p> : null}
+			<button className="passport-primary" onClick={onContinue} type="button">{'Сохранить и продолжить'}</button>
 			</div>
 		</section>
 	)
@@ -4505,6 +4512,7 @@ function EntryFlow () {
 	const [reviewDocs, setReviewDocs] = useState(() => createDocsDraft(resolveFillTestValues()))
 	const [currentApplicants, setCurrentApplicants] = useState<VisaApplicant[]>([])
 	const [editingApplicantIndex, setEditingApplicantIndex] = useState<number | null>(null)
+	const [duplicateApplicantError, setDuplicateApplicantError] = useState('')
 	const [visitedVisaTabs, setVisitedVisaTabs] = useState<Partial<Record<HomeTab, true>>>({})
 	const [submittedVisaTabs, setSubmittedVisaTabs] = useState<Partial<Record<HomeTab, true>>>({})
 	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
@@ -4651,6 +4659,7 @@ function EntryFlow () {
 
 	// Save current application to backend and local UI cache before payment.
 	const saveCurrentApplication = async () => {
+		await loadCountryOptions().catch(() => {})
 		const localId = activeDraftId ?? persistCurrentDraftCache().id
 		const shouldCreateBackend = localId.startsWith('local-') || localId.startsWith('draft-')
 		const backendDraft = shouldCreateBackend ? await createBackendDraft(selectedVisaDestination, selectedVisaDestinationLabel, selectedVisaType) : null
@@ -4837,6 +4846,7 @@ function EntryFlow () {
 		setReviewDocs(createDocsDraft(fillTestValues))
 		setVisaPhotoDataUrl('')
 		setEditingApplicantIndex(null)
+		setDuplicateApplicantError('')
 		setAfterPhotoCheckTab('visa-review-passport')
 		navigate('home', 'visa-passport')
 	}
@@ -5062,6 +5072,7 @@ function EntryFlow () {
 	// Save current passport draft and route according to active passport flow.
 	const savePassportDraft = async () => {
 		setPassportsError('')
+		await loadCountryOptions().catch(() => {})
 
 		if(passportFlowMode === 'visa-create') {
 			try {
@@ -5185,11 +5196,17 @@ function EntryFlow () {
 						: activeTab === 'visa-review-trip'
 							? <VisaReviewTripScreen canContinue={visaReviewTripComplete} docs={reviewDocs} trip={reviewTrip} onBack={() => goBack('visa-review-personal')} onContinue={() => { markTabSubmitted('visa-review-trip'); navigate('home', 'visa-review-photo') }} onHome={() => navigate('home', 'home')} onTripChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} />
 						: activeTab === 'visa-review-photo'
-						? <VisaReviewPhotoScreen photoDataUrl={visaPhotoDataUrl} onBack={() => goBack('visa-review-trip')} onContinue={() => {
+						? <VisaReviewPhotoScreen error={duplicateApplicantError} photoDataUrl={visaPhotoDataUrl} onBack={() => goBack('visa-review-trip')} onContinue={() => {
 						const applicant: VisaApplicant = { passport: reviewPassport, personal: reviewPersonal, trip: reviewTrip, docs: reviewDocs, photoDataUrl: visaPhotoDataUrl }
-						if (editingApplicantIndex !== null) {
-							setCurrentApplicants((prev) => prev.map((a, i) => i === editingApplicantIndex ? applicant : a))
+						const idx = editingApplicantIndex ?? (currentApplicants.findIndex((a) => a.passport.passportNumber && a.passport.passportNumber === applicant.passport.passportNumber))
+						if (idx !== -1 && (editingApplicantIndex !== null || currentApplicants[idx])) {
+							setCurrentApplicants((prev) => prev.map((a, i) => i === idx ? applicant : a))
+							setEditingApplicantIndex(idx)
+							setDuplicateApplicantError('')
 						} else {
+							const isDuplicate = currentApplicants.some((a) => a.passport.passportNumber && a.passport.passportNumber === applicant.passport.passportNumber)
+							if(isDuplicate) { setDuplicateApplicantError('Заявитель с таким паспортом уже добавлен'); return }
+							setDuplicateApplicantError('')
 							setCurrentApplicants((prev) => { setEditingApplicantIndex(prev.length); return [...prev, applicant] })
 						}
 							markTabSubmitted('visa-review-photo')
