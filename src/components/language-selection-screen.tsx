@@ -4633,7 +4633,7 @@ function EntryFlow () {
 
 	// Submit application to backend self-check before showing waiting UI.
 	const sendApplicationToBackendCheck = async () => {
-		if(activeDraftId) {
+		if(activeDraftId && activeDraftStatus !== 'checking') {
 			const application = await runBackendSelfCheck(activeDraftId)
 			updateActiveDraftStatus(mapApplicationStatus(application.status))
 		}
@@ -4939,13 +4939,7 @@ function EntryFlow () {
 		return () => window.clearTimeout(timer)
 	}, [step, activeTab])
 
-	// Skip payment screen entirely when the active draft is already paid.
-	useEffect(() => {
-		if(step !== 'home' || activeTab !== 'visa-payment' || !activeDraftId) return
-		const draft = savedDrafts.find((item) => item.id === activeDraftId)
-		if(draft?.paid) sendApplicationToBackendCheck()
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [step, activeTab, activeDraftId])
+
 
 	useEffect(() => {
 		if(step !== 'home' || activeTab !== 'visa-check' || !activeDraftId || visaCheckRequestRef.current === activeDraftId) return
@@ -5146,11 +5140,15 @@ function EntryFlow () {
 									navigate('home', 'visa-rejected')
 									return
 								}
-								if(draft.status === 'checking') {
-									navigate('home', 'visa-check')
-									return
-								}
-								navigate('home', draft.applicants.length ? 'visa-applicants' : 'visa-start')
+							if(draft.status === 'checking') {
+								navigate('home', 'visa-check')
+								return
+							}
+							if(draft.paid) {
+								navigate('home', 'visa-payment')
+								return
+							}
+							navigate('home', draft.applicants.length ? 'visa-applicants' : 'visa-start')
 							}} onOpenHome={() => navigate('home', 'home')} onOpenProfile={() => navigate('home', 'profile')} />
 							: activeTab === 'visa-start'
 								? <VisaStartScreen canContinue={visaChoiceComplete} selectedCitizenship={selectedVisaCitizenship} selectedDestination={selectedVisaDestination} selectedDestinationLabel={selectedVisaDestinationLabel} selectedResidence={selectedVisaResidence} onBack={() => goBack('home')} onContinue={() => { markTabSubmitted('visa-start'); navigate('home', 'visa-type') }} onHome={() => navigate('home', 'home')} onSelectCitizenship={setSelectedVisaCitizenship} onSelectDestination={selectVisaDestinationLabel} onSelectResidence={setSelectedVisaResidence} />
