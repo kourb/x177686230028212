@@ -900,7 +900,7 @@ async function authPostAuthorized<T> (path: string, payload: Record<string, unkn
 	let { response, body } = await requestPost(authPayload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
 		const refreshed = await refreshAccessToken(authPayload.refreshToken)
-		if(refreshed) ;({ response, body } = await requestPost(refreshed.accessToken))
+		if(refreshed) ({ response, body } = await requestPost(refreshed.accessToken))
 	}
 
 	if(response.status === 401) {
@@ -929,7 +929,7 @@ async function authPut<T> (path: string, payload: Record<string, unknown>) {
 	let { response, body } = await requestPut(authPayload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(authPayload)) {
 		const refreshed = await refreshAccessToken(authPayload.refreshToken)
-		if(refreshed) ;({ response, body } = await requestPut(refreshed.accessToken))
+		if(refreshed) ({ response, body } = await requestPut(refreshed.accessToken))
 	}
 	if(!response.ok) throw new Error(body.error?.message ?? 'State update failed')
 	return body.data
@@ -959,7 +959,7 @@ async function authDeletePath (path: AuthDeletePath | AuthDeleteDynamicPath) {
 	let { response, body } = await requestDelete(payload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(payload)) {
 		const refreshed = await refreshAccessToken(payload.refreshToken)
-		if(refreshed) ;({ response, body } = await requestDelete(refreshed.accessToken))
+		if(refreshed) ({ response, body } = await requestDelete(refreshed.accessToken))
 	}
 
 	if(response.status === 401) {
@@ -989,7 +989,7 @@ async function authGet<T> (path: string) {
 	let { response, body } = await requestGet(payload.accessToken)
 	if(response.status === 401 && hasValidRefreshToken(payload)) {
 		const refreshed = await refreshAccessToken(payload.refreshToken)
-		if(refreshed) ;({ response, body } = await requestGet(refreshed.accessToken))
+		if(refreshed) ({ response, body } = await requestGet(refreshed.accessToken))
 	}
 
 	if(response.status === 401) {
