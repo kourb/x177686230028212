@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { type ChangeEvent, type CSSProperties, useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { COUNTRY_OPTIONS, COUNTRY_CODE_MAP } from '@/data/countries'
 import { BIG_SMOKE, buildAcknowledge, buildOpening, buildWow, pick } from '@/data/chat-characters'
 import { BIRTH_PLACE_OPTIONS, CITY_OPTIONS } from '@/data/places'
@@ -1232,6 +1233,19 @@ async function autoSaveBackendDraft (applicationId: string, applicants: VisaAppl
 }
 
 // Resolve splash lifecycle based on document and script readiness.
+// Returns true when viewport is desktop-wide (≥1180px).
+function useIsDesktop () {
+	const [isDesktop, setIsDesktop] = useState(false)
+	useEffect(() => {
+		const mq = window.matchMedia('(min-width: 1180px)')
+		setIsDesktop(mq.matches)
+		const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+		mq.addEventListener('change', handler)
+		return () => mq.removeEventListener('change', handler)
+	}, [])
+	return isDesktop
+}
+
 function useSplashReady () {
 	const [isReady, setIsReady] = useState(false)
 
@@ -2602,6 +2616,7 @@ function ProfileScreen ({ onOpenHome, onOpenDocuments, onOpenProfileData, onOpen
 // Render passport camera scanner step from Figma node 520:15963.
 function PassportCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCapture: () => void }) {
 	const { locale, t } = useI18n()
+	const isDesktop = useIsDesktop()
 	const videoRef = useRef<HTMLVideoElement | null>(null)
 	const canvasRef = useRef<HTMLCanvasElement | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
@@ -2642,38 +2657,40 @@ function PassportCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCa
 		onCapture()
 	}
 
-	return (
+	const screen = (
 		<section aria-label="Passport camera" className="passport-camera-screen">
-			<video autoPlay className="passport-camera-video" muted playsInline ref={videoRef} />
-			<canvas className="passport-camera-canvas" ref={canvasRef} />
-			<button aria-label={t('profileDataBack')} className="passport-camera-back" onClick={onBack} type="button">
-				<Image alt="Back" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
-			</button>
+			<div className="passport-camera-dialog">
+				<video autoPlay className="passport-camera-video" muted playsInline ref={videoRef} />
+				<canvas className="passport-camera-canvas" ref={canvasRef} />
+				<button aria-label={t('profileDataBack')} className="passport-camera-back" onClick={onBack} type="button">
+					<Image alt="Back" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+				</button>
 
-			<header className="passport-camera-header">
-				<h2>{PASSPORT_SCAN_TEXT[locale].dialogTitle}</h2>
-				<button aria-label={t('notificationsClose')} className="passport-camera-header-close" onClick={onBack} type="button" />
-			</header>
+				<header className="passport-camera-header">
+					<h2>{PASSPORT_SCAN_TEXT[locale].dialogTitle}</h2>
+					<button aria-label={t('notificationsClose')} className="passport-camera-header-close" onClick={onBack} type="button" />
+				</header>
 
-			<div className="passport-camera-frame" role="presentation">
-				<i />
-				<i />
-				<i />
-				<i />
-				<span />
+				<div className="passport-camera-frame" role="presentation">
+					<i />
+					<i />
+					<i />
+					<i />
+					<span />
+				</div>
+
+				<p>{PASSPORT_SCAN_TEXT[locale].cameraHint}</p>
+				{error ? <strong className="passport-camera-error">{error}</strong> : null}
+
+				<div className="passport-camera-controls">
+					<button aria-label={t('notificationsClose')} className="passport-camera-close" onClick={onBack} type="button" />
+					<button aria-label="Capture" className="passport-camera-shutter" disabled={!isReady} onClick={capture} type="button" />
+					<button aria-label="Flash" className="passport-camera-flash" type="button" />
+				</div>
 			</div>
-
-			<p>{PASSPORT_SCAN_TEXT[locale].cameraHint}</p>
-			{error ? <strong className="passport-camera-error">{error}</strong> : null}
-
-			<div className="passport-camera-controls">
-				<button aria-label={t('notificationsClose')} className="passport-camera-close" onClick={onBack} type="button" />
-				<button aria-label="Capture" className="passport-camera-shutter" disabled={!isReady} onClick={capture} type="button" />
-				<button aria-label="Flash" className="passport-camera-flash" type="button" />
-			</div>
-
 		</section>
 	)
+	return isDesktop ? createPortal(screen, document.body) : screen
 }
 
 // Render temporary passport recognition state before manual data edit.
@@ -2994,6 +3011,7 @@ function VisaPhotoScreen ({ onBack, onHome, onUpload, onCamera }: { onBack: () =
 function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onCapture: (dataUrl: string) => void }) {
 	const { locale, t } = useI18n()
 	const copy = VISA_PHOTO_TEXT[locale]
+	const isDesktop = useIsDesktop()
 	const videoRef = useRef<HTMLVideoElement | null>(null)
 	const canvasRef = useRef<HTMLCanvasElement | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
@@ -3033,50 +3051,53 @@ function VisaPhotoCameraScreen ({ onBack, onCapture }: { onBack: () => void, onC
 		onCapture(canvas.toDataURL('image/jpeg', 0.92))
 	}
 
-	return (
+	const screen = (
 		<section aria-label="Camera" className="visa-photo-camera-screen">
-			<video autoPlay className="visa-photo-camera-video" muted playsInline ref={videoRef} />
-			<canvas className="visa-photo-camera-canvas" ref={canvasRef} />
+			<div className="visa-photo-camera-dialog">
+				<video autoPlay className="visa-photo-camera-video" muted playsInline ref={videoRef} />
+				<canvas className="visa-photo-camera-canvas" ref={canvasRef} />
 
-			{/* Dark overlay with face cutout */}
-			<div aria-hidden className="visa-photo-camera-overlay">
-				<div className="visa-photo-camera-cutout" />
-			</div>
-
-			{/* Corner markers */}
-			<div aria-hidden className="visa-photo-camera-corners">
-				<i className="tl" /><i className="tr" /><i className="bl" /><i className="br" />
-			</div>
-
-			{/* Back button */}
-			<button aria-label="Back" className="visa-photo-camera-back" onClick={onBack} type="button">
-				<svg fill="none" height="24" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24">
-					<polyline points="15 18 9 12 15 6" />
-				</svg>
-			</button>
-
-			<header className="visa-photo-camera-header">
-				<h2>{copy.camera}</h2>
-				<button aria-label={t('notificationsClose')} className="visa-photo-camera-header-close" onClick={onBack} type="button" />
-			</header>
-
-			{/* Hint text */}
-			<p className="visa-photo-camera-hint">{copy.cameraHint}</p>
-
-			{/* Camera controls */}
-			{error ? (
-				<p className="visa-photo-camera-error">{error}</p>
-			) : (
-				<div className="visa-photo-camera-controls">
-					<span />
-					<button aria-label="Capture" className="visa-photo-camera-shutter" disabled={!isReady} onClick={capture} type="button">
-						<span />
-					</button>
-					<span />
+				{/* Dark overlay with face cutout */}
+				<div aria-hidden className="visa-photo-camera-overlay">
+					<div className="visa-photo-camera-cutout" />
 				</div>
-			)}
+
+				{/* Corner markers */}
+				<div aria-hidden className="visa-photo-camera-corners">
+					<i className="tl" /><i className="tr" /><i className="bl" /><i className="br" />
+				</div>
+
+				{/* Back button */}
+				<button aria-label="Back" className="visa-photo-camera-back" onClick={onBack} type="button">
+					<svg fill="none" height="24" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="24">
+						<polyline points="15 18 9 12 15 6" />
+					</svg>
+				</button>
+
+				<header className="visa-photo-camera-header">
+					<h2>{copy.camera}</h2>
+					<button aria-label={t('notificationsClose')} className="visa-photo-camera-header-close" onClick={onBack} type="button" />
+				</header>
+
+				{/* Hint text */}
+				<p className="visa-photo-camera-hint">{copy.cameraHint}</p>
+
+				{/* Camera controls */}
+				{error ? (
+					<p className="visa-photo-camera-error">{error}</p>
+				) : (
+					<div className="visa-photo-camera-controls">
+						<span />
+						<button aria-label="Capture" className="visa-photo-camera-shutter" disabled={!isReady} onClick={capture} type="button">
+							<span />
+						</button>
+						<span />
+					</div>
+				)}
+			</div>
 		</section>
 	)
+	return isDesktop ? createPortal(screen, document.body) : screen
 }
 
 // Render photo verification screen from Figma node 527:16358.
