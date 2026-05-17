@@ -5208,8 +5208,9 @@ html:not(.motion-disabled) .calendar-sheet {
 }
 
 .documents-insurance-cta {
-	margin-top: 16px;
-	width: max-content;
+	margin: 16px 0 0;
+	width: auto;
+	padding-inline: 24px;
 	justify-self: start;
 }
 
