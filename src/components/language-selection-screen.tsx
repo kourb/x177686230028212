@@ -17,6 +17,7 @@ const USER_PROFILE_STORAGE_KEY = 'visa-assistent-user-profile'
 const VISA_DRAFTS_STORAGE_KEY = 'visa-drafts'
 const ANIMATIONS_DISABLED_STORAGE_KEY = 'visa-animations-disabled'
 const FILL_TEST_VALUES_STORAGE_KEY = 'visa-fill-test-values'
+const INSURANCE_POLICIES_STORAGE_KEY = 'visa-insurance-policies'
 const ADMIN_PANEL_ENABLED_STORAGE_KEY = 'visa-admin-panel-enabled'
 const SCHENGEN_COUNTRIES_STORAGE_KEY = 'visa-schengen-countries'
 const PAYMENT_HISTORY_STORAGE_KEY_PREFIX = 'visa-payment-history-'
@@ -190,9 +191,9 @@ type ApplicantDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'developer-api' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings' | 'admin'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'insurance-trip' | 'insurance-plan' | 'insurance-passport-one' | 'insurance-passport-two' | 'insurance-policyholders' | 'insurance-review' | 'insurance-checking' | 'insurance-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'developer-api' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings' | 'admin'
 
-const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'developer-api', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings', 'admin']
+const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'insurance-trip', 'insurance-plan', 'insurance-passport-one', 'insurance-passport-two', 'insurance-policyholders', 'insurance-review', 'insurance-checking', 'insurance-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'developer-api', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings', 'admin']
 
 type VisaDestinationCode = string
 
@@ -205,6 +206,50 @@ type FieldIcon = 'search' | 'chevron' | 'calendar'
 type HomeRootTab = 'home' | 'documents' | 'profile' | 'admin'
 
 type TripData = (typeof VISA_TRIP_TEXT)['ru']
+
+type InsurancePlanCode = 'extended' | 'basic'
+
+type InsuranceTrip = {
+	destinations: string
+	entryDate: string
+	exitDate: string
+	peopleCount: string
+}
+
+type InsurancePassport = {
+	savedPassport: string
+	citizenship: string
+	firstName: string
+	lastName: string
+	birthDate: string
+	gender: string
+	passportNumber: string
+	issueDate: string
+	expiryDate: string
+	issuedBy: string
+}
+
+type InsurancePolicyholder = {
+	id: string
+	fullName: string
+	passportNumber: string
+	visaTitle: string
+	completion: number
+}
+
+type InsuranceStatus = 'idle' | 'checking' | 'ready'
+
+type InsurancePolicy = {
+	id: string
+	createdAt: number
+	plan: InsurancePlanCode
+	planTitle: string
+	destinations: string
+	entryDate: string
+	exitDate: string
+	policyholders: InsurancePolicyholder[]
+	amount: number
+}
 
 type VisaApplicant = {
 	backendApplicantId?: string
@@ -364,6 +409,19 @@ const MARITAL_OPTIONS = ['Не женат / Не замужем', 'Женат / 
 const GENDER_OPTIONS = ['Мужской', 'Женский']
 const TIME_OPTIONS = ['09:00', '10:30', '12:00', '14:00', '15:30', '17:00']
 const CENTER_OPTIONS = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск']
+const INSURANCE_PEOPLE_OPTIONS = ['1 человек', '2 человека', '3 человека', '4 человека', '5 человек']
+const INSURANCE_POPULAR_COUNTRIES = ['Италия', 'Франция', 'Испания', 'Венгрия', 'Греция']
+const INSURANCE_PRICE = 2000
+const INSURANCE_OFFER_DIALOG_DISMISS_KEY = 'visa-insurance-offer-dismissed'
+
+const INSURANCE_OFFER_TEXT: Record<LocaleCode, { title: string, subtitle: string, cta: string, inlineCta: string }> = {
+	ru: { title: 'Нужна страховка для поездки?', subtitle: 'Оформите страховку прямо в нашем сервисе — быстро и без сторонних платформ.', cta: 'Оформить страховку', inlineCta: 'Нет страховки? Оформите через нас' },
+	en: { title: 'Need travel insurance?', subtitle: 'Get insurance right in our service — fast, no third-party platforms.', cta: 'Get insurance', inlineCta: 'No insurance? Get it with us' },
+	de: { title: 'Reiseversicherung benotigt?', subtitle: 'Schließen Sie die Versicherung direkt bei uns ab — schnell und ohne Drittanbieter.', cta: 'Versicherung abschließen', inlineCta: 'Keine Versicherung? Bei uns abschließen' },
+	fr: { title: 'Besoin d une assurance voyage ?', subtitle: 'Souscrivez l assurance directement chez nous — rapide et sans plateformes tierces.', cta: 'Souscrire une assurance', inlineCta: 'Pas d assurance ? Souscrivez avec nous' },
+	es: { title: '¿Necesitas seguro de viaje?', subtitle: 'Contrata el seguro directamente en nuestro servicio: rápido y sin plataformas externas.', cta: 'Contratar seguro', inlineCta: '¿Sin seguro? Contrátalo con nosotros' },
+	it: { title: 'Hai bisogno di un assicurazione?', subtitle: 'Sottoscrivi l assicurazione direttamente nel nostro servizio — veloce e senza piattaforme di terzi.', cta: 'Sottoscrivi assicurazione', inlineCta: 'Senza assicurazione? Stipulala con noi' },
+}
 
 let lastHomeRootTabIndex = 0
 let lastVisaTripProgress = 0
@@ -600,6 +658,18 @@ function createDocsDraft (fillTestValues = false) {
 	return { ...VISA_DOCS_TEXT['ru'], hotelFile: '', flightsFile: '', insuranceFile: '' }
 }
 
+// Build insurance trip draft with optional developer test values.
+function createInsuranceTripDraft (fillTestValues = false): InsuranceTrip {
+	if(fillTestValues) return { destinations: 'Италия, Франция', entryDate: '01.10.2020', exitDate: '01.11.2020', peopleCount: '1 человек' }
+	return { destinations: '', entryDate: '', exitDate: '', peopleCount: '' }
+}
+
+// Build insurance passport draft with optional developer test values.
+function createInsurancePassportDraft (fillTestValues = false): InsurancePassport {
+	if(fillTestValues) return { savedPassport: 'Паспорт Алекса', citizenship: 'THE RUSSIAN FEDERATION', firstName: 'ALEKS', lastName: 'GERMAN', birthDate: '08.02.1996', gender: 'Мужской', passportNumber: '650000001', issueDate: '01.10.2020', expiryDate: '01.10.2030', issuedBy: 'THE RUSSIAN FEDERATION' }
+	return { savedPassport: '', citizenship: '', firstName: '', lastName: '', birthDate: '', gender: '', passportNumber: '', issueDate: '', expiryDate: '', issuedBy: '' }
+}
+
 // Resolve backend country search aliases from cached reference or static fallback.
 function resolveBackendCountryAliases (destination: string, label: string) {
 	const country = refCache.countries?.find((c) => c.code === destination)
@@ -757,6 +827,18 @@ function appendPaymentRecord (record: PaymentRecord) {
 	if(typeof window === 'undefined') return
 	const next = [record, ...loadPaymentHistory()]
 	try { window.localStorage.setItem(paymentHistoryKey(), JSON.stringify(next)) } catch {}
+}
+
+// Read issued insurance policies from localStorage.
+function loadInsurancePolicies (): InsurancePolicy[] {
+	if(typeof window === 'undefined') return []
+	try { return JSON.parse(window.localStorage.getItem(INSURANCE_POLICIES_STORAGE_KEY) ?? '[]') as InsurancePolicy[] } catch { return [] }
+}
+
+// Persist insurance policies list to localStorage.
+function saveInsurancePolicies (list: InsurancePolicy[]) {
+	if(typeof window === 'undefined') return
+	try { window.localStorage.setItem(INSURANCE_POLICIES_STORAGE_KEY, JSON.stringify(list)) } catch {}
 }
 
 // Process payment via configured provider; currently local stub, real /v1/app/payments wiring is pending.
@@ -2526,15 +2608,23 @@ function VisaPassportScreen ({ selectedPassport, onBack, onHome, onAddPassport, 
 }
 
 // Render documents and insurance screen from Figma node 521:20268.
-function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, onDeleteDraft }: { onOpenHome: () => void, onOpenProfile: () => void, drafts: VisaDraft[], onContinueDraft: (id: string) => void, onDeleteDraft: (id: string) => void }) {
+function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, policies, onContinueDraft, onDeleteDraft, onDeletePolicy, onStartInsurance }: { onOpenHome: () => void, onOpenProfile: () => void, drafts: VisaDraft[], policies: InsurancePolicy[], onContinueDraft: (id: string) => void, onDeleteDraft: (id: string) => void, onDeletePolicy: (id: string) => void, onStartInsurance: () => void }) {
 	const { t, locale } = useI18n()
 	const [activeTab, setActiveTab] = useState<'visa' | 'insurance'>('visa')
 	const [deleteDraftId, setDeleteDraftId] = useState<string | null>(null)
+	const [deletePolicyId, setDeletePolicyId] = useState<string | null>(null)
 	const hasDrafts = drafts.length > 0
+	const hasPolicies = policies.length > 0
+	const hasAny = hasDrafts || hasPolicies
 	const confirmDeleteDraft = () => {
 		if(!deleteDraftId) return
 		onDeleteDraft(deleteDraftId)
 		setDeleteDraftId(null)
+	}
+	const confirmDeletePolicy = () => {
+		if(!deletePolicyId) return
+		onDeletePolicy(deletePolicyId)
+		setDeletePolicyId(null)
 	}
 
 	return (
@@ -2547,7 +2637,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 					<p>{t('documentsSubtitle')}</p>
 				</section>
 
-				{hasDrafts ? (
+				{hasAny ? (
 					<section className="documents-drafts" aria-label="Visa applications">
 						<div className="documents-tabs" role="tablist" aria-label="Documents tabs">
 							<button aria-selected={activeTab === 'visa'} className={`documents-tab${activeTab === 'visa' ? ' is-active' : ''}`} onClick={() => setActiveTab('visa')} role="tab" type="button">{'Заявки на визу'}</button>
@@ -2555,7 +2645,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 						</div>
 
 						{activeTab === 'visa' ? <div className="documents-cards-group">
-							{drafts.map((draft, i) => {
+							{hasDrafts ? drafts.map((draft, i) => {
 								const applicant = draft.applicants[0]
 							const title = applicant?.passport.fullName || draft.reviewPassport?.fullName || t('draftDefaultTitle').replace('{n}', String(i + 1))
 							const passport = applicant?.passport.passportNumber || draft.reviewPassport?.passportNumber || t('draftPassportUnset')
@@ -2573,8 +2663,31 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 										<button className="draft-card-secondary" onClick={() => draft.status === 'ready' ? onContinueDraft(draft.id) : setDeleteDraftId(draft.id)} type="button">{draft.status === 'ready' ? t('downloadPdfButton') : t('deleteDraftButton')}</button>
 									</div>
 								</article>
-							})}
-						</div> : <div className="documents-cards-group"><article className="documents-insurance-empty"><h2>{'Страховки'}</h2><p>{'Здесь появятся оформленные страховки.'}</p></article></div>}
+							}) : <article className="documents-insurance-empty"><h2>{'Заявки на визу'}</h2><p>{'Здесь появятся ваши заявки на визу.'}</p></article>}
+						</div> : <div className="documents-cards-group">
+							{hasPolicies ? policies.map((policy) => {
+								const holderNames = policy.policyholders.map((h) => h.fullName).join(', ') || 'Без страхователей'
+								const dates = policy.entryDate && policy.exitDate ? `${policy.entryDate} – ${policy.exitDate}` : ''
+								return <article className="draft-card" key={policy.id}>
+									<div className="draft-card-info">
+										<span className="draft-card-status is-ready">{'Активна'}</span>
+										<div className="draft-card-copy">
+											<h2>{policy.planTitle}</h2>
+											<p>{`${holderNames}\n${policy.destinations}${dates ? `\n${dates}` : ''}`}</p>
+										</div>
+									</div>
+
+									<div className="draft-card-actions">
+										<button className="draft-card-primary" onClick={() => {}} type="button">{'Скачать PDF'}</button>
+										<button className="draft-card-secondary" onClick={() => setDeletePolicyId(policy.id)} type="button">{'Удалить'}</button>
+									</div>
+								</article>
+							}) : <article className="documents-insurance-empty">
+								<h2>{'Страховки'}</h2>
+								<p>{'Здесь появятся оформленные страховки.'}</p>
+								<button className="passport-primary documents-insurance-cta" onClick={onStartInsurance} type="button">{'Оформить страховку'}</button>
+							</article>}
+						</div>}
 					</section>
 				) : (
 					<section className="documents-empty" aria-label="No documents">
@@ -2593,6 +2706,7 @@ function DocumentsScreen ({ onOpenHome, onOpenProfile, drafts, onContinueDraft, 
 
 			<HomeTabbar active="documents" onOpenDocuments={() => {}} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
 			{deleteDraftId ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить заявку?" subtitle="Черновик заявки и добавленные заявители будут удалены." onCancel={() => setDeleteDraftId(null)} onConfirm={confirmDeleteDraft} /> : null}
+			{deletePolicyId ? <ConfirmDrawer confirmLabel="Удалить" title="Удалить полис?" subtitle="Полис страховки будет удалён из истории." onCancel={() => setDeletePolicyId(null)} onConfirm={confirmDeletePolicy} /> : null}
 		</section>
 	)
 }
@@ -3733,11 +3847,24 @@ function VisaReadyField ({ label, value, icon, options, onChange }: { label: str
 	return <div className="visa-ready-field"><LivingField icon={icon} label={label} onChange={onChange} options={options} value={value} /></div>
 }
 
-// Render document upload form from Figma node 520:15661.
-function VisaDocumentsScreen ({ docs, onBack, onHome, onContinue, canContinue, onDocsChange }: { docs: typeof VISA_DOCS_TEXT['ru'], onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onDocsChange: (field: keyof typeof VISA_DOCS_TEXT['ru'], value: string) => void }) {
+// Render document upload form from Figma node 520:15661. Shows insurance offer dialog on first visit when insurance not attached.
+function VisaDocumentsScreen ({ docs, onBack, onHome, onContinue, canContinue, onDocsChange, onOfferInsurance }: { docs: typeof VISA_DOCS_TEXT['ru'], onBack: () => void, onHome: () => void, onContinue: () => void, canContinue?: boolean, onDocsChange: (field: keyof typeof VISA_DOCS_TEXT['ru'], value: string) => void, onOfferInsurance: () => void }) {
 	const { locale, t } = useI18n()
 	const copy = VISA_DOCS_TEXT[locale]
+	const offerCopy = INSURANCE_OFFER_TEXT[locale]
 	const [attempted, setAttempted] = useState(false)
+	const [showOffer, setShowOffer] = useState(false)
+
+	useEffect(() => {
+		if(docs.insuranceFile) return
+		const dismissed = typeof window !== 'undefined' && window.sessionStorage.getItem(INSURANCE_OFFER_DIALOG_DISMISS_KEY) === '1'
+		if(!dismissed) setShowOffer(true)
+	}, [docs.insuranceFile])
+
+	const closeOffer = () => {
+		setShowOffer(false)
+		try { window.sessionStorage.setItem(INSURANCE_OFFER_DIALOG_DISMISS_KEY, '1') } catch {}
+	}
 
 	return (
 		<section aria-label="Trip documents" className="visa-screen">
@@ -3764,11 +3891,35 @@ function VisaDocumentsScreen ({ docs, onBack, onHome, onContinue, canContinue, o
 					<VisaDocField filename={docs.hotelFile} label={copy.hotel} showError={attempted} onChange={(value) => onDocsChange('hotelFile', value)} onClear={() => onDocsChange('hotelFile', '')} />
 					<VisaDocField filename={docs.flightsFile} label={copy.flights} showError={attempted} onChange={(value) => onDocsChange('flightsFile', value)} onClear={() => onDocsChange('flightsFile', '')} />
 					<VisaDocField filename={docs.insuranceFile} label={copy.insurance} showError={attempted} onChange={(value) => onDocsChange('insuranceFile', value)} onClear={() => onDocsChange('insuranceFile', '')} />
+					{!docs.insuranceFile ? <button className="insurance-offer-inline" onClick={onOfferInsurance} type="button">{offerCopy.inlineCta}</button> : null}
 				</div>
 
 			<ContinueButton canContinue={canContinue} className="passport-primary visa-personal-inline-button" label={t('authContinue')} onAttempt={() => setAttempted(true)} onContinue={onContinue} />
 		</div>
+		{showOffer ? <InsuranceOfferDialog onClose={closeOffer} onAccept={() => { closeOffer(); onOfferInsurance() }} /> : null}
 	</section>
+	)
+}
+
+// Modal dialog offering in-app insurance purchase from Figma node 2081:7856.
+function InsuranceOfferDialog ({ onClose, onAccept }: { onClose: () => void, onAccept: () => void }) {
+	const { locale } = useI18n()
+	const copy = INSURANCE_OFFER_TEXT[locale]
+	return (
+		<div className="insurance-dialog-backdrop" onClick={onClose} role="presentation">
+			<div aria-label={copy.title} aria-modal="true" className="insurance-dialog" onClick={(e) => e.stopPropagation()} role="dialog">
+				<header className="insurance-dialog-header">
+					<div>
+						<h3>{copy.title}</h3>
+						<p>{copy.subtitle}</p>
+					</div>
+					<button aria-label="Close" className="insurance-dialog-close" onClick={onClose} type="button">
+						<svg fill="none" height="20" viewBox="0 0 24 24" width="20"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeLinecap="round" strokeWidth="2"/></svg>
+					</button>
+				</header>
+				<button className="passport-primary insurance-dialog-cta" onClick={onAccept} type="button">{copy.cta}</button>
+			</div>
+		</div>
 	)
 }
 
@@ -3800,6 +3951,347 @@ function VisaDocField ({ label, filename, showError, onChange, onClear }: { labe
 				) : null}
 			</div>
 		</div>
+	)
+}
+
+// Shared header for insurance flow screens with back/home controls, progress and title.
+function InsuranceToolbar ({ progress, title, subtitle, onBack, onHome }: { progress: number, title: string, subtitle?: string, onBack: () => void, onHome: () => void }) {
+	const { t } = useI18n()
+	return (
+		<header className="visa-toolbar">
+			<div className="visa-toolbar-controls">
+				<button aria-label={t('profileDataBack')} className="profile-data-icon-button" onClick={onBack} type="button">
+					<Image alt="Back" className="profile-data-toolbar-icon" height={24} src="/assets/icon-arrow-left.svg" unoptimized width={24} />
+				</button>
+				<button aria-label="Home" className="profile-data-icon-button" onClick={onHome} type="button">
+					<Image alt="Home" className="profile-data-toolbar-icon" height={24} src="/assets/icon-tab-home-inactive.svg" unoptimized width={24} />
+				</button>
+			</div>
+			<VisaProgressTrip value={progress} />
+			<div className="visa-copy">
+				<h1>{title}</h1>
+				{subtitle ? <p>{subtitle}</p> : null}
+			</div>
+		</header>
+	)
+}
+
+// Insurance Step 1: trip destinations and dates (Figma 2102:6533).
+function InsuranceTripScreen ({ trip, onBack, onHome, onContinue, canContinue, onChange }: { trip: InsuranceTrip, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue: boolean, onChange: (field: keyof InsuranceTrip, value: string) => void }) {
+	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
+	const [attempted, setAttempted] = useState(false)
+	const toggleCountry = (country: string) => {
+		const list = trip.destinations.split(',').map((s) => s.trim()).filter(Boolean)
+		const next = list.includes(country) ? list.filter((c) => c !== country) : [...list, country]
+		onChange('destinations', next.join(', '))
+	}
+	const selected = trip.destinations.split(',').map((s) => s.trim()).filter(Boolean)
+
+	return (
+		<section aria-label="Insurance trip details" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={12} title={'Детали поездки'} />
+
+				<div className="visa-personal-form">
+					<LivingField icon="search" label={'Страны назначения'} onChange={(v) => onChange('destinations', v)} options={countryOpts} required showError={attempted} value={trip.destinations} />
+					<div className="insurance-popular-block">
+						<span className="insurance-popular-caption">{'Популярные направления'}</span>
+						<div className="insurance-popular-chips">
+							{INSURANCE_POPULAR_COUNTRIES.map((country) => (
+								<button className={`insurance-chip${selected.includes(country) ? ' is-active' : ''}`} key={country} onClick={() => toggleCountry(country)} type="button">{country}</button>
+							))}
+						</div>
+					</div>
+					<div className="insurance-row-2col">
+						<LivingField icon="calendar" label={'Предполагаемая дата въезда'} onChange={(v) => onChange('entryDate', v)} required showError={attempted} value={trip.entryDate} />
+						<LivingField icon="calendar" label={'Предполагаемая дата выезда'} onChange={(v) => onChange('exitDate', v)} required showError={attempted} value={trip.exitDate} />
+					</div>
+					<LivingField icon="chevron" label={'Количество человек'} onChange={(v) => onChange('peopleCount', v)} options={INSURANCE_PEOPLE_OPTIONS} required showError={attempted} value={trip.peopleCount} />
+				</div>
+
+				<ContinueButton canContinue={canContinue} className="passport-primary visa-personal-inline-button" label={t('authContinue')} onAttempt={() => setAttempted(true)} onContinue={onContinue} />
+			</div>
+		</section>
+	)
+}
+
+// Insurance Step 2: plan selection with details dialog (Figma 2102:6840 / 2102:6940).
+function InsurancePlanScreen ({ plan, onBack, onHome, onContinue, onSelectPlan }: { plan: InsurancePlanCode, onBack: () => void, onHome: () => void, onContinue: () => void, onSelectPlan: (plan: InsurancePlanCode) => void }) {
+	const { t } = useI18n()
+	const [showDetails, setShowDetails] = useState(false)
+
+	return (
+		<section aria-label="Insurance plan" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={24} title={'Выберите страховку'} />
+
+				<div className="insurance-plan-list">
+					<span className="insurance-popular-caption">{'Тип страховки'}</span>
+					<div className={`insurance-plan-card${plan === 'extended' ? ' is-active' : ''}`} onClick={() => onSelectPlan('extended')} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') onSelectPlan('extended') }} role="button" tabIndex={0}>
+						<span className="insurance-plan-badge">{'Популярное'}</span>
+						<strong>{'Расширенная страховка'}</strong>
+						<span>{'Покрывает €50,000–100,000. Учитывает дополнительные риски (спорт, COVID, задержки рейса).'}</span>
+						<button className="insurance-plan-details-link" onClick={(e) => { e.stopPropagation(); setShowDetails(true) }} type="button">{'Подробнее'}</button>
+						<i className="payment-radio" />
+					</div>
+					<div className={`insurance-plan-card${plan === 'basic' ? ' is-active' : ''}`} onClick={() => onSelectPlan('basic')} onKeyDown={(e) => { if(e.key === 'Enter' || e.key === ' ') onSelectPlan('basic') }} role="button" tabIndex={0}>
+						<strong>{'Базовая страховка'}</strong>
+						<span>{'Покрывает €30,000.'}</span>
+						<i className="payment-radio" />
+					</div>
+				</div>
+
+				<ContinueButton className="passport-primary visa-personal-inline-button" label={t('authContinue')} onContinue={onContinue} />
+			</div>
+			{showDetails ? <InsurancePlanDetailsDialog onClose={() => setShowDetails(false)} onConfirm={() => { onSelectPlan('extended'); setShowDetails(false) }} /> : null}
+		</section>
+	)
+}
+
+// Modal showing extended plan details (Figma 2102:6940).
+function InsurancePlanDetailsDialog ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) {
+	return (
+		<div className="insurance-dialog-backdrop" onClick={onClose} role="presentation">
+			<div aria-label="Plan details" aria-modal="true" className="insurance-dialog insurance-dialog-wide" onClick={(e) => e.stopPropagation()} role="dialog">
+				<header className="insurance-dialog-header">
+					<div>
+						<h3>{'Расширенная страховка'}</h3>
+						<p>{'Ознакомьтесь с дополнительными условиями по страховке.'}</p>
+					</div>
+					<button aria-label="Close" className="insurance-dialog-close" onClick={onClose} type="button">
+						<svg fill="none" height="20" viewBox="0 0 24 24" width="20"><path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeLinecap="round" strokeWidth="2"/></svg>
+					</button>
+				</header>
+				<div className="insurance-plan-card is-active insurance-plan-card-detail">
+					<span className="insurance-plan-badge">{'Срок действия — 90 дней'}</span>
+					<strong>{'Покрывает в сумме до €50,000–100,000'}</strong>
+					<span>{`Стоимость: ${INSURANCE_PRICE.toFixed(2)}₽`}</span>
+					<i className="payment-radio is-checked" />
+				</div>
+				<button className="passport-primary insurance-dialog-cta" onClick={onConfirm} type="button">{'Подтвердить'}</button>
+			</div>
+		</div>
+	)
+}
+
+// Insurance Step 3: passport part 1 (Figma 2102:6637).
+function InsurancePassportOneScreen ({ passport, savedPassportOptions, onBack, onHome, onContinue, canContinue, onChange }: { passport: InsurancePassport, savedPassportOptions: string[], onBack: () => void, onHome: () => void, onContinue: () => void, canContinue: boolean, onChange: (field: keyof InsurancePassport, value: string) => void }) {
+	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
+	const [attempted, setAttempted] = useState(false)
+
+	return (
+		<section aria-label="Insurance passport part 1" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={36} subtitle={'Убедитесь, что данные в полях полностью совпадают с указанными в загранпаспорте.'} title={'Паспортные данные'} />
+
+				<div className="visa-personal-form">
+					<LivingField icon="chevron" label={'Выбрать сохраненный паспорт'} onChange={(v) => onChange('savedPassport', v)} options={savedPassportOptions.length ? savedPassportOptions : ['Нет сохраненных паспортов']} value={passport.savedPassport} />
+					<LivingField icon="search" label={'Гражданство'} onChange={(v) => onChange('citizenship', v)} options={countryOpts} required showError={attempted} value={passport.citizenship} />
+					<div className="insurance-row-2col">
+						<LivingField label={'Имя'} onChange={(v) => onChange('firstName', v)} required showError={attempted} value={passport.firstName} />
+						<LivingField label={'Фамилия'} onChange={(v) => onChange('lastName', v)} required showError={attempted} value={passport.lastName} />
+					</div>
+					<LivingField icon="calendar" label={'Дата рождения'} onChange={(v) => onChange('birthDate', v)} required showError={attempted} value={passport.birthDate} />
+				</div>
+
+				<ContinueButton canContinue={canContinue} className="passport-primary visa-personal-inline-button" label={t('authContinue')} onAttempt={() => setAttempted(true)} onContinue={onContinue} />
+			</div>
+		</section>
+	)
+}
+
+// Insurance Step 4: passport part 2 (Figma 2102:6739).
+function InsurancePassportTwoScreen ({ passport, onBack, onHome, onContinue, canContinue, onChange }: { passport: InsurancePassport, onBack: () => void, onHome: () => void, onContinue: () => void, canContinue: boolean, onChange: (field: keyof InsurancePassport, value: string) => void }) {
+	const { t } = useI18n()
+	const countryOpts = useCountryOpts()
+	const [attempted, setAttempted] = useState(false)
+
+	return (
+		<section aria-label="Insurance passport part 2" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={48} subtitle={'Убедитесь, что данные в полях полностью совпадают с указанными в загранпаспорте.'} title={'Паспортные данные'} />
+
+				<div className="visa-personal-form">
+					<LivingField icon="chevron" label={'Пол'} onChange={(v) => onChange('gender', v)} options={GENDER_OPTIONS} required showError={attempted} value={passport.gender} />
+					<LivingField label={'Номер загранпаспорта'} onChange={(v) => onChange('passportNumber', v)} required showError={attempted} value={passport.passportNumber} />
+					<div className="insurance-row-2col">
+						<LivingField icon="calendar" label={'Дата выдачи'} onChange={(v) => onChange('issueDate', v)} required showError={attempted} value={passport.issueDate} />
+						<LivingField icon="calendar" label={'Дата окончания срока действия'} onChange={(v) => onChange('expiryDate', v)} required showError={attempted} value={passport.expiryDate} />
+					</div>
+					<LivingField icon="search" label={'Кем выдан'} onChange={(v) => onChange('issuedBy', v)} options={countryOpts} required showError={attempted} value={passport.issuedBy} />
+				</div>
+
+				<ContinueButton canContinue={canContinue} className="passport-primary visa-personal-inline-button" label={t('authContinue')} onAttempt={() => setAttempted(true)} onContinue={onContinue} />
+			</div>
+		</section>
+	)
+}
+
+// Insurance Step 5: policyholders list (Figma 2102:7058).
+function InsurancePolicyholdersScreen ({ policyholders, onBack, onHome, onContinue, onAdd, onEdit, onDelete }: { policyholders: InsurancePolicyholder[], onBack: () => void, onHome: () => void, onContinue: () => void, onAdd: () => void, onEdit: (id: string) => void, onDelete: (id: string) => void }) {
+	return (
+		<section aria-label="Insurance policyholders" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={60} subtitle={'Вы можете добавить несколько страхователей или перейти к следующему этапу.'} title={'Страхователи'} />
+
+				<div className="insurance-holders-list">
+					{policyholders.map((holder) => (
+						<article className="insurance-holder-card" key={holder.id}>
+							<span className={`insurance-holder-badge${holder.completion >= 100 ? ' is-complete' : ' is-partial'}`}>{`${holder.completion}% заполнено`}</span>
+							<strong>{holder.fullName}</strong>
+							<span className="insurance-holder-meta">{`Номер загранпаспорта: ${holder.passportNumber} ${holder.visaTitle}`}</span>
+							<div className="insurance-holder-actions">
+								<button className="insurance-holder-edit" onClick={() => onEdit(holder.id)} type="button">{'Изменить'}</button>
+								<button className="insurance-holder-delete" onClick={() => onDelete(holder.id)} type="button">{'Удалить'}</button>
+							</div>
+						</article>
+					))}
+					<article className="insurance-holder-card insurance-holder-add">
+						<strong>{'Добавьте страхователя'}</strong>
+						<span className="insurance-holder-meta">{'Заполните данные нового страхователя.'}</span>
+						<button className="insurance-holder-add-btn" onClick={onAdd} type="button">{'+ Добавить'}</button>
+					</article>
+				</div>
+
+				<ContinueButton className="passport-primary visa-personal-inline-button" label={'Сохранить и продолжить'} onContinue={onContinue} />
+			</div>
+		</section>
+	)
+}
+
+// Insurance Step 6: review summary + payment selection (Figma 2102:7157).
+function InsuranceReviewScreen ({ plan, policyholders, payment, onBack, onHome, onPay, onSelectPayment, onEditPlan, onEditHolders }: { plan: InsurancePlanCode, policyholders: InsurancePolicyholder[], payment: PaymentMethodCode, onBack: () => void, onHome: () => void, onPay: () => void, onSelectPayment: (method: PaymentMethodCode) => void, onEditPlan: () => void, onEditHolders: () => void }) {
+	const methods: { code: PaymentMethodCode, title: string, subtitle: string, badge?: string }[] = [
+		{ code: 'sbp', title: 'Через СБП', subtitle: 'В приложении банка.', badge: 'Популярное' },
+		{ code: 'card-new', title: 'Новой картой', subtitle: 'Ввод данных вручную.', badge: 'МИР / Visa / MasterCard' },
+		{ code: 'card-saved', title: 'Сохраненной картой', subtitle: 'Привязанной в ЮMoney.' },
+		{ code: 'yoomoney', title: 'Кошелек ЮMoney', subtitle: 'С баланса кошелька.' },
+		{ code: 'sberpay', title: 'SberPay', subtitle: 'Через Сбербанк Онлайн.' },
+	]
+	const planTitle = plan === 'extended' ? 'Расширенная страховка' : 'Базовая страховка'
+	const planCoverage = plan === 'extended' ? '€50,000–100,000' : '€30,000'
+	const serviceFee = 1358.28
+
+	return (
+		<section aria-label="Insurance review" className="visa-screen">
+			<div className="visa-scroll visa-payment-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={75} subtitle={'Ещё раз проверьте детали и отправьте данные на проверку.'} title={'Отправка на проверку'} />
+
+				<section aria-label="Insurance summary" className="payment-summary-card">
+					<div className="payment-summary-section">
+						<h2>{planTitle}</h2>
+						<div className="payment-detail-grid">
+							<span>{'Сумма покрытия'}</span><b>{planCoverage}</b>
+							<span>{'Страховые случаи'}</span><b>{'Основные страховые случаи'}</b>
+						</div>
+						<button className="insurance-summary-edit" onClick={onEditPlan} type="button">{'Изменить'}</button>
+					</div>
+					<div className="payment-summary-section">
+						<h2>{'Страхователи'}</h2>
+						{policyholders.map((holder, index) => (
+							<div className="payment-applicant" key={holder.id}>
+								<span>{`Страхователь №${index + 1}`}</span>
+								<b>{`${holder.fullName} ${holder.passportNumber}`}</b>
+							</div>
+						))}
+						<button className="insurance-summary-edit" onClick={onEditHolders} type="button">{'Изменить'}</button>
+					</div>
+				</section>
+
+				<section aria-label="Payment method" className="payment-methods">
+					<h2>{'Способ оплаты'}</h2>
+					<div className="payment-method-list">
+						{methods.map((method) => (
+							<button className={`payment-method-card${payment === method.code ? ' is-active' : ''}`} key={method.code} onClick={() => onSelectPayment(method.code)} type="button">
+								<div className="payment-method-copy">
+									{method.badge ? <span className="payment-method-badge">{method.badge}</span> : null}
+									<strong>{method.title}</strong>
+									<span>{method.subtitle}</span>
+								</div>
+								<i className="payment-radio" />
+							</button>
+						))}
+					</div>
+				</section>
+
+				<section aria-label="Insurance composition" className="payment-composition-card">
+					<h2>{'Состав платежа'}</h2>
+					<div className="payment-row">
+						<span>{'Сервисный сбор × 1'}</span>
+						<b>{`${serviceFee.toFixed(2)} ₽`}</b>
+					</div>
+				</section>
+			</div>
+			<div className="visa-bottom">
+				<button className="passport-primary" onClick={onPay} type="button">{`Отправить и оплатить ${INSURANCE_PRICE.toFixed(2)}₽`}</button>
+			</div>
+		</section>
+	)
+}
+
+// Insurance Step 7: validating data with loader (Figma 2102:7269).
+function InsuranceCheckingScreen ({ policyholders, onBack, onHome, onGetPolicy, onGoHome }: { policyholders: InsurancePolicyholder[], onBack: () => void, onHome: () => void, onGetPolicy: () => void, onGoHome: () => void }) {
+	return (
+		<section aria-label="Insurance checking" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={88} subtitle={'Проверка на корректность введенных данных. После успешной проверки будет доступно скачивание полиса страховки.'} title={'Проверка данных'} />
+
+				<div className="insurance-holders-list">
+					{policyholders.map((holder) => (
+						<article className="insurance-holder-card" key={holder.id}>
+							<span className="insurance-holder-badge is-checking">{'На проверке'}</span>
+							<strong>{holder.fullName}</strong>
+							<span className="insurance-holder-meta">{`Номер загранпаспорта: ${holder.passportNumber} ${holder.visaTitle}`}</span>
+						</article>
+					))}
+				</div>
+
+				<div className="insurance-vertical-actions">
+					<button className="passport-secondary is-disabled" disabled type="button">{'Получить полис страховки'}</button>
+					<button className="passport-secondary" onClick={onGoHome} type="button">{'Вернуться на главную страницу'}</button>
+				</div>
+
+				<div className="insurance-loader">
+					<div className="insurance-loader-spinner" />
+					<span>{'Проверяем на ошибки...'}</span>
+				</div>
+
+				<button aria-hidden className="insurance-flow-debug-skip" onClick={onGetPolicy} type="button">{'Перейти к готовому полису'}</button>
+			</div>
+		</section>
+	)
+}
+
+// Insurance Step 8: policy ready, continue visa (Figma 2102:7368).
+function InsuranceReadyScreen ({ plan, policyholders, onBack, onHome, onContinueVisa, onGoHome, onDownloadPdf, onSendEmail }: { plan: InsurancePlanCode, policyholders: InsurancePolicyholder[], onBack: () => void, onHome: () => void, onContinueVisa: () => void, onGoHome: () => void, onDownloadPdf: (id: string) => void, onSendEmail: (id: string) => void }) {
+	const planTitle = plan === 'extended' ? 'Расширенная страховка' : 'Базовая страховка'
+	return (
+		<section aria-label="Insurance ready" className="visa-screen">
+			<div className="visa-scroll visa-personal-scroll">
+				<InsuranceToolbar onBack={onBack} onHome={onHome} progress={100} subtitle={'Полис страховки готов. Скачайте PDF или продолжите оформление визы.'} title={'Страховка готова'} />
+
+				<div className="insurance-holders-list">
+					{policyholders.map((holder) => (
+						<article className="insurance-holder-card" key={holder.id}>
+							<span className="insurance-holder-badge is-ready">{'Готовая страховка'}</span>
+							<strong>{holder.fullName}</strong>
+							<span className="insurance-holder-meta">{`Номер загранпаспорта: ${holder.passportNumber} ${planTitle}`}</span>
+							<div className="insurance-holder-actions">
+								<button className="insurance-holder-edit" onClick={() => onDownloadPdf(holder.id)} type="button">{'Скачать PDF'}</button>
+								<button className="insurance-holder-edit" onClick={() => onSendEmail(holder.id)} type="button">{'На почту'}</button>
+							</div>
+						</article>
+					))}
+				</div>
+
+				<div className="insurance-vertical-actions">
+					<button className="passport-primary" onClick={onContinueVisa} type="button">{'Продолжить оформление визы'}</button>
+					<button className="passport-secondary" onClick={onGoHome} type="button">{'Вернуться на главную страницу'}</button>
+				</div>
+			</div>
+		</section>
 	)
 }
 
@@ -4764,6 +5256,13 @@ function EntryFlow () {
 	const [visitedVisaTabs, setVisitedVisaTabs] = useState<Partial<Record<HomeTab, true>>>({})
 	const [submittedVisaTabs, setSubmittedVisaTabs] = useState<Partial<Record<HomeTab, true>>>({})
 	const [selectedPayment, setSelectedPayment] = useState<PaymentMethodCode>('sbp')
+	const [insuranceTrip, setInsuranceTrip] = useState<InsuranceTrip>(() => createInsuranceTripDraft(resolveFillTestValues()))
+	const [insurancePlan, setInsurancePlan] = useState<InsurancePlanCode>('extended')
+	const [insurancePassport, setInsurancePassport] = useState<InsurancePassport>(() => createInsurancePassportDraft(resolveFillTestValues()))
+	const [insurancePolicyholders, setInsurancePolicyholders] = useState<InsurancePolicyholder[]>([])
+	const [insurancePayment, setInsurancePayment] = useState<PaymentMethodCode>('sbp')
+	const [insuranceStatus, setInsuranceStatus] = useState<InsuranceStatus>('idle')
+	const [insurancePolicies, setInsurancePolicies] = useState<InsurancePolicy[]>(loadInsurancePolicies)
 	const [animationsDisabled, setAnimationsDisabled] = useState(resolveAnimationsDisabled)
 	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(resolveSavedDrafts)
 	const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
@@ -5129,8 +5628,11 @@ function EntryFlow () {
 	const visaReviewTripComplete = visaTripComplete && visaDocsComplete
 	const visaReviewPhotoComplete = visaPhotoComplete
 	const visaApplicantsComplete = currentApplicants.length > 0
+	const insuranceTripComplete = Boolean(insuranceTrip.destinations && insuranceTrip.entryDate && insuranceTrip.exitDate && insuranceTrip.peopleCount)
+	const insurancePassportOneComplete = Boolean(insurancePassport.citizenship && insurancePassport.firstName && insurancePassport.lastName && insurancePassport.birthDate)
+	const insurancePassportTwoComplete = Boolean(insurancePassport.gender && insurancePassport.passportNumber && insurancePassport.issueDate && insurancePassport.expiryDate && insurancePassport.issuedBy)
 	const visaSubmitted = Boolean(activeDraftId && (activeDraftStatus === 'checking' || activeDraftStatus === 'ready' || activeDraftStatus === 'error' || activeTab === 'visa-check' || activeTab === 'visa-verified' || activeTab === 'visa-rejected'))
-	const isVisaDesktopFlow = activeTab.startsWith('visa-') || activeTab === 'passport-camera' || activeTab === 'passport-recognition' || (activeTab.startsWith('passports') && passportListMode === 'visa') || (activeTab.startsWith('passports-step') || activeTab === 'passports-review') && passportFlowMode === 'visa-create'
+	const isVisaDesktopFlow = activeTab.startsWith('visa-') || activeTab.startsWith('insurance-') || activeTab === 'passport-camera' || activeTab === 'passport-recognition' || (activeTab.startsWith('passports') && passportListMode === 'visa') || (activeTab.startsWith('passports-step') || activeTab === 'passports-review') && passportFlowMode === 'visa-create'
 	const visaDesktopSteps: VisaDesktopStep[] = [
 		{ label: 'Выбор гражданства, направления и типа визы', tab: 'visa-start', active: activeTab === 'visa-start', completed: Boolean(submittedVisaTabs['visa-start'] && visaChoiceComplete), invalid: Boolean(submittedVisaTabs['visa-start'] && !visaChoiceComplete) },
 		{ label: 'Выбор типа визы', tab: 'visa-type', active: activeTab === 'visa-type', completed: Boolean(submittedVisaTabs['visa-type'] && visaTypeComplete), invalid: Boolean(submittedVisaTabs['visa-type'] && !visaTypeComplete) },
@@ -5251,6 +5753,13 @@ function EntryFlow () {
 	const toggleFillTestValues = (value: boolean) => {
 		setFillTestValues(value)
 		localStorage.setItem(FILL_TEST_VALUES_STORAGE_KEY, String(value))
+		setPassportDraft(createPassportDraft(value))
+		setReviewPassport(createPassportDraft(value))
+		setReviewPersonal(createPersonalDraft(value))
+		setReviewTrip(createTripDraft(value))
+		setReviewDocs(createDocsDraft(value))
+		setInsuranceTrip(createInsuranceTripDraft(value))
+		setInsurancePassport(createInsurancePassportDraft(value))
 	}
 
 	// Start a clean visa flow using developer test data only when enabled.
@@ -5356,6 +5865,97 @@ function EntryFlow () {
 	// Mark a visa flow tab as successfully submitted (Continue clicked with valid data).
 	const markTabSubmitted = (tab: HomeTab) => setSubmittedVisaTabs((p) => ({ ...p, [tab]: true }))
 
+	// Start insurance sub-flow from visa-docs offer dialog.
+	const startInsuranceFlow = () => {
+		setInsuranceStatus('idle')
+		setInsurancePassport(createInsurancePassportDraft(resolveFillTestValues()))
+		navigate('home', 'insurance-trip')
+	}
+
+	// Build saved-passport option labels for insurance passport selector.
+	const insuranceSavedPassportOptions = passports.map((p) => `${p.firstName} ${p.lastName} (${p.passportNumber})`.trim() || p.fullName || 'Без названия')
+
+	// Add or update current insurance policyholder built from the passport form, then go to list.
+	const commitInsurancePolicyholder = () => {
+		const fullName = `${insurancePassport.firstName} ${insurancePassport.lastName}`.trim() || 'Страхователь'
+		const completion = insurancePassportOneComplete && insurancePassportTwoComplete ? 100 : insurancePassportOneComplete ? 66 : 33
+		const next: InsurancePolicyholder = { id: `holder-${Date.now()}`, fullName, passportNumber: insurancePassport.passportNumber || '—', visaTitle: currentVisaTitle, completion }
+		setInsurancePolicyholders((prev) => {
+			const existing = prev.findIndex((h) => h.passportNumber === next.passportNumber && next.passportNumber !== '—')
+			if(existing !== -1) return prev.map((h, i) => i === existing ? { ...next, id: h.id } : h)
+			return [...prev, next]
+		})
+		navigate('home', 'insurance-policyholders')
+	}
+
+	// Edit a saved policyholder: load into passport draft and jump to first passport screen.
+	const editInsurancePolicyholder = (id: string) => {
+		const holder = insurancePolicyholders.find((h) => h.id === id)
+		if(!holder) return
+		const [first, ...rest] = holder.fullName.split(' ')
+		setInsurancePassport((p) => ({ ...p, firstName: first ?? '', lastName: rest.join(' '), passportNumber: holder.passportNumber === '—' ? '' : holder.passportNumber }))
+		navigate('home', 'insurance-passport-one')
+	}
+
+	// Remove policyholder from current insurance application.
+	const removeInsurancePolicyholder = (id: string) => setInsurancePolicyholders((prev) => prev.filter((h) => h.id !== id))
+
+	// Start a fresh policyholder by clearing passport draft.
+	const addAnotherInsurancePolicyholder = () => {
+		setInsurancePassport(createInsurancePassportDraft(false))
+		navigate('home', 'insurance-passport-one')
+	}
+
+	// Run validation/payment animation, then surface the ready screen.
+	const submitInsurancePayment = () => {
+		setInsuranceStatus('checking')
+		navigate('home', 'insurance-checking')
+		setTimeout(() => {
+			setInsuranceStatus('ready')
+			navigate('home', 'insurance-ready')
+		}, 2400)
+	}
+
+	// Persist freshly issued insurance policy to documents list.
+	const persistCurrentInsurancePolicy = () => {
+		const policy: InsurancePolicy = {
+			id: `policy-${Date.now()}`,
+			createdAt: Date.now(),
+			plan: insurancePlan,
+			planTitle: insurancePlan === 'extended' ? 'Расширенная страховка' : 'Базовая страховка',
+			destinations: insuranceTrip.destinations,
+			entryDate: insuranceTrip.entryDate,
+			exitDate: insuranceTrip.exitDate,
+			policyholders: insurancePolicyholders,
+			amount: INSURANCE_PRICE,
+		}
+		setInsurancePolicies((prev) => {
+			const next = [policy, ...prev]
+			saveInsurancePolicies(next)
+			return next
+		})
+	}
+
+	// Attach generated insurance policy file to visa docs, persist policy, return to visa flow.
+	const attachInsuranceAndReturnToVisa = () => {
+		persistCurrentInsurancePolicy()
+		setReviewDocs((p) => ({ ...p, insuranceFile: 'insurance-policy.pdf' }))
+		navigate('home', 'visa-docs')
+	}
+
+	// Also persist the policy when going home after ready screen, so it appears in documents.
+	const finishInsuranceToHome = () => {
+		persistCurrentInsurancePolicy()
+		navigate('home', 'home')
+	}
+
+	// Delete an issued insurance policy from documents list.
+	const removeInsurancePolicy = (id: string) => setInsurancePolicies((prev) => {
+		const next = prev.filter((p) => p.id !== id)
+		saveInsurancePolicies(next)
+		return next
+	})
+
 	const cancelCurrentApplication = async () => {
 		if(activeDraftId) {
 			try { await authDeletePath(`/v1/app/applications/${activeDraftId}`) } catch {}
@@ -5382,7 +5982,7 @@ function EntryFlow () {
 					: activeTab === 'home'
 							? <HomeScreen onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onOpenVisaStart={startVisaFlow} />
 						: activeTab === 'documents'
-						? <DocumentsScreen drafts={savedDrafts} onDeleteDraft={deleteSavedDraft} onContinueDraft={(id) => {
+						? <DocumentsScreen drafts={savedDrafts} policies={insurancePolicies} onDeletePolicy={removeInsurancePolicy} onStartInsurance={startInsuranceFlow} onDeleteDraft={deleteSavedDraft} onContinueDraft={(id) => {
 								const draft = savedDrafts.find((d) => d.id === id)
 								if (!draft) return
 								setActiveDraftId(id)
@@ -5437,7 +6037,23 @@ function EntryFlow () {
 						: activeTab === 'visa-trip'
 							? <VisaTripScreen canContinue={visaTripComplete} trip={reviewTrip} onBack={() => goBack('visa-personal-two')} onChange={(field, value) => setReviewTrip((p) => ({ ...p, [field]: value }))} onContinue={() => { markTabSubmitted('visa-trip'); navigate('home', 'visa-docs') }} onHome={() => navigate('home', 'home')} />
 						: activeTab === 'visa-docs'
-						? <VisaDocumentsScreen canContinue={visaDocsComplete} docs={reviewDocs} onBack={() => goBack('visa-trip')} onContinue={() => { markTabSubmitted('visa-docs'); navigate('home', 'visa-photo') }} onDocsChange={(field, value) => setReviewDocs((p) => ({ ...p, [field]: value }))} onHome={() => navigate('home', 'home')} />
+						? <VisaDocumentsScreen canContinue={visaDocsComplete} docs={reviewDocs} onBack={() => goBack('visa-trip')} onContinue={() => { markTabSubmitted('visa-docs'); navigate('home', 'visa-photo') }} onDocsChange={(field, value) => setReviewDocs((p) => ({ ...p, [field]: value }))} onHome={() => navigate('home', 'home')} onOfferInsurance={startInsuranceFlow} />
+						: activeTab === 'insurance-trip'
+						? <InsuranceTripScreen canContinue={insuranceTripComplete} trip={insuranceTrip} onBack={() => goBack('visa-docs')} onChange={(field, value) => setInsuranceTrip((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'insurance-plan')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'insurance-plan'
+						? <InsurancePlanScreen plan={insurancePlan} onBack={() => goBack('insurance-trip')} onContinue={() => navigate('home', 'insurance-passport-one')} onHome={() => navigate('home', 'home')} onSelectPlan={setInsurancePlan} />
+						: activeTab === 'insurance-passport-one'
+						? <InsurancePassportOneScreen canContinue={insurancePassportOneComplete} passport={insurancePassport} savedPassportOptions={insuranceSavedPassportOptions} onBack={() => goBack('insurance-plan')} onChange={(field, value) => setInsurancePassport((p) => ({ ...p, [field]: value }))} onContinue={() => navigate('home', 'insurance-passport-two')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'insurance-passport-two'
+						? <InsurancePassportTwoScreen canContinue={insurancePassportTwoComplete} passport={insurancePassport} onBack={() => goBack('insurance-passport-one')} onChange={(field, value) => setInsurancePassport((p) => ({ ...p, [field]: value }))} onContinue={commitInsurancePolicyholder} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'insurance-policyholders'
+						? <InsurancePolicyholdersScreen policyholders={insurancePolicyholders} onAdd={addAnotherInsurancePolicyholder} onBack={() => goBack('insurance-passport-two')} onContinue={() => navigate('home', 'insurance-review')} onDelete={removeInsurancePolicyholder} onEdit={editInsurancePolicyholder} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'insurance-review'
+						? <InsuranceReviewScreen payment={insurancePayment} plan={insurancePlan} policyholders={insurancePolicyholders} onBack={() => goBack('insurance-policyholders')} onEditHolders={() => navigate('home', 'insurance-policyholders')} onEditPlan={() => navigate('home', 'insurance-plan')} onHome={() => navigate('home', 'home')} onPay={submitInsurancePayment} onSelectPayment={setInsurancePayment} />
+						: activeTab === 'insurance-checking'
+						? <InsuranceCheckingScreen policyholders={insurancePolicyholders} onBack={() => goBack('insurance-review')} onGetPolicy={() => navigate('home', 'insurance-ready')} onGoHome={() => navigate('home', 'home')} onHome={() => navigate('home', 'home')} />
+						: activeTab === 'insurance-ready'
+						? <InsuranceReadyScreen plan={insurancePlan} policyholders={insurancePolicyholders} onBack={() => goBack('insurance-review')} onContinueVisa={attachInsuranceAndReturnToVisa} onDownloadPdf={() => {}} onGoHome={finishInsuranceToHome} onHome={() => navigate('home', 'home')} onSendEmail={() => {}} />
 						: activeTab === 'visa-photo'
 							? <VisaPhotoScreen onBack={() => goBack('visa-docs')} onCamera={() => navigate('home', 'visa-photo-camera')} onHome={() => navigate('home', 'home')} onUpload={(dataUrl) => { setVisaPhotoDataUrl(dataUrl); navigate('home', 'visa-photo-check') }} />
 						: activeTab === 'visa-photo-camera'
