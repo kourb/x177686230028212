@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 const UPSTREAM = process.env.AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
 const PORT = Number(process.env.AUTH_PROXY_PORT ?? 8787)
 const ALLOW_ORIGIN = process.env.AUTH_PROXY_ALLOW_ORIGIN ?? 'http://localhost:3000'
-const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/register', '/v1/app/auth/login', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard', '/v1/app/passports', '/v1/app/applications', '/v1/app/reference/countries', '/v1/app/reference/visa-types', '/v1/app/payments', '/v1/app/me/reset'])
+const ROUTES = new Set(['/v1/app/auth/email/send-otp', '/v1/app/auth/email/verify-otp', '/v1/app/auth/google', '/v1/app/auth/register', '/v1/app/auth/login', '/v1/app/auth/refresh', '/v1/app/auth/account', '/v1/app/auth/sessions', '/v1/app/dashboard', '/v1/app/passports', '/v1/app/applications', '/v1/app/reference/countries', '/v1/app/reference/visa-types', '/v1/app/payments', '/v1/app/me/reset', '/v1/admin/ping', '/v1/admin/applications', '/v1/admin/bookings', '/v1/admin/slots', '/v1/admin/visa-centers', '/v1/admin/visa-types', '/v1/admin/custom-fields'])
 
 // Apply CORS headers for local browser access.
 function setCors (response) {
@@ -19,6 +19,7 @@ function isAllowedRoute (path) {
 	if(path.startsWith('/v1/app/applications/')) return true
 	if(path.startsWith('/v1/app/payments/')) return true
 	if(path.startsWith('/v1/app/state/')) return true
+	if(path.startsWith('/v1/admin/')) return true
 	return false
 }
 

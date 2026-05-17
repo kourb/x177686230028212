@@ -789,6 +789,40 @@ function resolveFillTestValues () {
 	return window.localStorage.getItem(FILL_TEST_VALUES_STORAGE_KEY) === 'true'
 }
 
+// Read admin panel visibility flag from localStorage.
+function readAdminPanelEnabled () {
+	if(typeof window === 'undefined') return false
+	return window.localStorage.getItem(ADMIN_PANEL_ENABLED_STORAGE_KEY) === 'true'
+}
+
+const adminPanelListeners = new Set<() => void>()
+
+// Subscribe to admin panel enabled changes for useSyncExternalStore.
+function subscribeAdminPanelEnabled (listener: () => void) {
+	adminPanelListeners.add(listener)
+	return () => { adminPanelListeners.delete(listener) }
+}
+
+// Reactive hook for admin panel visibility flag.
+function useAdminPanelEnabled () {
+	return useSyncExternalStore(subscribeAdminPanelEnabled, readAdminPanelEnabled, () => false)
+}
+
+// Persist admin panel visibility flag and notify subscribers.
+function setAdminPanelEnabled (value: boolean) {
+	if(typeof window === 'undefined') return
+	window.localStorage.setItem(ADMIN_PANEL_ENABLED_STORAGE_KEY, String(value))
+	adminPanelListeners.forEach((listener) => listener())
+}
+
+// Module-level navigator set by EntryFlow so DesktopSidebar can route to admin panel without prop drilling.
+let adminPanelOpener: (() => void) | null = null
+
+// Register/clear the admin panel navigator from the root renderer.
+function setAdminPanelOpener (fn: (() => void) | null) {
+	adminPanelOpener = fn
+}
+
 // Resolve request URL for auth endpoint in proxy or direct mode.
 function resolveAuthUrl (path: string) {
 	if(AUTH_USE_PROXY) return `${AUTH_PROXY_BASE_URL}${path}`
@@ -2164,6 +2198,8 @@ function DesktopSidebar ({ active, onOpenDocuments, onOpenHome, onOpenProfile }:
 	const homeActive = active === 'home'
 	const documentsActive = active === 'documents'
 	const profileActive = active === 'profile'
+	const adminActive = active === 'admin'
+	const adminEnabled = useAdminPanelEnabled()
 
 	return <aside className="home-desktop-sidebar" aria-label="Desktop navigation">
 		<span className="home-desktop-caption">{'Навигация'}</span>
@@ -2180,6 +2216,12 @@ function DesktopSidebar ({ active, onOpenDocuments, onOpenHome, onOpenProfile }:
 				<Image alt="Profile" className="home-desktop-menu-icon" height={24} src={profileActive ? '/assets/icon-tab-profile-active.svg' : '/assets/icon-tab-profile.svg'} unoptimized width={24} />
 				<span>{'Профиль и настройки'}</span>
 			</button>
+			{adminEnabled ? (
+				<button className={`home-desktop-menu-item${adminActive ? ' is-active' : ''}`} onClick={adminActive ? undefined : () => adminPanelOpener?.()} type="button">
+					<Image alt="Admin" className="home-desktop-menu-icon" height={24} src="/assets/icon-settings-profile.svg" unoptimized width={24} />
+					<span>{'Панель администратора'}</span>
+				</button>
+			) : null}
 		</nav>
 	</aside>
 }
@@ -4003,6 +4045,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onOpenDocuments, on
 // Render developer diagnostics with server/account metadata.
 function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onToggleAnimationsDisabled, onToggleFillTestValues, onOpenData, onOpenApi }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onOpenData: () => void, onOpenApi: () => void }) {
 	const { t } = useI18n()
+	const adminPanelEnabled = useAdminPanelEnabled()
 	const [isLoading, setIsLoading] = useState(true)
 	const [errorText, setErrorText] = useState('')
 	const [sessionsData, setSessionsData] = useState<unknown>(null)
@@ -4094,6 +4137,16 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOp
 						<p>{animationsDisabled ? 'Disabled' : 'Enabled'}</p>
 					</div>
 					<button aria-pressed={!animationsDisabled} className={`dev-switch${!animationsDisabled ? ' is-on' : ''}`} onClick={() => onToggleAnimationsDisabled(!animationsDisabled)} type="button">
+						<span />
+					</button>
+				</div>
+
+				<div className="dev-card dev-switch-card">
+					<div>
+						<b>{'Панель администратора'}</b>
+						<p>{adminPanelEnabled ? 'Видна в навигации' : 'Скрыта'}</p>
+					</div>
+					<button aria-pressed={adminPanelEnabled} className={`dev-switch${adminPanelEnabled ? ' is-on' : ''}`} onClick={() => setAdminPanelEnabled(!adminPanelEnabled)} type="button">
 						<span />
 					</button>
 				</div>
@@ -4283,6 +4336,113 @@ function DeveloperApiScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfil
 									<DevApiRow key={entry.path} label={entry.label} path={entry.path} />
 								))}
 							</div>
+						</div>
+					))}
+				</div>
+			</div>
+			<DesktopRail />
+		</section>
+	)
+}
+
+// Admin API endpoints grouped by feature; only GETs without required params are callable.
+const ADMIN_API_GET_GROUPS: { section: string, entries: DevApiEntry[] }[] = [
+	{
+		section: '/admin/ping',
+		entries: [
+			{ label: 'GET /v1/admin/ping', path: '/v1/admin/ping' },
+		],
+	},
+	{
+		section: '/admin/applications',
+		entries: [
+			{ label: 'GET /v1/admin/applications?pageSize=20', path: '/v1/admin/applications?pageSize=20' },
+		],
+	},
+	{
+		section: '/admin/bookings',
+		entries: [
+			{ label: 'GET /v1/admin/bookings', path: '/v1/admin/bookings' },
+		],
+	},
+	{
+		section: '/admin/slots',
+		entries: [
+			{ label: 'GET /v1/admin/slots', path: '/v1/admin/slots' },
+		],
+	},
+]
+
+// Mutating/parametrized admin endpoints shown for reference only (not auto-callable).
+const ADMIN_API_INFO_GROUPS: { section: string, items: string[] }[] = [
+	{ section: 'Applications', items: [
+		'GET    /v1/admin/applications/{id}',
+		'POST   /v1/admin/applications/{id}/change-status',
+		'POST   /v1/admin/applications/{id}/run-flags',
+		'POST   /v1/admin/applications/flags/{flagId}/resolve',
+		'POST   /v1/admin/applications/{publicId}/assign-slot',
+	] },
+	{ section: 'Visa Centers', items: [
+		'POST   /v1/admin/visa-centers',
+		'PATCH  /v1/admin/visa-centers/{id}',
+		'DELETE /v1/admin/visa-centers/{id}',
+	] },
+	{ section: 'Visa Types', items: [
+		'POST   /v1/admin/visa-types',
+		'PATCH  /v1/admin/visa-types/{id}',
+		'DELETE /v1/admin/visa-types/{id}',
+	] },
+	{ section: 'Custom Fields', items: [
+		'POST   /v1/admin/custom-fields',
+		'PATCH  /v1/admin/custom-fields/{id}',
+		'DELETE /v1/admin/custom-fields/{id}',
+		'POST   /v1/admin/custom-fields/reorder/{visaTypeId}',
+	] },
+	{ section: 'Slots', items: [
+		'POST   /v1/admin/slots',
+		'PATCH  /v1/admin/slots/{publicId}',
+		'POST   /v1/admin/slots/{publicId}/close',
+	] },
+]
+
+// Render developer-only admin panel with callable GETs and reference for mutating endpoints.
+function AdminPanelScreen ({ onOpenDocuments, onOpenHome, onOpenProfile }: { onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void }) {
+	const auth = resolveAuthPayload()
+	const role = auth?.user?.role ?? 'n/a'
+	const isPrivileged = role === 'admin' || role === 'support' || role === 'manager'
+
+	return (
+		<section aria-label="Admin panel" className="dev-screen">
+			<DesktopSidebar active="admin" onOpenDocuments={onOpenDocuments} onOpenHome={onOpenHome} onOpenProfile={onOpenProfile} />
+			<div className="dev-scroll">
+				<header className="dev-toolbar">
+					<h2>{'Панель администратора'}</h2>
+				</header>
+				<div className="dev-content">
+					<div className="dev-card">
+						<b>{'Текущая роль'}</b>
+						<p>{role}{isPrivileged ? '' : ' — недостаточно прав для admin-эндпоинтов'}</p>
+					</div>
+
+					<div className="dev-section-title">{'Доступные GET-запросы'}</div>
+					{ADMIN_API_GET_GROUPS.map((group) => (
+						<div key={group.section}>
+							<div className="dev-section-title">{group.section}</div>
+							<div className="dev-api-group">
+								{group.entries.map((entry) => (
+									<DevApiRow key={entry.path} label={entry.label} path={entry.path} />
+								))}
+							</div>
+						</div>
+					))}
+
+					<div className="dev-section-title">{'Остальные эндпоинты (нужны параметры)'}</div>
+					{ADMIN_API_INFO_GROUPS.map((group) => (
+						<div className="dev-card" key={group.section}>
+							<b>{group.section}</b>
+							{group.items.map((item) => (
+								<p key={item}><code>{item}</code></p>
+							))}
 						</div>
 					))}
 				</div>
@@ -4555,7 +4715,7 @@ function EntryFlow () {
 	const activeDraftStatus = activeDraftId ? savedDrafts.find((draft) => draft.id === activeDraftId)?.status : undefined
 	const activeDraftPaid = activeDraftId ? Boolean(savedDrafts.find((draft) => draft.id === activeDraftId)?.paid) : false
 	const isActiveDraftEditable = !activeDraftStatus || activeDraftStatus === 'draft' || activeDraftStatus === 'error'
-	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'developer-data' || activeTab === 'developer-api' || activeTab === 'support' || activeTab === 'payment-history' || activeTab === 'notifications-settings' || activeTab.startsWith('passports') ? 'profile' : 'home'
+	const desktopActiveTab: HomeRootTab = activeTab === 'documents' ? 'documents' : activeTab === 'admin' ? 'admin' : activeTab === 'profile' || activeTab === 'profile-data' || activeTab === 'developer-mode' || activeTab === 'developer-data' || activeTab === 'developer-api' || activeTab === 'support' || activeTab === 'payment-history' || activeTab === 'notifications-settings' || activeTab.startsWith('passports') ? 'profile' : 'home'
 
 	// Move app to target view and sync browser history state.
 	const navigate = (nextStep: EntryStep, nextTab: HomeTab, mode: 'push' | 'replace' = 'push') => {
@@ -5015,6 +5175,13 @@ function EntryFlow () {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [step, activeTab, activeDraftId])
 
+	// Register admin panel opener so DesktopSidebar can navigate without prop drilling.
+	useEffect(() => {
+		setAdminPanelOpener(() => navigate('home', 'admin'))
+		return () => setAdminPanelOpener(null)
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
 	// Persist developer-selected animation preference.
 	const toggleAnimationsDisabled = (value: boolean) => {
 		setAnimationsDisabled(value)
@@ -5281,6 +5448,8 @@ function EntryFlow () {
 								? <PaymentHistoryScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
 								: activeTab === 'notifications-settings'
 								? <NotificationsSettingsScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
+								: activeTab === 'admin'
+								? <AdminPanelScreen onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} />
 									: activeTab === 'passports-list'
 										? <PassportsListScreen passports={passports} selectedPassportId={selectedVisaPassport?.id ?? null} isSelectionMode={passportListMode === 'visa'} isLoading={isPassportsLoading} errorText={passportsError} onBack={() => goBack(passportListMode === 'visa' ? 'visa-passport' : 'profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onAdd={passportListMode === 'visa' ? openVisaPassportAdd : openPassportAdd} onEdit={openPassportEdit} onDelete={removePassport} onSelect={selectVisaPassport} />
 									: activeTab === 'passports-step-one'
