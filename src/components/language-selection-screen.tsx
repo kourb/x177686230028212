@@ -17,6 +17,7 @@ const USER_PROFILE_STORAGE_KEY = 'visa-assistent-user-profile'
 const VISA_DRAFTS_STORAGE_KEY = 'visa-drafts'
 const ANIMATIONS_DISABLED_STORAGE_KEY = 'visa-animations-disabled'
 const FILL_TEST_VALUES_STORAGE_KEY = 'visa-fill-test-values'
+const ADMIN_PANEL_ENABLED_STORAGE_KEY = 'visa-admin-panel-enabled'
 const SCHENGEN_COUNTRIES_STORAGE_KEY = 'visa-schengen-countries'
 const PAYMENT_HISTORY_STORAGE_KEY_PREFIX = 'visa-payment-history-'
 const AUTH_REMOTE_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ?? 'https://133892.ip-ns.net'
@@ -189,9 +190,9 @@ type ApplicantDto = {
 
 type EntryStep = 'onboarding' | 'auth' | 'home'
 
-type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'developer-api' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings'
+type HomeTab = 'home' | 'documents' | 'visa-start' | 'visa-type' | 'visa-passport' | 'passport-camera' | 'passport-recognition' | 'visa-personal-one' | 'visa-personal-two' | 'visa-trip' | 'visa-docs' | 'visa-photo' | 'visa-photo-camera' | 'visa-photo-check' | 'visa-review-passport' | 'visa-review-personal' | 'visa-review-trip' | 'visa-review-photo' | 'visa-applicants' | 'visa-payment' | 'visa-check' | 'visa-verified' | 'visa-rejected' | 'visa-documents-ready' | 'profile' | 'profile-data' | 'developer-mode' | 'developer-data' | 'developer-api' | 'passports-list' | 'passports-step-one' | 'passports-step-two' | 'passports-review' | 'passports-edit' | 'support' | 'payment-history' | 'notifications-settings' | 'admin'
 
-const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'developer-api', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings']
+const HOME_TABS: HomeTab[] = ['home', 'documents', 'visa-start', 'visa-type', 'visa-passport', 'passport-camera', 'passport-recognition', 'visa-personal-one', 'visa-personal-two', 'visa-trip', 'visa-docs', 'visa-photo', 'visa-photo-camera', 'visa-photo-check', 'visa-review-passport', 'visa-review-personal', 'visa-review-trip', 'visa-review-photo', 'visa-applicants', 'visa-payment', 'visa-check', 'visa-verified', 'visa-rejected', 'visa-documents-ready', 'profile', 'profile-data', 'developer-mode', 'developer-data', 'developer-api', 'passports-list', 'passports-step-one', 'passports-step-two', 'passports-review', 'passports-edit', 'support', 'payment-history', 'notifications-settings', 'admin']
 
 type VisaDestinationCode = string
 
@@ -201,7 +202,7 @@ type PaymentMethodCode = 'sbp' | 'card-new' | 'card-saved' | 'yoomoney' | 'sberp
 
 type FieldIcon = 'search' | 'chevron' | 'calendar'
 
-type HomeRootTab = 'home' | 'documents' | 'profile'
+type HomeRootTab = 'home' | 'documents' | 'profile' | 'admin'
 
 type TripData = (typeof VISA_TRIP_TEXT)['ru']
 
