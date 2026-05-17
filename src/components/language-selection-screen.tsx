@@ -4535,7 +4535,7 @@ function PassportReviewScreen ({ draft, actionLabel, onBack, onOpenDocuments, on
 }
 
 // Render developer diagnostics with server/account metadata.
-function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onToggleAnimationsDisabled, onToggleFillTestValues, onOpenData, onOpenApi }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onOpenData: () => void, onOpenApi: () => void }) {
+function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOpenDocuments, onOpenHome, onOpenProfile, onToggleAnimationsDisabled, onToggleFillTestValues, onOpenData, onOpenApi, onClearInsurancePolicies }: { animationsDisabled: boolean, fillTestValues: boolean, onBack: () => void, onOpenDocuments: () => void, onOpenHome: () => void, onOpenProfile: () => void, onToggleAnimationsDisabled: (value: boolean) => void, onToggleFillTestValues: (value: boolean) => void, onOpenData: () => void, onOpenApi: () => void, onClearInsurancePolicies: () => void }) {
 	const { t } = useI18n()
 	const adminPanelEnabled = useAdminPanelEnabled()
 	const [isLoading, setIsLoading] = useState(true)
@@ -4643,10 +4643,18 @@ function DeveloperModeScreen ({ animationsDisabled, fillTestValues, onBack, onOp
 					</button>
 				</div>
 
-				<div className="dev-card">
-					<b>{t('devAccountId')}</b>
-					<p>{auth?.user?.userId ?? 'n/a'}</p>
+			<div className="dev-card dev-action-card">
+				<div>
+					<b>{'Страховые полисы'}</b>
+					<p>{'Удалить все сохранённые полисы'}</p>
 				</div>
+				<button className="dev-action-button" onClick={onClearInsurancePolicies} type="button">{'Очистить'}</button>
+			</div>
+
+			<div className="dev-card">
+				<b>{t('devAccountId')}</b>
+				<p>{auth?.user?.userId ?? 'n/a'}</p>
+			</div>
 
 				<div className="dev-card">
 					<b>{t('emailLabel')}</b>
@@ -6112,7 +6120,7 @@ function EntryFlow () {
 							: activeTab === 'profile-data'
 								? <ProfileDataScreen onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onLoggedOut={endLocalSession} onAccountDeleted={endLocalSession} />
 								: activeTab === 'developer-mode'
-? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onOpenData={() => navigate('home', 'developer-data')} onOpenApi={() => navigate('home', 'developer-api')} />
+? <DeveloperModeScreen animationsDisabled={animationsDisabled} fillTestValues={fillTestValues} onBack={() => goBack('profile')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onToggleAnimationsDisabled={toggleAnimationsDisabled} onToggleFillTestValues={toggleFillTestValues} onOpenData={() => navigate('home', 'developer-data')} onOpenApi={() => navigate('home', 'developer-api')} onClearInsurancePolicies={() => { setInsurancePolicies([]); saveInsurancePolicies([]) }} />
 							: activeTab === 'developer-data'
 							? <DeveloperDataScreen onBack={() => goBack('developer-mode')} onOpenHome={() => navigate('home', 'home')} onOpenDocuments={() => navigate('home', 'documents')} onOpenProfile={() => navigate('home', 'profile')} onClearDrafts={() => { setSavedDrafts(persistLocalDrafts([])); setActiveDraftId(null) }} />
 							: activeTab === 'developer-api'

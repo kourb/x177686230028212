@@ -2821,6 +2821,27 @@ html:not(.motion-disabled) .calendar-sheet {
 	align-items: center;
 }
 
+.dev-action-card {
+	grid-template-columns: 1fr auto;
+	align-items: center;
+}
+
+.dev-action-button {
+	all: unset;
+	padding: 8px 16px;
+	border-radius: 8px;
+	background: rgb(220 38 38 / 0.1);
+	color: #dc2626;
+	font-size: 15px;
+	font-weight: 500;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.dev-action-button:hover {
+	background: rgb(220 38 38 / 0.18);
+}
+
 .dev-switch {
 	all: unset;
 	width: 52px;
