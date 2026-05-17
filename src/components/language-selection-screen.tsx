@@ -4345,6 +4345,65 @@ function DeveloperApiScreen ({ onBack, onOpenDocuments, onOpenHome, onOpenProfil
 	)
 }
 
+// Raw GET that returns status + parsed body without enforcing data envelope; used by admin panel to see real backend responses.
+async function authRawGet (path: string) {
+	const payload = resolveAuthPayload()
+	if(!payload?.accessToken) return { status: 0, body: { error: { message: 'Authorization token is missing' } } as unknown }
+
+	const doFetch = async (token: string) => {
+		const response = await fetch(resolveAuthUrl(path), { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+		const text = await response.text()
+		let parsed: unknown = text
+		if(text) { try { parsed = JSON.parse(text) } catch { /* keep raw text */ } }
+		return { status: response.status, body: parsed }
+	}
+
+	let result = await doFetch(payload.accessToken)
+	if(result.status === 401 && hasValidRefreshToken(payload)) {
+		const refreshed = await refreshAccessToken(payload.refreshToken)
+		if(refreshed) result = await doFetch(refreshed.accessToken)
+	}
+	return result
+}
+
+// Collapsible admin row: shows HTTP status + raw response, no envelope check.
+function AdminApiRow ({ label, path }: DevApiEntry) {
+	const [open, setOpen] = useState(false)
+	const [result, setResult] = useState<{ status: number, body: unknown } | null>(null)
+	const [loading, setLoading] = useState(false)
+
+	const run = async () => {
+		setLoading(true)
+		try { setResult(await authRawGet(path)) } finally { setLoading(false) }
+	}
+
+	const toggle = async () => {
+		if(!open && !result) await run()
+		setOpen((v) => !v)
+	}
+
+	const statusClass = result && (result.status >= 200 && result.status < 300) ? '' : ' is-error'
+
+	return (
+		<div className="dev-api-row">
+			<button className="dev-api-row-header" onClick={toggle} type="button">
+				<code>{label}</code>
+				<span className={`dev-api-chevron${open ? ' is-open' : ''}`}>{'›'}</span>
+			</button>
+			{open ? (
+				<div className="dev-api-row-body">
+					{loading ? <p className="dev-status">{'Loading...'}</p> : null}
+					{result ? <p className={`dev-status${statusClass}`}>{`HTTP ${result.status}`}</p> : null}
+					{result ? <pre>{typeof result.body === 'string' ? (result.body || '(empty body)') : JSON.stringify(result.body, null, 2)}</pre> : null}
+					{result ? (
+						<button className="dev-api-reload" onClick={run} type="button">{'↺ Reload'}</button>
+					) : null}
+				</div>
+			) : null}
+		</div>
+	)
+}
+
 // Admin API endpoints grouped by feature; only GETs without required params are callable.
 const ADMIN_API_GET_GROUPS: { section: string, entries: DevApiEntry[] }[] = [
 	{
@@ -4430,7 +4489,7 @@ function AdminPanelScreen ({ onOpenDocuments, onOpenHome, onOpenProfile }: { onO
 							<div className="dev-section-title">{group.section}</div>
 							<div className="dev-api-group">
 								{group.entries.map((entry) => (
-									<DevApiRow key={entry.path} label={entry.label} path={entry.path} />
+									<AdminApiRow key={entry.path} label={entry.label} path={entry.path} />
 								))}
 							</div>
 						</div>
