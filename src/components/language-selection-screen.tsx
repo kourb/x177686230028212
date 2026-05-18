@@ -5269,7 +5269,6 @@ function EntryFlow () {
 	const [insurancePassport, setInsurancePassport] = useState<InsurancePassport>(() => createInsurancePassportDraft(resolveFillTestValues()))
 	const [insurancePolicyholders, setInsurancePolicyholders] = useState<InsurancePolicyholder[]>([])
 	const [insurancePayment, setInsurancePayment] = useState<PaymentMethodCode>('sbp')
-	const [insuranceStatus, setInsuranceStatus] = useState<InsuranceStatus>('idle')
 	const [insurancePolicies, setInsurancePolicies] = useState<InsurancePolicy[]>(loadInsurancePolicies)
 	const [animationsDisabled, setAnimationsDisabled] = useState(resolveAnimationsDisabled)
 	const [savedDrafts, setSavedDrafts] = useState<VisaDraft[]>(resolveSavedDrafts)
@@ -5748,7 +5747,6 @@ function EntryFlow () {
 	useEffect(() => {
 		setAdminPanelOpener(() => navigate('home', 'admin'))
 		return () => setAdminPanelOpener(null)
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	// Persist developer-selected animation preference.
@@ -5875,7 +5873,7 @@ function EntryFlow () {
 
 	// Start insurance sub-flow from visa-docs offer dialog.
 	const startInsuranceFlow = () => {
-		setInsuranceStatus('idle')
+
 		setInsurancePassport(createInsurancePassportDraft(resolveFillTestValues()))
 		navigate('home', 'insurance-trip')
 	}
@@ -5916,10 +5914,10 @@ function EntryFlow () {
 
 	// Run validation/payment animation, then surface the ready screen.
 	const submitInsurancePayment = () => {
-		setInsuranceStatus('checking')
+
 		navigate('home', 'insurance-checking')
 		setTimeout(() => {
-			setInsuranceStatus('ready')
+
 			navigate('home', 'insurance-ready')
 		}, 2400)
 	}
