@@ -237,7 +237,6 @@ type InsurancePolicyholder = {
 	completion: number
 }
 
-type InsuranceStatus = 'idle' | 'checking' | 'ready'
 
 type InsurancePolicy = {
 	id: string
